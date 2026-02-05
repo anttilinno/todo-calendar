@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** v1.1 Polish & Personalization -- Phase 6: Themes -- In progress
+**Current focus:** v1.1 Polish & Personalization -- Phase 6: Themes -- Complete
 
 ## Current Position
 
 Phase: 6 of 6 (Themes)
-Plan: 1 of 2 in phase 6
-Status: In progress
-Last activity: 2026-02-05 -- Completed 06-01-PLAN.md
+Plan: 2 of 2 in phase 6
+Status: Phase complete (all phases done)
+Last activity: 2026-02-05 -- Completed 06-02-PLAN.md
 
-Progress: [==========] 100% (10/10 plans across all milestones)
+Progress: [============] 100% (12/12 plans across all milestones)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
+- Total plans completed: 12
 - Average duration: 2 min
-- Total execution time: 0.40 hours
+- Total execution time: 0.45 hours
 
 **By Phase:**
 
@@ -32,7 +32,7 @@ Progress: [==========] 100% (10/10 plans across all milestones)
 | 3 | 2 | 4 min | 2 min |
 | 4 | 2 | 5 min | 2.5 min |
 | 5 | 2 | 3 min | 1.5 min |
-| 6 | 1 | 1 min | 1 min |
+| 6 | 2 | 4 min | 2 min |
 
 ## Accumulated Context
 
@@ -54,6 +54,9 @@ Phase 5 decisions:
 Phase 6 decisions:
 - 14 semantic color fields cover all UI elements, named by role not component
 - Empty string means terminal default (Dark theme respects user palette)
+- All styles.go files use struct + constructor pattern (no package-level vars)
+- paneStyle() replaced with Styles.Pane(focused) method receiver
+- Help bar themed with AccentFg/MutedFg from theme
 
 ### Pending Todos
 
@@ -66,5 +69,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 06-01-PLAN.md -- Theme data layer done, ready for 06-02 wiring
+Stopped at: Completed 06-02-PLAN.md -- All phases complete
 Resume file: None
