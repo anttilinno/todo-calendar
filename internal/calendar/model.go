@@ -1,36 +1,89 @@
 package calendar
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	"time"
+
+	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/antti/todo-calendar/internal/holidays"
+)
 
 // Model represents the calendar pane.
 type Model struct {
-	focused bool
-	width   int
-	height  int
+	focused     bool
+	width       int
+	height      int
+	year        int
+	month       time.Month
+	today       time.Time
+	holidays    map[int]bool
+	provider    *holidays.Provider
+	keys        KeyMap
+	mondayStart bool
 }
 
-// New creates a new calendar model.
-func New() Model {
-	return Model{}
+// New creates a new calendar model with the given holiday provider and
+// week-start preference.
+func New(provider *holidays.Provider, mondayStart bool) Model {
+	now := time.Now()
+	y, m, _ := now.Date()
+
+	return Model{
+		year:        y,
+		month:       m,
+		today:       now,
+		holidays:    provider.HolidaysInMonth(y, m),
+		provider:    provider,
+		keys:        DefaultKeyMap(),
+		mondayStart: mondayStart,
+	}
 }
 
 // Update handles messages for the calendar pane.
 // Returns concrete Model type, not tea.Model.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if !m.focused {
+			return m, nil
+		}
+
+		switch {
+		case key.Matches(msg, m.keys.PrevMonth):
+			m.month--
+			if m.month < time.January {
+				m.month = time.December
+				m.year--
+			}
+			m.holidays = m.provider.HolidaysInMonth(m.year, m.month)
+
+		case key.Matches(msg, m.keys.NextMonth):
+			m.month++
+			if m.month > time.December {
+				m.month = time.January
+				m.year++
+			}
+			m.holidays = m.provider.HolidaysInMonth(m.year, m.month)
+		}
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	}
+
 	return m, nil
 }
 
 // View renders the calendar pane content.
 func (m Model) View() string {
-	if m.focused {
-		return "Calendar (focused)"
+	todayDay := 0
+	now := time.Now()
+	if now.Year() == m.year && now.Month() == m.month {
+		todayDay = now.Day()
 	}
-	return "Calendar"
+
+	return RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart)
 }
 
 // SetFocused sets whether this pane is focused.
