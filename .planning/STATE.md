@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** Phase 3: Todo Management (in progress)
+**Current focus:** Project complete -- all 3 phases delivered
 
 ## Current Position
 
 Phase: 3 of 3 (Todo Management)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-05 -- Completed 03-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Complete
+Last activity: 2026-02-05 -- Completed 03-02-PLAN.md
 
-Progress: [████████░░] 80%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: 3 min
-- Total execution time: 0.20 hours
+- Total execution time: 0.25 hours
 
 **By Phase:**
 
@@ -29,11 +29,11 @@ Progress: [████████░░] 80%
 |-------|-------|-------|----------|
 | 1 | 1 | 3 min | 3 min |
 | 2 | 2 | 8 min | 4 min |
-| 3 | 1 | 1 min | 1 min |
+| 3 | 2 | 4 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 3 min, 3 min, 5 min, 1 min
-- Trend: improving
+- Last 5 plans: 3 min, 3 min, 5 min, 1 min, 3 min
+- Trend: consistent
 
 *Updated after each plan completion*
 
@@ -57,10 +57,14 @@ Recent decisions affecting current work:
 - [03-01]: String dates (YYYY-MM-DD) over time.Time to avoid timezone corruption
 - [03-01]: Synchronous Save() on every mutation -- simplicity for single small JSON file
 - [03-01]: XDG data colocation -- todos.json alongside config.toml
+- [03-02]: Three-mode state machine (normal/input/dateInput) with Enter/Esc intercepted before textinput
+- [03-02]: Quit suppression via isInputting check -- simpler than SetEnabled toggling
+- [03-02]: helpKeyMap adapter for aggregating pane-specific + app bindings
+- [03-02]: Cursor index tracks selectable items only, skipping headers and empty placeholders
 
 ### Pending Todos
 
-None yet.
+None -- project complete.
 
 ### Blockers/Concerns
 
@@ -69,5 +73,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 03-01-PLAN.md
+Stopped at: Completed 03-02-PLAN.md (final plan)
 Resume file: None
