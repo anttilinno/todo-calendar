@@ -27,10 +27,10 @@ Requirements for v1.1 Polish & Personalization milestone.
 
 ### Themes
 
-- [ ] **THME-01**: App ships with 4 preset themes: Dark, Light, Nord, Solarized
-- [ ] **THME-02**: User can select theme in config.toml
-- [ ] **THME-03**: All UI elements (borders, highlights, text, holidays) respect selected theme
-- [ ] **THME-04**: Dark theme is the default when no theme is configured
+- [x] **THME-01**: App ships with 4 preset themes: Dark, Light, Nord, Solarized
+- [x] **THME-02**: User can select theme in config.toml
+- [x] **THME-03**: All UI elements (borders, highlights, text, holidays) respect selected theme
+- [x] **THME-04**: Dark theme is the default when no theme is configured
 
 ## Future Requirements
 
@@ -70,10 +70,10 @@ Deferred to later milestones.
 | FDOW-01 | Phase 4 | Complete |
 | FDOW-02 | Phase 4 | Complete |
 | FDOW-03 | Phase 4 | Complete |
-| THME-01 | Phase 6 | Pending |
-| THME-02 | Phase 6 | Pending |
-| THME-03 | Phase 6 | Pending |
-| THME-04 | Phase 6 | Pending |
+| THME-01 | Phase 6 | Complete |
+| THME-02 | Phase 6 | Complete |
+| THME-03 | Phase 6 | Complete |
+| THME-04 | Phase 6 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 13 total
