@@ -3,7 +3,7 @@
 ## Milestones
 
 - v1.0 MVP - Phases 1-3 (shipped 2026-02-05)
-- v1.1 Polish & Personalization - Phases 4-6 (in progress)
+- v1.1 Polish & Personalization - Phases 4-6 (shipped 2026-02-05)
 
 ## Phases
 
@@ -35,7 +35,7 @@ Plans:
 
 </details>
 
-### v1.1 Polish & Personalization (In Progress)
+### v1.1 Polish & Personalization (SHIPPED 2026-02-05)
 
 **Milestone Goal:** Make the calendar more informative at a glance and let users customize the experience.
 
@@ -45,7 +45,7 @@ Plans:
 
 - [x] **Phase 4: Calendar Enhancements** - Date indicators and configurable first day of week
 - [x] **Phase 5: Todo Editing** - Edit todo text and dates after creation
-- [ ] **Phase 6: Themes** - Preset color themes selectable in config
+- [x] **Phase 6: Themes** - Preset color themes selectable in config
 
 ## Phase Details
 
@@ -91,8 +91,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 06-01-PLAN.md -- Theme struct with 4 preset palettes and config field
-- [ ] 06-02-PLAN.md -- Wire theme through all styles, models, and help bar
+- [x] 06-01-PLAN.md -- Theme struct with 4 preset palettes and config field
+- [x] 06-02-PLAN.md -- Wire theme through all styles, models, and help bar
 
 ## Progress
 
@@ -106,4 +106,4 @@ Phases execute in numeric order: 4 -> 5 -> 6
 | 3. Todo Management | v1.0 | 2/2 | Complete | 2026-02-05 |
 | 4. Calendar Enhancements | v1.1 | 2/2 | Complete | 2026-02-05 |
 | 5. Todo Editing | v1.1 | 2/2 | Complete | 2026-02-05 |
-| 6. Themes | v1.1 | 0/2 | Not started | - |
+| 6. Themes | v1.1 | 2/2 | Complete | 2026-02-05 |
