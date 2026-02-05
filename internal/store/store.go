@@ -147,6 +147,24 @@ func (s *Store) TodosForMonth(year int, month time.Month) []Todo {
 	return result
 }
 
+// IncompleteTodosPerDay returns a map from day-of-month to count of
+// incomplete (not done) todos for the specified year and month.
+// Days with zero incomplete todos are omitted from the map.
+func (s *Store) IncompleteTodosPerDay(year int, month time.Month) map[int]int {
+	counts := make(map[int]int)
+	for _, t := range s.data.Todos {
+		if t.Done || !t.InMonth(year, month) {
+			continue
+		}
+		d, err := time.Parse(dateFormat, t.Date)
+		if err != nil {
+			continue
+		}
+		counts[d.Day()]++
+	}
+	return counts
+}
+
 // FloatingTodos returns todos with no date assigned, sorted by ID ascending.
 func (s *Store) FloatingTodos() []Todo {
 	var result []Todo

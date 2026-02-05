@@ -8,16 +8,21 @@ import (
 
 // Config holds the application configuration.
 type Config struct {
-	Country     string `toml:"country"`
-	MondayStart bool   `toml:"monday_start"`
+	Country        string `toml:"country"`
+	FirstDayOfWeek string `toml:"first_day_of_week"`
 }
 
 // DefaultConfig returns a Config with sensible defaults.
 func DefaultConfig() Config {
 	return Config{
-		Country:     "us",
-		MondayStart: false,
+		Country:        "us",
+		FirstDayOfWeek: "sunday",
 	}
+}
+
+// MondayStart returns true if the configured first day of week is Monday.
+func (c Config) MondayStart() bool {
+	return c.FirstDayOfWeek == "monday"
 }
 
 // Load reads the config file and returns the configuration.
