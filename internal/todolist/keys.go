@@ -10,19 +10,21 @@ type KeyMap struct {
 	AddDated key.Binding
 	Toggle   key.Binding
 	Delete   key.Binding
+	Edit     key.Binding
+	EditDate key.Binding
 	Confirm  key.Binding
 	Cancel   key.Binding
 }
 
 // ShortHelp returns key bindings for the short help view.
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.Add, k.AddDated, k.Toggle, k.Delete}
+	return []key.Binding{k.Up, k.Down, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.EditDate}
 }
 
 // FullHelp returns key bindings for the full help view.
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Up, k.Down, k.Add, k.AddDated, k.Toggle, k.Delete},
+		{k.Up, k.Down, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.EditDate},
 	}
 }
 
@@ -52,6 +54,14 @@ func DefaultKeyMap() KeyMap {
 		Delete: key.NewBinding(
 			key.WithKeys("d"),
 			key.WithHelp("d", "delete"),
+		),
+		Edit: key.NewBinding(
+			key.WithKeys("e"),
+			key.WithHelp("e", "edit"),
+		),
+		EditDate: key.NewBinding(
+			key.WithKeys("E"),
+			key.WithHelp("E", "edit date"),
 		),
 		Confirm: key.NewBinding(
 			key.WithKeys("enter"),
