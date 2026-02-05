@@ -7,6 +7,7 @@ import (
 	"github.com/antti/todo-calendar/internal/app"
 	"github.com/antti/todo-calendar/internal/config"
 	"github.com/antti/todo-calendar/internal/holidays"
+	"github.com/antti/todo-calendar/internal/store"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -23,7 +24,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	model := app.New(provider, cfg.MondayStart)
+	todosPath, err := store.TodosPath()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Todos path error: %v\n", err)
+		os.Exit(1)
+	}
+
+	s, err := store.NewStore(todosPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Store error: %v\n", err)
+		os.Exit(1)
+	}
+
+	model := app.New(provider, cfg.MondayStart, s)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

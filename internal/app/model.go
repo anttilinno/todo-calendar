@@ -3,7 +3,9 @@ package app
 import (
 	"github.com/antti/todo-calendar/internal/calendar"
 	"github.com/antti/todo-calendar/internal/holidays"
+	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/todolist"
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -17,6 +19,14 @@ const (
 	todoPane
 )
 
+// helpKeyMap adapts a slice of key.Binding to the help.KeyMap interface.
+type helpKeyMap struct {
+	bindings []key.Binding
+}
+
+func (h helpKeyMap) ShortHelp() []key.Binding  { return h.bindings }
+func (h helpKeyMap) FullHelp() [][]key.Binding  { return [][]key.Binding{h.bindings} }
+
 // Model is the root application model.
 type Model struct {
 	calendar   calendar.Model
@@ -26,18 +36,23 @@ type Model struct {
 	height     int
 	ready      bool
 	keys       KeyMap
+	help       help.Model
 }
 
 // New creates a new root application model with the given dependencies.
-func New(provider *holidays.Provider, mondayStart bool) Model {
+func New(provider *holidays.Provider, mondayStart bool, s *store.Store) Model {
 	cal := calendar.New(provider, mondayStart)
 	cal.SetFocused(true)
 
+	tl := todolist.New(s)
+	tl.SetViewMonth(cal.Year(), cal.Month())
+
 	return Model{
 		calendar:   cal,
-		todoList:   todolist.New(),
+		todoList:   tl,
 		activePane: calendarPane,
 		keys:       DefaultKeyMap(),
+		help:       help.New(),
 	}
 }
 
@@ -50,10 +65,15 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// In input mode, only ctrl+c quits (let 'q' go to textinput)
+		isInputting := m.activePane == todoPane && m.todoList.IsInputting()
+
 		switch {
-		case key.Matches(msg, m.keys.Quit):
+		case key.Matches(msg, m.keys.Quit) && !isInputting:
 			return m, tea.Quit
-		case key.Matches(msg, m.keys.Tab):
+		case isInputting && msg.String() == "ctrl+c":
+			return m, tea.Quit
+		case key.Matches(msg, m.keys.Tab) && !isInputting:
 			if m.activePane == calendarPane {
 				m.activePane = todoPane
 			} else {
@@ -61,6 +81,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.calendar.SetFocused(m.activePane == calendarPane)
 			m.todoList.SetFocused(m.activePane == todoPane)
+			m.todoList.SetViewMonth(m.calendar.Year(), m.calendar.Month())
 			return m, nil
 		}
 
@@ -68,6 +89,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.ready = true
+		m.help.Width = msg.Width
+
+		// Sync todo view month on first ready
+		m.todoList.SetViewMonth(m.calendar.Year(), m.calendar.Month())
 
 		// Broadcast to all children
 		var calCmd, todoCmd tea.Cmd
@@ -81,11 +106,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.activePane {
 	case calendarPane:
 		m.calendar, cmd = m.calendar.Update(msg)
+		// Sync todo list when calendar month changes
+		m.todoList.SetViewMonth(m.calendar.Year(), m.calendar.Month())
 	case todoPane:
 		m.todoList, cmd = m.todoList.Update(msg)
 	}
 
 	return m, cmd
+}
+
+// currentHelpKeys returns an aggregated help KeyMap based on the active pane.
+func (m Model) currentHelpKeys() helpKeyMap {
+	var bindings []key.Binding
+
+	switch m.activePane {
+	case calendarPane:
+		calKeys := m.calendar.Keys()
+		bindings = append(bindings, calKeys.PrevMonth, calKeys.NextMonth)
+	case todoPane:
+		bindings = append(bindings, m.todoList.HelpBindings()...)
+	}
+
+	bindings = append(bindings, m.keys.Tab, m.keys.Quit)
+	return helpKeyMap{bindings: bindings}
 }
 
 // View renders the root model.
@@ -124,7 +167,8 @@ func (m Model) View() string {
 		todoStyle.Render(m.todoList.View()),
 	)
 
-	statusBar := "q: quit | Tab: switch pane | <-/h ->l: month"
+	m.help.Width = m.width
+	helpBar := m.help.View(m.currentHelpKeys())
 
-	return lipgloss.JoinVertical(lipgloss.Left, top, statusBar)
+	return lipgloss.JoinVertical(lipgloss.Left, top, helpBar)
 }
