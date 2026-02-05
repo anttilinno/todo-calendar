@@ -88,10 +88,11 @@ Plans:
   2. User can set `theme = "dark"` (or light, nord, solarized) in config.toml and the app renders with that theme on next launch
   3. All UI elements -- borders, panel backgrounds, calendar highlights, holiday text, todo text, help bar, date indicators -- render in colors consistent with the selected theme
   4. When no theme is configured in config.toml, the app defaults to the Dark theme
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 06-01: TBD
+- [ ] 06-01-PLAN.md -- Theme struct with 4 preset palettes and config field
+- [ ] 06-02-PLAN.md -- Wire theme through all styles, models, and help bar
 
 ## Progress
 
@@ -105,4 +106,4 @@ Phases execute in numeric order: 4 -> 5 -> 6
 | 3. Todo Management | v1.0 | 2/2 | Complete | 2026-02-05 |
 | 4. Calendar Enhancements | v1.1 | 2/2 | Complete | 2026-02-05 |
 | 5. Todo Editing | v1.1 | 2/2 | Complete | 2026-02-05 |
-| 6. Themes | v1.1 | 0/TBD | Not started | - |
+| 6. Themes | v1.1 | 0/2 | Not started | - |
