@@ -73,10 +73,11 @@ Plans:
   1. User can press `e` on a selected todo to enter edit mode with existing text pre-filled, modify the text, and confirm
   2. User can change a todo's date -- adding a date to a floating todo, changing an existing date, or removing a date to make it floating
   3. Edited todos are persisted to disk immediately after confirmation (surviving app restart)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: TBD
+- [ ] 05-01-PLAN.md -- Store Update/Find methods and edit key bindings
+- [ ] 05-02-PLAN.md -- Edit text and edit date mode handlers
 
 ### Phase 6: Themes
 **Goal**: Users can personalize the app's appearance by choosing a color theme
@@ -103,5 +104,5 @@ Phases execute in numeric order: 4 -> 5 -> 6
 | 2. Calendar Features | v1.0 | 2/2 | Complete | 2026-02-05 |
 | 3. Todo Management | v1.0 | 2/2 | Complete | 2026-02-05 |
 | 4. Calendar Enhancements | v1.1 | 2/2 | Complete | 2026-02-05 |
-| 5. Todo Editing | v1.1 | 0/TBD | Not started | - |
+| 5. Todo Editing | v1.1 | 0/2 | Not started | - |
 | 6. Themes | v1.1 | 0/TBD | Not started | - |
