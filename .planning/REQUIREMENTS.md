@@ -1,7 +1,7 @@
 # Requirements: Todo Calendar
 
 **Defined:** 2026-02-05
-**Core Value:** See your month at a glance — calendar with holidays and todos in one terminal screen.
+**Core Value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
 
 ## v1 Requirements
 
@@ -68,29 +68,29 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CAL-01 | — | Pending |
-| CAL-02 | — | Pending |
-| CAL-03 | — | Pending |
-| CAL-04 | — | Pending |
-| CAL-05 | — | Pending |
-| TODO-01 | — | Pending |
-| TODO-02 | — | Pending |
-| TODO-03 | — | Pending |
-| TODO-04 | — | Pending |
-| TODO-05 | — | Pending |
-| UI-01 | — | Pending |
-| UI-02 | — | Pending |
-| UI-03 | — | Pending |
-| UI-04 | — | Pending |
-| DATA-01 | — | Pending |
-| DATA-02 | — | Pending |
-| DATA-03 | — | Pending |
+| CAL-01 | Phase 2 | Pending |
+| CAL-02 | Phase 2 | Pending |
+| CAL-03 | Phase 2 | Pending |
+| CAL-04 | Phase 2 | Pending |
+| CAL-05 | Phase 2 | Pending |
+| TODO-01 | Phase 3 | Pending |
+| TODO-02 | Phase 3 | Pending |
+| TODO-03 | Phase 3 | Pending |
+| TODO-04 | Phase 3 | Pending |
+| TODO-05 | Phase 3 | Pending |
+| UI-01 | Phase 1 | Pending |
+| UI-02 | Phase 1 | Pending |
+| UI-03 | Phase 3 | Pending |
+| UI-04 | Phase 1 | Pending |
+| DATA-01 | Phase 3 | Pending |
+| DATA-02 | Phase 2 | Pending |
+| DATA-03 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 17 total
-- Mapped to phases: 0
-- Unmapped: 17
+- Mapped to phases: 17
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-05*
-*Last updated: 2026-02-05 after initial definition*
+*Last updated: 2026-02-05 after roadmap creation*
