@@ -1,7 +1,7 @@
 # Requirements: Todo Calendar
 
 **Defined:** 2026-02-05
-**Core Value:** See your month at a glance — calendar with holidays and todos in one terminal screen.
+**Core Value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
 
 ## v1.1 Requirements
 
@@ -61,25 +61,25 @@ Deferred to later milestones.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INDI-01 | — | Pending |
-| INDI-02 | — | Pending |
-| INDI-03 | — | Pending |
-| EDIT-01 | — | Pending |
-| EDIT-02 | — | Pending |
-| EDIT-03 | — | Pending |
-| FDOW-01 | — | Pending |
-| FDOW-02 | — | Pending |
-| FDOW-03 | — | Pending |
-| THME-01 | — | Pending |
-| THME-02 | — | Pending |
-| THME-03 | — | Pending |
-| THME-04 | — | Pending |
+| INDI-01 | Phase 4 | Pending |
+| INDI-02 | Phase 4 | Pending |
+| INDI-03 | Phase 4 | Pending |
+| EDIT-01 | Phase 5 | Pending |
+| EDIT-02 | Phase 5 | Pending |
+| EDIT-03 | Phase 5 | Pending |
+| FDOW-01 | Phase 4 | Pending |
+| FDOW-02 | Phase 4 | Pending |
+| FDOW-03 | Phase 4 | Pending |
+| THME-01 | Phase 6 | Pending |
+| THME-02 | Phase 6 | Pending |
+| THME-03 | Phase 6 | Pending |
+| THME-04 | Phase 6 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 13 total
-- Mapped to phases: 0
-- Unmapped: 13 ⚠️
+- Mapped to phases: 13
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-05*
-*Last updated: 2026-02-05 after initial definition*
+*Last updated: 2026-02-05 after roadmap creation*
