@@ -4,6 +4,7 @@ import (
 	"github.com/antti/todo-calendar/internal/calendar"
 	"github.com/antti/todo-calendar/internal/holidays"
 	"github.com/antti/todo-calendar/internal/store"
+	"github.com/antti/todo-calendar/internal/theme"
 	"github.com/antti/todo-calendar/internal/todolist"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -37,22 +38,29 @@ type Model struct {
 	ready      bool
 	keys       KeyMap
 	help       help.Model
+	styles     Styles
 }
 
 // New creates a new root application model with the given dependencies.
-func New(provider *holidays.Provider, mondayStart bool, s *store.Store) Model {
-	cal := calendar.New(provider, mondayStart, s)
+func New(provider *holidays.Provider, mondayStart bool, s *store.Store, t theme.Theme) Model {
+	cal := calendar.New(provider, mondayStart, s, t)
 	cal.SetFocused(true)
 
-	tl := todolist.New(s)
+	tl := todolist.New(s, t)
 	tl.SetViewMonth(cal.Year(), cal.Month())
+
+	h := help.New()
+	h.Styles.ShortKey = lipgloss.NewStyle().Foreground(t.AccentFg)
+	h.Styles.ShortDesc = lipgloss.NewStyle().Foreground(t.MutedFg)
+	h.Styles.ShortSeparator = lipgloss.NewStyle().Foreground(t.MutedFg)
 
 	return Model{
 		calendar:   cal,
 		todoList:   tl,
 		activePane: calendarPane,
 		keys:       DefaultKeyMap(),
-		help:       help.New(),
+		help:       h,
+		styles:     NewStyles(t),
 	}
 }
 
@@ -143,7 +151,7 @@ func (m Model) View() string {
 	}
 
 	// Calculate frame overhead from pane style
-	frameH, frameV := paneStyle(true).GetFrameSize()
+	frameH, frameV := m.styles.Pane(true).GetFrameSize()
 
 	helpHeight := 1
 	contentHeight := m.height - helpHeight - frameV
@@ -159,11 +167,11 @@ func (m Model) View() string {
 		return "Terminal too small"
 	}
 
-	calStyle := paneStyle(m.activePane == calendarPane).
+	calStyle := m.styles.Pane(m.activePane == calendarPane).
 		Width(calendarInnerWidth).
 		Height(contentHeight)
 
-	todoStyle := paneStyle(m.activePane == todoPane).
+	todoStyle := m.styles.Pane(m.activePane == todoPane).
 		Width(todoInnerWidth).
 		Height(contentHeight)
 
