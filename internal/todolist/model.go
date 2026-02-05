@@ -326,14 +326,72 @@ func (m Model) updateDateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 // updateEditTextMode handles key events while editing an existing todo's text.
 func (m Model) updateEditTextMode(msg tea.KeyMsg) (Model, tea.Cmd) {
-	// TODO: implement in Task 2
-	return m, nil
+	switch {
+	case key.Matches(msg, m.keys.Confirm):
+		text := strings.TrimSpace(m.input.Value())
+		if text == "" {
+			// Don't save empty text
+			return m, nil
+		}
+		// Get current todo to preserve its date
+		todo := m.store.Find(m.editingID)
+		if todo != nil {
+			m.store.Update(m.editingID, text, todo.Date)
+		}
+		m.mode = normalMode
+		m.input.Blur()
+		m.input.SetValue("")
+		return m, nil
+
+	case key.Matches(msg, m.keys.Cancel):
+		m.mode = normalMode
+		m.input.Blur()
+		m.input.SetValue("")
+		return m, nil
+	}
+
+	var cmd tea.Cmd
+	m.input, cmd = m.input.Update(msg)
+	return m, cmd
 }
 
 // updateEditDateMode handles key events while editing an existing todo's date.
 func (m Model) updateEditDateMode(msg tea.KeyMsg) (Model, tea.Cmd) {
-	// TODO: implement in Task 2
-	return m, nil
+	switch {
+	case key.Matches(msg, m.keys.Confirm):
+		date := strings.TrimSpace(m.input.Value())
+		// Empty date is valid -- means "make floating"
+		if date != "" {
+			if _, err := time.Parse("2006-01-02", date); err != nil {
+				// Invalid date -- stay in edit mode
+				return m, nil
+			}
+		}
+		// Get current todo to preserve its text
+		todo := m.store.Find(m.editingID)
+		if todo != nil {
+			m.store.Update(m.editingID, todo.Text, date)
+		}
+		m.mode = normalMode
+		m.input.Blur()
+		m.input.SetValue("")
+		// Clamp cursor -- todo may have moved between sections
+		newSelectable := selectableIndices(m.visibleItems())
+		if m.cursor >= len(newSelectable) {
+			m.cursor = max(0, len(newSelectable)-1)
+		}
+		return m, nil
+
+	case key.Matches(msg, m.keys.Cancel):
+		m.mode = normalMode
+		m.input.Blur()
+		m.input.SetValue("")
+		return m, nil
+	}
+
+	var cmd tea.Cmd
+	m.input, cmd = m.input.Update(msg)
+	return m, cmd
 }
 
 // View renders the todo list pane content.
