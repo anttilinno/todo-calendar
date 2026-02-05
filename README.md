@@ -77,4 +77,4 @@ Todos are stored as JSON at `~/.config/todo-calendar/todos.json`.
 
 ## License
 
-MIT
+BSD 3-Clause. See [LICENSE](LICENSE).
