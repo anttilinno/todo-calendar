@@ -19,6 +19,8 @@ const (
 	normalMode    mode = iota
 	inputMode          // typing todo text
 	dateInputMode      // typing date for a dated todo
+	editTextMode       // editing existing todo text
+	editDateMode       // editing existing todo date
 )
 
 // itemKind classifies a visible row in the rendered list.
@@ -50,6 +52,7 @@ type Model struct {
 	viewMonth   time.Month
 	addingDated bool   // true if current add will produce a dated todo
 	pendingText string // text saved during dateInputMode
+	editingID   int    // ID of the todo being edited
 	keys        KeyMap
 }
 
@@ -92,7 +95,7 @@ func (m Model) HelpBindings() []key.Binding {
 	if m.mode != normalMode {
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	}
-	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Add, m.keys.AddDated, m.keys.Toggle, m.keys.Delete}
+	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Add, m.keys.AddDated, m.keys.Edit, m.keys.EditDate, m.keys.Toggle, m.keys.Delete}
 }
 
 // visibleItems builds the combined display list of headers, todos, and empty placeholders.
@@ -158,6 +161,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m.updateInputMode(msg)
 		case dateInputMode:
 			return m.updateDateInputMode(msg)
+		case editTextMode:
+			return m.updateEditTextMode(msg)
+		case editDateMode:
+			return m.updateEditDateMode(msg)
 		default:
 			return m.updateNormalMode(msg)
 		}
@@ -217,6 +224,30 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 			if m.cursor >= len(newSelectable) {
 				m.cursor = max(0, len(newSelectable)-1)
 			}
+		}
+
+	case key.Matches(msg, m.keys.Edit):
+		if len(selectable) > 0 && m.cursor < len(selectable) {
+			todo := items[selectable[m.cursor]].todo
+			m.editingID = todo.ID
+			m.mode = editTextMode
+			m.input.Placeholder = "Edit todo text"
+			m.input.Prompt = "> "
+			m.input.SetValue(todo.Text)
+			m.input.CursorEnd()
+			return m, m.input.Focus()
+		}
+
+	case key.Matches(msg, m.keys.EditDate):
+		if len(selectable) > 0 && m.cursor < len(selectable) {
+			todo := items[selectable[m.cursor]].todo
+			m.editingID = todo.ID
+			m.mode = editDateMode
+			m.input.Placeholder = "YYYY-MM-DD (empty = floating)"
+			m.input.Prompt = "Date: "
+			m.input.SetValue(todo.Date)
+			m.input.CursorEnd()
+			return m, m.input.Focus()
 		}
 	}
 
@@ -291,6 +322,18 @@ func (m Model) updateDateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(msg)
 	return m, cmd
+}
+
+// updateEditTextMode handles key events while editing an existing todo's text.
+func (m Model) updateEditTextMode(msg tea.KeyMsg) (Model, tea.Cmd) {
+	// TODO: implement in Task 2
+	return m, nil
+}
+
+// updateEditDateMode handles key events while editing an existing todo's date.
+func (m Model) updateEditDateMode(msg tea.KeyMsg) (Model, tea.Cmd) {
+	// TODO: implement in Task 2
+	return m, nil
 }
 
 // View renders the todo list pane content.
