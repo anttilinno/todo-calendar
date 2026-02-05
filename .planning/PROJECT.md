@@ -30,15 +30,18 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 
 ### Active
 
-(None — v1 complete. See v2 candidates below.)
+**Current Milestone: v1.1 — Polish & Personalization**
+
+**Goal:** Make the calendar more informative at a glance and let users customize the experience.
+
+- Todo date indicators on calendar (brackets around dates with incomplete todos)
+- Edit todo text and date after creation
+- Configurable first day of week (Monday vs Sunday)
+- Preset color themes (3-4 built-in themes selectable in config)
 
 ### v2 Candidates
 
-- Edit todo text and date after creation
 - Reorder todos (move up/down)
-- Todo indicators (dots/counts) on calendar dates
-- Color themes / customization
-- Configurable first day of week (Monday vs Sunday)
 - Weekly calendar view
 - Simple recurring todos
 - Search/filter todos
@@ -86,4 +89,4 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - Store.Save() errors ignored in CRUD methods (silent persistence failures on disk errors)
 
 ---
-*Last updated: 2026-02-05 after v1.0 milestone*
+*Last updated: 2026-02-05 after v1.1 milestone started*
