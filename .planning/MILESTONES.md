@@ -1,5 +1,31 @@
 # Project Milestones: Todo Calendar
 
+## v1.1 Polish & Personalization (Shipped: 2026-02-05)
+
+**Delivered:** Calendar date indicators, todo editing, configurable first day of week, and 4 preset color themes for a more informative and personalized experience
+
+**Phases completed:** 4-6 (6 plans total)
+
+**Key accomplishments:**
+- Calendar dates with incomplete todos display bracket indicators `[N]` for at-a-glance task awareness
+- Todo text and date editing without delete-and-recreate workflow
+- Configurable first day of week (Monday/Sunday) in config.toml
+- 4 preset color themes (Dark, Light, Nord, Solarized) with semantic color roles
+- Styles struct + constructor DI pattern replacing all package-level style vars
+- Theme propagation through all UI layers: calendar, todolist, app borders, and help bar
+
+**Stats:**
+- 28 files changed
+- 1,695 lines of Go across 18 source files
+- 3 phases, 6 plans
+- 1 day from v1.0 to v1.1
+
+**Git range:** `f8d644b` → `5e45736`
+
+**What's next:** Todo reordering, weekly view, recurring todos, or search/filter.
+
+---
+
 ## v1.0 MVP (Shipped: 2026-02-05)
 
 **Delivered:** Terminal-based calendar+todo app with split-pane TUI, monthly calendar with holidays, and todo management with persistence

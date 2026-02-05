@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A terminal-based (TUI) application that combines a monthly calendar view with a todo list. The left panel shows a navigable calendar with national holidays highlighted in red. The right panel displays todos for the visible month alongside undated (floating) items. Built with Go and Bubble Tea for personal use.
+A terminal-based (TUI) application that combines a monthly calendar view with a todo list. The left panel shows a navigable calendar with national holidays and date indicators showing pending work. The right panel displays todos for the visible month alongside undated (floating) items. Supports editing todos after creation, configurable first day of week, and 4 color themes. Built with Go and Bubble Tea for personal use.
 
 ## Core Value
 
@@ -27,17 +27,14 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - Responsive terminal resize handling — v1.0
 - TOML configuration file — v1.0
 - XDG-compliant data paths — v1.0
+- Calendar dates with incomplete todos display bracket indicators `[N]` — v1.1
+- Edit todo text and date after creation — v1.1
+- Configurable first day of week (Monday/Sunday) — v1.1
+- 4 preset color themes (Dark, Light, Nord, Solarized) selectable in config — v1.1
 
 ### Active
 
-**Current Milestone: v1.1 — Polish & Personalization**
-
-**Goal:** Make the calendar more informative at a glance and let users customize the experience.
-
-- Todo date indicators on calendar (brackets around dates with incomplete todos)
-- Edit todo text and date after creation
-- Configurable first day of week (Monday vs Sunday)
-- Preset color themes (3-4 built-in themes selectable in config)
+No active milestone. See v2 Candidates for next steps.
 
 ### v2 Candidates
 
@@ -62,7 +59,7 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - **Holidays:** rickar/cal/v2 with 11-country registry (de, dk, ee, es, fi, fr, gb, it, no, se, us)
 - **Config:** TOML at ~/.config/todo-calendar/config.toml (BurntSushi/toml v1.6.0)
 - **Storage:** JSON at ~/.config/todo-calendar/todos.json with atomic writes
-- **Codebase:** 1,325 lines of Go across 17 source files
+- **Codebase:** 1,695 lines of Go across 18 source files
 - **Architecture:** Elm Architecture (Bubble Tea), pure rendering functions, constructor DI
 
 ## Constraints
@@ -83,10 +80,15 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 | Atomic file writes (CreateTemp+Sync+Rename) | Data safety from day one | ✓ Good — prevents corruption |
 | Pure rendering functions | RenderGrid has no side effects, testable | ✓ Good — clean separation |
 | Three-mode input state machine | Cleanly separates key handling for normal/text/date | ✓ Good — input isolation works well |
+| `first_day_of_week` string over `monday_start` bool | More extensible, clearer semantics | ✓ Good — clean config field |
+| 4-char calendar cells (grid 34 chars wide) | Room for bracket indicators `[N]` without breaking alignment | ✓ Good — fits well |
+| Semantic theme color roles (14 fields) | Named by role not component, decoupled from UI structure | ✓ Good — clean theme propagation |
+| Styles struct + constructor DI over package-level vars | Enables runtime theme switching, testable | ✓ Good — no global state |
+| Empty string = terminal default in Dark theme | Respects user's terminal palette | ✓ Good — non-invasive default |
 
 ## Known Tech Debt
 
 - Store.Save() errors ignored in CRUD methods (silent persistence failures on disk errors)
 
 ---
-*Last updated: 2026-02-05 after v1.1 milestone started*
+*Last updated: 2026-02-05 after v1.1 milestone completed*
