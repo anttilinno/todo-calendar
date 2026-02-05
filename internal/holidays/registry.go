@@ -6,6 +6,7 @@ import (
 	"github.com/rickar/cal/v2"
 	"github.com/rickar/cal/v2/de"
 	"github.com/rickar/cal/v2/dk"
+	"github.com/rickar/cal/v2/ee"
 	"github.com/rickar/cal/v2/es"
 	"github.com/rickar/cal/v2/fi"
 	"github.com/rickar/cal/v2/fr"
@@ -20,6 +21,7 @@ import (
 var Registry = map[string][]*cal.Holiday{
 	"de": de.Holidays,
 	"dk": dk.Holidays,
+	"ee": ee.Holidays,
 	"es": es.Holidays,
 	"fi": fi.Holidays,
 	"fr": fr.Holidays,
