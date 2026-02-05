@@ -5,14 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** v1.1 Polish & Personalization — date indicators, todo editing, first day of week, themes
+**Current focus:** v1.1 Polish & Personalization -- Phase 4: Calendar Enhancements
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-05 — Milestone v1.1 started
+Phase: 4 of 6 (Calendar Enhancements)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-02-05 -- Roadmap created for v1.1
+
+Progress: [=====.....] 50% (5/~10 plans across all milestones)
 
 ## Performance Metrics
 
@@ -46,5 +48,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Milestone v1.1 — defining requirements
+Stopped at: Roadmap created for v1.1 milestone -- ready to plan Phase 4
 Resume file: None
