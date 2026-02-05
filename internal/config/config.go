@@ -10,6 +10,7 @@ import (
 type Config struct {
 	Country        string `toml:"country"`
 	FirstDayOfWeek string `toml:"first_day_of_week"`
+	Theme          string `toml:"theme"`
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -17,6 +18,7 @@ func DefaultConfig() Config {
 	return Config{
 		Country:        "us",
 		FirstDayOfWeek: "sunday",
+		Theme:          "dark",
 	}
 }
 
