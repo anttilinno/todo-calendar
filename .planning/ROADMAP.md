@@ -27,10 +27,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. User can switch focus between panes with Tab, and the focused pane has a visually distinct border
   3. User can resize the terminal and the layout adjusts without breaking or panicking
   4. User can quit the app with q or Ctrl+C
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 01-01: Project setup, dependencies, root model with split-pane layout and keyboard handling
+- [ ] 01-01-PLAN.md -- Go project init, split-pane scaffold with focus routing, keyboard nav, and resize handling
 
 ### Phase 2: Calendar + Holidays
 **Goal**: User sees the current month's calendar with today highlighted and national holidays in red, and can navigate between months
