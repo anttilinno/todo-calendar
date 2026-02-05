@@ -124,6 +124,30 @@ func (s *Store) Delete(id int) {
 	}
 }
 
+// Find returns a pointer to the todo with the given ID, or nil if not found.
+// This is a read-only lookup and does not call Save.
+func (s *Store) Find(id int) *Todo {
+	for i := range s.data.Todos {
+		if s.data.Todos[i].ID == id {
+			return &s.data.Todos[i]
+		}
+	}
+	return nil
+}
+
+// Update modifies the text and date of the todo with the given ID and persists.
+// Date="" means floating (no date). If ID is not found, does nothing.
+func (s *Store) Update(id int, text string, date string) {
+	for i := range s.data.Todos {
+		if s.data.Todos[i].ID == id {
+			s.data.Todos[i].Text = text
+			s.data.Todos[i].Date = date
+			s.Save()
+			return
+		}
+	}
+}
+
 // Todos returns all todos in the store.
 func (s *Store) Todos() []Todo {
 	return s.data.Todos
