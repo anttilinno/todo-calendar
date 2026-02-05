@@ -19,7 +19,7 @@ const gridWidth = 34
 //   - holidays: map of day numbers that are holidays
 //   - mondayStart: if true, weeks start on Monday; otherwise Sunday
 //   - indicators: map of day numbers to count of incomplete todos (nil safe)
-func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mondayStart bool, indicators map[int]int) string {
+func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mondayStart bool, indicators map[int]int, s Styles) string {
 	var b strings.Builder
 
 	// Title line: month and year, centered in grid width.
@@ -29,14 +29,14 @@ func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mo
 		pad = 0
 	}
 	b.WriteString(strings.Repeat(" ", pad))
-	b.WriteString(headerStyle.Render(title))
+	b.WriteString(s.Header.Render(title))
 	b.WriteString("\n")
 
 	// Weekday header (4 chars per day label, 1 char separator = 34 chars total).
 	if mondayStart {
-		b.WriteString(weekdayHdrStyle.Render(" Mo   Tu   We   Th   Fr   Sa   Su "))
+		b.WriteString(s.WeekdayHdr.Render(" Mo   Tu   We   Th   Fr   Sa   Su "))
 	} else {
-		b.WriteString(weekdayHdrStyle.Render(" Su   Mo   Tu   We   Th   Fr   Sa "))
+		b.WriteString(s.WeekdayHdr.Render(" Su   Mo   Tu   We   Th   Fr   Sa "))
 	}
 	b.WriteString("\n")
 
@@ -76,13 +76,13 @@ func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mo
 		// Apply style based on priority: today > holiday > indicator > normal.
 		switch {
 		case day == today:
-			cell = todayStyle.Render(cell)
+			cell = s.Today.Render(cell)
 		case holidays[day]:
-			cell = holidayStyle.Render(cell)
+			cell = s.Holiday.Render(cell)
 		case indicators[day] > 0:
-			cell = indicatorStyle.Render(cell)
+			cell = s.Indicator.Render(cell)
 		default:
-			cell = normalStyle.Render(cell)
+			cell = s.Normal.Render(cell)
 		}
 
 		b.WriteString(cell)

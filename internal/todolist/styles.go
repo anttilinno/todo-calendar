@@ -1,22 +1,26 @@
 package todolist
 
-import "github.com/charmbracelet/lipgloss"
-
-var (
-	sectionHeaderStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color("62"))
-
-	completedStyle = lipgloss.NewStyle().
-			Faint(true).
-			Strikethrough(true)
-
-	cursorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("62"))
-
-	dateStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240"))
-
-	emptyStyle = lipgloss.NewStyle().
-			Faint(true)
+import (
+	"github.com/antti/todo-calendar/internal/theme"
+	"github.com/charmbracelet/lipgloss"
 )
+
+// Styles holds themed lipgloss styles for todo list rendering.
+type Styles struct {
+	SectionHeader lipgloss.Style
+	Completed     lipgloss.Style
+	Cursor        lipgloss.Style
+	Date          lipgloss.Style
+	Empty         lipgloss.Style
+}
+
+// NewStyles builds todo list styles from the given theme.
+func NewStyles(t theme.Theme) Styles {
+	return Styles{
+		SectionHeader: lipgloss.NewStyle().Bold(true).Foreground(t.AccentFg),
+		Completed:     lipgloss.NewStyle().Strikethrough(true).Foreground(t.CompletedFg),
+		Cursor:        lipgloss.NewStyle().Foreground(t.AccentFg),
+		Date:          lipgloss.NewStyle().Foreground(t.MutedFg),
+		Empty:         lipgloss.NewStyle().Foreground(t.EmptyFg),
+	}
+}

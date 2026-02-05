@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/antti/todo-calendar/internal/store"
+	"github.com/antti/todo-calendar/internal/theme"
 )
 
 // mode represents the current input state of the todo list.
@@ -54,10 +55,11 @@ type Model struct {
 	pendingText string // text saved during dateInputMode
 	editingID   int    // ID of the todo being edited
 	keys        KeyMap
+	styles      Styles
 }
 
 // New creates a new todo list model backed by the given store.
-func New(s *store.Store) Model {
+func New(s *store.Store, t theme.Theme) Model {
 	ti := textinput.New()
 	ti.Placeholder = "What needs doing?"
 	ti.CharLimit = 120
@@ -70,6 +72,7 @@ func New(s *store.Store) Model {
 		viewYear:  now.Year(),
 		viewMonth: now.Month(),
 		keys:      DefaultKeyMap(),
+		styles:    NewStyles(t),
 	}
 }
 
@@ -405,11 +408,11 @@ func (m Model) View() string {
 	for _, item := range items {
 		switch item.kind {
 		case headerItem:
-			b.WriteString(sectionHeaderStyle.Render(item.label))
+			b.WriteString(m.styles.SectionHeader.Render(item.label))
 			b.WriteString("\n")
 
 		case emptyItem:
-			b.WriteString("  " + emptyStyle.Render(item.label))
+			b.WriteString("  " + m.styles.Empty.Render(item.label))
 			b.WriteString("\n")
 
 		case todoItem:
@@ -432,7 +435,7 @@ func (m Model) View() string {
 func (m Model) renderTodo(b *strings.Builder, t *store.Todo, selected bool) {
 	// Cursor indicator
 	if selected {
-		b.WriteString(cursorStyle.Render("> "))
+		b.WriteString(m.styles.Cursor.Render("> "))
 	} else {
 		b.WriteString("  ")
 	}
@@ -446,11 +449,11 @@ func (m Model) renderTodo(b *strings.Builder, t *store.Todo, selected bool) {
 	// Text with optional date
 	text := t.Text
 	if t.HasDate() {
-		text += " " + dateStyle.Render(t.Date)
+		text += " " + m.styles.Date.Render(t.Date)
 	}
 
 	if t.Done {
-		b.WriteString(completedStyle.Render(check + text))
+		b.WriteString(m.styles.Completed.Render(check + text))
 	} else {
 		b.WriteString(check + text)
 	}
