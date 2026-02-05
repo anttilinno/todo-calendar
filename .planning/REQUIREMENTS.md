@@ -23,10 +23,10 @@
 
 ### UI/UX
 
-- [ ] **UI-01**: Split-pane layout with calendar on left, todo list on right
-- [ ] **UI-02**: Keyboard navigation (arrows/vim keys, Tab to switch panes)
+- [x] **UI-01**: Split-pane layout with calendar on left, todo list on right
+- [x] **UI-02**: Keyboard navigation (arrows/vim keys, Tab to switch panes)
 - [ ] **UI-03**: Help bar showing available keybindings
-- [ ] **UI-04**: Layout responds to terminal resize
+- [x] **UI-04**: Layout responds to terminal resize
 
 ### Data
 
@@ -78,10 +78,10 @@
 | TODO-03 | Phase 3 | Pending |
 | TODO-04 | Phase 3 | Pending |
 | TODO-05 | Phase 3 | Pending |
-| UI-01 | Phase 1 | Pending |
-| UI-02 | Phase 1 | Pending |
+| UI-01 | Phase 1 | Complete |
+| UI-02 | Phase 1 | Complete |
 | UI-03 | Phase 3 | Pending |
-| UI-04 | Phase 1 | Pending |
+| UI-04 | Phase 1 | Complete |
 | DATA-01 | Phase 3 | Pending |
 | DATA-02 | Phase 2 | Pending |
 | DATA-03 | Phase 3 | Pending |
