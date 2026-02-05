@@ -1,4 +1,5 @@
 # Go
+bin/
 todo-calendar
 *.exe
 *.test

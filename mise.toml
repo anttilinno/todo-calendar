@@ -1,0 +1,3 @@
+[tasks.build]
+description = "Build binary to bin/"
+run = "go build -o bin/todo-calendar ."
