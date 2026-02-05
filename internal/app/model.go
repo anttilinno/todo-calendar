@@ -41,7 +41,7 @@ type Model struct {
 
 // New creates a new root application model with the given dependencies.
 func New(provider *holidays.Provider, mondayStart bool, s *store.Store) Model {
-	cal := calendar.New(provider, mondayStart)
+	cal := calendar.New(provider, mondayStart, s)
 	cal.SetFocused(true)
 
 	tl := todolist.New(s)
@@ -82,6 +82,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.calendar.SetFocused(m.activePane == calendarPane)
 			m.todoList.SetFocused(m.activePane == todoPane)
 			m.todoList.SetViewMonth(m.calendar.Year(), m.calendar.Month())
+			m.calendar.RefreshIndicators()
 			return m, nil
 		}
 
@@ -111,6 +112,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case todoPane:
 		m.todoList, cmd = m.todoList.Update(msg)
 	}
+
+	// Refresh calendar indicators after every update cycle so that
+	// todo mutations (add/toggle/delete) are reflected immediately.
+	m.calendar.RefreshIndicators()
 
 	return m, cmd
 }
@@ -146,7 +151,7 @@ func (m Model) View() string {
 		contentHeight = 1
 	}
 
-	calendarInnerWidth := 24
+	calendarInnerWidth := 38
 	todoInnerWidth := m.width - calendarInnerWidth - (frameH * 2)
 
 	// Guard against impossibly narrow terminals
