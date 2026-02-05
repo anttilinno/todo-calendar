@@ -57,11 +57,11 @@ Plans:
   3. Right pane shows date-bound todos for the currently viewed month and a separate section for floating (undated) todos
   4. Todos persist across app restarts (stored as JSON in XDG-compliant path)
   5. A help bar at the bottom shows available keybindings for the current context
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Todo data model, JSON store with atomic writes, XDG paths
-- [ ] 03-02: Todo list UI with CRUD, date filtering, floating section, and help bar
+- [ ] 03-01-PLAN.md -- Todo data model, JSON store with atomic writes, XDG paths
+- [ ] 03-02-PLAN.md -- Todo list UI with CRUD, date filtering, floating section, help bar, and app integration
 
 ## Progress
 
