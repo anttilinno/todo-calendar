@@ -36,7 +36,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	model := app.New(provider, cfg.MondayStart, s)
+	model := app.New(provider, cfg.MondayStart(), s)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
