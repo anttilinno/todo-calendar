@@ -62,7 +62,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md -- Config migration, store query method, and grid rendering overhaul
+- [x] 04-01-PLAN.md -- Config migration, store query method, and grid rendering overhaul
 - [ ] 04-02-PLAN.md -- Wire indicators through calendar model and update app layout
 
 ### Phase 5: Todo Editing
@@ -102,6 +102,6 @@ Phases execute in numeric order: 4 -> 5 -> 6
 | 1. TUI Scaffold | v1.0 | 1/1 | Complete | 2026-02-05 |
 | 2. Calendar Features | v1.0 | 2/2 | Complete | 2026-02-05 |
 | 3. Todo Management | v1.0 | 2/2 | Complete | 2026-02-05 |
-| 4. Calendar Enhancements | v1.1 | 0/2 | Not started | - |
+| 4. Calendar Enhancements | v1.1 | 1/2 | In progress | - |
 | 5. Todo Editing | v1.1 | 0/TBD | Not started | - |
 | 6. Themes | v1.1 | 0/TBD | Not started | - |
