@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/antti/todo-calendar/internal/calendar"
+	"github.com/antti/todo-calendar/internal/holidays"
 	"github.com/antti/todo-calendar/internal/todolist"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -27,9 +28,9 @@ type Model struct {
 	keys       KeyMap
 }
 
-// New creates a new root application model.
-func New() Model {
-	cal := calendar.New()
+// New creates a new root application model with the given dependencies.
+func New(provider *holidays.Provider, mondayStart bool) Model {
+	cal := calendar.New(provider, mondayStart)
 	cal.SetFocused(true)
 
 	return Model{
@@ -123,7 +124,7 @@ func (m Model) View() string {
 		todoStyle.Render(m.todoList.View()),
 	)
 
-	statusBar := "q: quit | Tab: switch pane"
+	statusBar := "q: quit | Tab: switch pane | <-/h ->l: month"
 
 	return lipgloss.JoinVertical(lipgloss.Left, top, statusBar)
 }
