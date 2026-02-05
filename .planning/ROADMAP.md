@@ -44,7 +44,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md -- Config package, holiday provider/registry, calendar grid renderer with styles and key bindings
+- [x] 02-01-PLAN.md -- Config package, holiday provider/registry, calendar grid renderer with styles and key bindings
 - [ ] 02-02-PLAN.md -- Wire calendar model, app integration, month navigation, and visual verification
 
 ### Phase 3: Todo Management
@@ -71,5 +71,5 @@ Phases execute in numeric order: 1 -> 2 -> 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. TUI Scaffold | 1/1 | Complete | 2026-02-05 |
-| 2. Calendar + Holidays | 0/2 | Not started | - |
+| 2. Calendar + Holidays | 1/2 | In progress | - |
 | 3. Todo Management | 0/2 | Not started | - |
