@@ -9,9 +9,9 @@ Requirements for v1.1 Polish & Personalization milestone.
 
 ### Date Indicators
 
-- [ ] **INDI-01**: Calendar dates with incomplete todos display with bracket indicators `[N]`
-- [ ] **INDI-02**: Dates with only completed todos render without indicators (normal display)
-- [ ] **INDI-03**: Calendar grid alignment is maintained when indicators are present
+- [x] **INDI-01**: Calendar dates with incomplete todos display with bracket indicators `[N]`
+- [x] **INDI-02**: Dates with only completed todos render without indicators (normal display)
+- [x] **INDI-03**: Calendar grid alignment is maintained when indicators are present
 
 ### Todo Editing
 
@@ -21,9 +21,9 @@ Requirements for v1.1 Polish & Personalization milestone.
 
 ### First Day of Week
 
-- [ ] **FDOW-01**: User can set first day of week (Monday or Sunday) in config.toml
-- [ ] **FDOW-02**: Calendar grid renders with configured first day of week
-- [ ] **FDOW-03**: Day-of-week header row reflects the configured start day
+- [x] **FDOW-01**: User can set first day of week (Monday or Sunday) in config.toml
+- [x] **FDOW-02**: Calendar grid renders with configured first day of week
+- [x] **FDOW-03**: Day-of-week header row reflects the configured start day
 
 ### Themes
 
@@ -61,15 +61,15 @@ Deferred to later milestones.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INDI-01 | Phase 4 | Pending |
-| INDI-02 | Phase 4 | Pending |
-| INDI-03 | Phase 4 | Pending |
+| INDI-01 | Phase 4 | Complete |
+| INDI-02 | Phase 4 | Complete |
+| INDI-03 | Phase 4 | Complete |
 | EDIT-01 | Phase 5 | Pending |
 | EDIT-02 | Phase 5 | Pending |
 | EDIT-03 | Phase 5 | Pending |
-| FDOW-01 | Phase 4 | Pending |
-| FDOW-02 | Phase 4 | Pending |
-| FDOW-03 | Phase 4 | Pending |
+| FDOW-01 | Phase 4 | Complete |
+| FDOW-02 | Phase 4 | Complete |
+| FDOW-03 | Phase 4 | Complete |
 | THME-01 | Phase 6 | Pending |
 | THME-02 | Phase 6 | Pending |
 | THME-03 | Phase 6 | Pending |
