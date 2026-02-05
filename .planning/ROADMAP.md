@@ -44,7 +44,7 @@ Plans:
 - Decimal phases (4.1, 5.1): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 4: Calendar Enhancements** - Date indicators and configurable first day of week
-- [ ] **Phase 5: Todo Editing** - Edit todo text and dates after creation
+- [x] **Phase 5: Todo Editing** - Edit todo text and dates after creation
 - [ ] **Phase 6: Themes** - Preset color themes selectable in config
 
 ## Phase Details
@@ -76,8 +76,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md -- Store Update/Find methods and edit key bindings
-- [ ] 05-02-PLAN.md -- Edit text and edit date mode handlers
+- [x] 05-01-PLAN.md -- Store Update/Find methods and edit key bindings
+- [x] 05-02-PLAN.md -- Edit text and edit date mode handlers
 
 ### Phase 6: Themes
 **Goal**: Users can personalize the app's appearance by choosing a color theme
@@ -104,5 +104,5 @@ Phases execute in numeric order: 4 -> 5 -> 6
 | 2. Calendar Features | v1.0 | 2/2 | Complete | 2026-02-05 |
 | 3. Todo Management | v1.0 | 2/2 | Complete | 2026-02-05 |
 | 4. Calendar Enhancements | v1.1 | 2/2 | Complete | 2026-02-05 |
-| 5. Todo Editing | v1.1 | 0/2 | Not started | - |
+| 5. Todo Editing | v1.1 | 2/2 | Complete | 2026-02-05 |
 | 6. Themes | v1.1 | 0/TBD | Not started | - |
