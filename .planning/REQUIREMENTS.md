@@ -7,11 +7,11 @@
 
 ### Calendar
 
-- [ ] **CAL-01**: App displays a monthly calendar grid with day-of-week headers (like `cal`)
-- [ ] **CAL-02**: User can navigate between months (next/prev)
-- [ ] **CAL-03**: Today's date is visually highlighted on the calendar
-- [ ] **CAL-04**: National holidays are displayed in red on the calendar
-- [ ] **CAL-05**: Country for holidays is configurable
+- [x] **CAL-01**: App displays a monthly calendar grid with day-of-week headers (like `cal`)
+- [x] **CAL-02**: User can navigate between months (next/prev)
+- [x] **CAL-03**: Today's date is visually highlighted on the calendar
+- [x] **CAL-04**: National holidays are displayed in red on the calendar
+- [x] **CAL-05**: Country for holidays is configurable
 
 ### Todo
 
@@ -31,7 +31,7 @@
 ### Data
 
 - [ ] **DATA-01**: Todos persist to a local JSON file
-- [ ] **DATA-02**: Configuration stored in TOML file (country, preferences)
+- [x] **DATA-02**: Configuration stored in TOML file (country, preferences)
 - [ ] **DATA-03**: Data stored in XDG-compliant paths (~/.config/todo-calendar/)
 
 ## v2 Requirements
@@ -68,11 +68,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CAL-01 | Phase 2 | Pending |
-| CAL-02 | Phase 2 | Pending |
-| CAL-03 | Phase 2 | Pending |
-| CAL-04 | Phase 2 | Pending |
-| CAL-05 | Phase 2 | Pending |
+| CAL-01 | Phase 2 | Complete |
+| CAL-02 | Phase 2 | Complete |
+| CAL-03 | Phase 2 | Complete |
+| CAL-04 | Phase 2 | Complete |
+| CAL-05 | Phase 2 | Complete |
 | TODO-01 | Phase 3 | Pending |
 | TODO-02 | Phase 3 | Pending |
 | TODO-03 | Phase 3 | Pending |
@@ -83,7 +83,7 @@
 | UI-03 | Phase 3 | Pending |
 | UI-04 | Phase 1 | Complete |
 | DATA-01 | Phase 3 | Pending |
-| DATA-02 | Phase 2 | Pending |
+| DATA-02 | Phase 2 | Complete |
 | DATA-03 | Phase 3 | Pending |
 
 **Coverage:**

@@ -13,7 +13,7 @@ Deliver a terminal-based calendar+todo application in three phases: first establ
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: TUI Scaffold** - Runnable split-pane Bubble Tea app with keyboard navigation and resize handling
-- [ ] **Phase 2: Calendar + Holidays** - Monthly calendar grid with navigation, today highlight, holiday display, and country config
+- [x] **Phase 2: Calendar + Holidays** - Monthly calendar grid with navigation, today highlight, holiday display, and country config
 - [ ] **Phase 3: Todo Management** - Todo CRUD, date-bound and floating display, persistence, and help bar
 
 ## Phase Details
@@ -45,7 +45,7 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md -- Config package, holiday provider/registry, calendar grid renderer with styles and key bindings
-- [ ] 02-02-PLAN.md -- Wire calendar model, app integration, month navigation, and visual verification
+- [x] 02-02-PLAN.md -- Wire calendar model, app integration, month navigation, and visual verification
 
 ### Phase 3: Todo Management
 **Goal**: User can manage todos with optional dates, see them organized by month and floating section, with all data persisted to disk
@@ -71,5 +71,5 @@ Phases execute in numeric order: 1 -> 2 -> 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. TUI Scaffold | 1/1 | Complete | 2026-02-05 |
-| 2. Calendar + Holidays | 1/2 | In progress | - |
+| 2. Calendar + Holidays | 2/2 | Complete | 2026-02-05 |
 | 3. Todo Management | 0/2 | Not started | - |
