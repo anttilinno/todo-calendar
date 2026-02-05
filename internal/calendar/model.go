@@ -8,6 +8,7 @@ import (
 
 	"github.com/antti/todo-calendar/internal/holidays"
 	"github.com/antti/todo-calendar/internal/store"
+	"github.com/antti/todo-calendar/internal/theme"
 )
 
 // Model represents the calendar pane.
@@ -24,11 +25,12 @@ type Model struct {
 	store       *store.Store
 	keys        KeyMap
 	mondayStart bool
+	styles      Styles
 }
 
 // New creates a new calendar model with the given holiday provider,
 // week-start preference, and store for indicator data.
-func New(provider *holidays.Provider, mondayStart bool, s *store.Store) Model {
+func New(provider *holidays.Provider, mondayStart bool, s *store.Store, t theme.Theme) Model {
 	now := time.Now()
 	y, m, _ := now.Date()
 
@@ -42,6 +44,7 @@ func New(provider *holidays.Provider, mondayStart bool, s *store.Store) Model {
 		store:       s,
 		keys:        DefaultKeyMap(),
 		mondayStart: mondayStart,
+		styles:      NewStyles(t),
 	}
 }
 
@@ -90,7 +93,7 @@ func (m Model) View() string {
 		todayDay = now.Day()
 	}
 
-	return RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators)
+	return RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.styles)
 }
 
 // RefreshIndicators recomputes the indicator data for the current month.
