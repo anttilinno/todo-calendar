@@ -15,9 +15,9 @@ Requirements for v1.1 Polish & Personalization milestone.
 
 ### Todo Editing
 
-- [ ] **EDIT-01**: User can press `e` to edit selected todo's text in-place (reuses text input)
-- [ ] **EDIT-02**: User can change a todo's date (add, modify, or remove date)
-- [ ] **EDIT-03**: Edited todos persist to disk immediately
+- [x] **EDIT-01**: User can press `e` to edit selected todo's text in-place (reuses text input)
+- [x] **EDIT-02**: User can change a todo's date (add, modify, or remove date)
+- [x] **EDIT-03**: Edited todos persist to disk immediately
 
 ### First Day of Week
 
@@ -64,9 +64,9 @@ Deferred to later milestones.
 | INDI-01 | Phase 4 | Complete |
 | INDI-02 | Phase 4 | Complete |
 | INDI-03 | Phase 4 | Complete |
-| EDIT-01 | Phase 5 | Pending |
-| EDIT-02 | Phase 5 | Pending |
-| EDIT-03 | Phase 5 | Pending |
+| EDIT-01 | Phase 5 | Complete |
+| EDIT-02 | Phase 5 | Complete |
+| EDIT-03 | Phase 5 | Complete |
 | FDOW-01 | Phase 4 | Complete |
 | FDOW-02 | Phase 4 | Complete |
 | FDOW-03 | Phase 4 | Complete |
