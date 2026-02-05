@@ -12,7 +12,7 @@ Deliver a terminal-based calendar+todo application in three phases: first establ
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: TUI Scaffold** - Runnable split-pane Bubble Tea app with keyboard navigation and resize handling
+- [x] **Phase 1: TUI Scaffold** - Runnable split-pane Bubble Tea app with keyboard navigation and resize handling
 - [ ] **Phase 2: Calendar + Holidays** - Monthly calendar grid with navigation, today highlight, holiday display, and country config
 - [ ] **Phase 3: Todo Management** - Todo CRUD, date-bound and floating display, persistence, and help bar
 
@@ -30,7 +30,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 1 plan
 
 Plans:
-- [ ] 01-01-PLAN.md -- Go project init, split-pane scaffold with focus routing, keyboard nav, and resize handling
+- [x] 01-01-PLAN.md -- Go project init, split-pane scaffold with focus routing, keyboard nav, and resize handling
 
 ### Phase 2: Calendar + Holidays
 **Goal**: User sees the current month's calendar with today highlighted and national holidays in red, and can navigate between months
@@ -70,6 +70,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. TUI Scaffold | 0/1 | Not started | - |
+| 1. TUI Scaffold | 1/1 | Complete | 2026-02-05 |
 | 2. Calendar + Holidays | 0/2 | Not started | - |
 | 3. Todo Management | 0/2 | Not started | - |
