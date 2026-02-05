@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: TUI Scaffold** - Runnable split-pane Bubble Tea app with keyboard navigation and resize handling
 - [x] **Phase 2: Calendar + Holidays** - Monthly calendar grid with navigation, today highlight, holiday display, and country config
-- [ ] **Phase 3: Todo Management** - Todo CRUD, date-bound and floating display, persistence, and help bar
+- [x] **Phase 3: Todo Management** - Todo CRUD, date-bound and floating display, persistence, and help bar
 
 ## Phase Details
 
@@ -60,8 +60,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md -- Todo data model, JSON store with atomic writes, XDG paths
-- [ ] 03-02-PLAN.md -- Todo list UI with CRUD, date filtering, floating section, help bar, and app integration
+- [x] 03-01-PLAN.md -- Todo data model, JSON store with atomic writes, XDG paths
+- [x] 03-02-PLAN.md -- Todo list UI with CRUD, date filtering, floating section, help bar, and app integration
 
 ## Progress
 
@@ -72,4 +72,4 @@ Phases execute in numeric order: 1 -> 2 -> 3
 |-------|----------------|--------|-----------|
 | 1. TUI Scaffold | 1/1 | Complete | 2026-02-05 |
 | 2. Calendar + Holidays | 2/2 | Complete | 2026-02-05 |
-| 3. Todo Management | 0/2 | Not started | - |
+| 3. Todo Management | 2/2 | Complete | 2026-02-05 |

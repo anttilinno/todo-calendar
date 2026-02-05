@@ -15,24 +15,24 @@
 
 ### Todo
 
-- [ ] **TODO-01**: User can add a todo with text and optional date
-- [ ] **TODO-02**: User can mark a todo as complete (visual checkmark/strikethrough)
-- [ ] **TODO-03**: User can delete a todo
-- [ ] **TODO-04**: Date-bound todos are shown for the currently viewed month
-- [ ] **TODO-05**: Floating (undated) todos are shown in a separate section
+- [x] **TODO-01**: User can add a todo with text and optional date
+- [x] **TODO-02**: User can mark a todo as complete (visual checkmark/strikethrough)
+- [x] **TODO-03**: User can delete a todo
+- [x] **TODO-04**: Date-bound todos are shown for the currently viewed month
+- [x] **TODO-05**: Floating (undated) todos are shown in a separate section
 
 ### UI/UX
 
 - [x] **UI-01**: Split-pane layout with calendar on left, todo list on right
 - [x] **UI-02**: Keyboard navigation (arrows/vim keys, Tab to switch panes)
-- [ ] **UI-03**: Help bar showing available keybindings
+- [x] **UI-03**: Help bar showing available keybindings
 - [x] **UI-04**: Layout responds to terminal resize
 
 ### Data
 
-- [ ] **DATA-01**: Todos persist to a local JSON file
+- [x] **DATA-01**: Todos persist to a local JSON file
 - [x] **DATA-02**: Configuration stored in TOML file (country, preferences)
-- [ ] **DATA-03**: Data stored in XDG-compliant paths (~/.config/todo-calendar/)
+- [x] **DATA-03**: Data stored in XDG-compliant paths (~/.config/todo-calendar/)
 
 ## v2 Requirements
 
@@ -73,18 +73,18 @@
 | CAL-03 | Phase 2 | Complete |
 | CAL-04 | Phase 2 | Complete |
 | CAL-05 | Phase 2 | Complete |
-| TODO-01 | Phase 3 | Pending |
-| TODO-02 | Phase 3 | Pending |
-| TODO-03 | Phase 3 | Pending |
-| TODO-04 | Phase 3 | Pending |
-| TODO-05 | Phase 3 | Pending |
+| TODO-01 | Phase 3 | Complete |
+| TODO-02 | Phase 3 | Complete |
+| TODO-03 | Phase 3 | Complete |
+| TODO-04 | Phase 3 | Complete |
+| TODO-05 | Phase 3 | Complete |
 | UI-01 | Phase 1 | Complete |
 | UI-02 | Phase 1 | Complete |
-| UI-03 | Phase 3 | Pending |
+| UI-03 | Phase 3 | Complete |
 | UI-04 | Phase 1 | Complete |
-| DATA-01 | Phase 3 | Pending |
+| DATA-01 | Phase 3 | Complete |
 | DATA-02 | Phase 2 | Complete |
-| DATA-03 | Phase 3 | Pending |
+| DATA-03 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 17 total
