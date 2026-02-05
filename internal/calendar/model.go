@@ -83,7 +83,7 @@ func (m Model) View() string {
 		todayDay = now.Day()
 	}
 
-	return RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart)
+	return RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, nil)
 }
 
 // SetFocused sets whether this pane is focused.

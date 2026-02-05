@@ -10,4 +10,5 @@ var (
 	normalStyle      = lipgloss.NewStyle()
 	todayStyle       = lipgloss.NewStyle().Bold(true).Reverse(true)
 	holidayStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
+	indicatorStyle   = lipgloss.NewStyle().Bold(true)
 )
