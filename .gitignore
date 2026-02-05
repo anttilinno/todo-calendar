@@ -1,0 +1,11 @@
+# Go
+todo-calendar
+*.exe
+*.test
+*.out
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
