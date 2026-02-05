@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/antti/todo-calendar/internal/holidays"
+	"github.com/antti/todo-calendar/internal/store"
 )
 
 // Model represents the calendar pane.
@@ -18,14 +19,16 @@ type Model struct {
 	month       time.Month
 	today       time.Time
 	holidays    map[int]bool
+	indicators  map[int]int
 	provider    *holidays.Provider
+	store       *store.Store
 	keys        KeyMap
 	mondayStart bool
 }
 
-// New creates a new calendar model with the given holiday provider and
-// week-start preference.
-func New(provider *holidays.Provider, mondayStart bool) Model {
+// New creates a new calendar model with the given holiday provider,
+// week-start preference, and store for indicator data.
+func New(provider *holidays.Provider, mondayStart bool, s *store.Store) Model {
 	now := time.Now()
 	y, m, _ := now.Date()
 
@@ -34,7 +37,9 @@ func New(provider *holidays.Provider, mondayStart bool) Model {
 		month:       m,
 		today:       now,
 		holidays:    provider.HolidaysInMonth(y, m),
+		indicators:  s.IncompleteTodosPerDay(y, m),
 		provider:    provider,
+		store:       s,
 		keys:        DefaultKeyMap(),
 		mondayStart: mondayStart,
 	}
@@ -57,6 +62,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				m.year--
 			}
 			m.holidays = m.provider.HolidaysInMonth(m.year, m.month)
+			m.indicators = m.store.IncompleteTodosPerDay(m.year, m.month)
 
 		case key.Matches(msg, m.keys.NextMonth):
 			m.month++
@@ -65,6 +71,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				m.year++
 			}
 			m.holidays = m.provider.HolidaysInMonth(m.year, m.month)
+			m.indicators = m.store.IncompleteTodosPerDay(m.year, m.month)
 		}
 
 	case tea.WindowSizeMsg:
@@ -83,7 +90,13 @@ func (m Model) View() string {
 		todayDay = now.Day()
 	}
 
-	return RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, nil)
+	return RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators)
+}
+
+// RefreshIndicators recomputes the indicator data for the current month.
+// Call this after todo mutations to keep the calendar display in sync.
+func (m *Model) RefreshIndicators() {
+	m.indicators = m.store.IncompleteTodosPerDay(m.year, m.month)
 }
 
 // SetFocused sets whether this pane is focused.
