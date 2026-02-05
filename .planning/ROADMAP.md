@@ -41,11 +41,11 @@ Plans:
   2. Today's date is visually highlighted on the calendar
   3. User can navigate to the next or previous month and the calendar updates immediately
   4. National holidays appear in red on the calendar, sourced from a configurable country setting stored in a TOML config file
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: Calendar grid rendering, month navigation, today highlight
-- [ ] 02-02: Holiday provider integration and TOML config for country
+- [ ] 02-01-PLAN.md -- Config package, holiday provider/registry, calendar grid renderer with styles and key bindings
+- [ ] 02-02-PLAN.md -- Wire calendar model, app integration, month navigation, and visual verification
 
 ### Phase 3: Todo Management
 **Goal**: User can manage todos with optional dates, see them organized by month and floating section, with all data persisted to disk
