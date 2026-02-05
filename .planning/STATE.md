@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** Phase 2: Calendar + Holidays (complete)
+**Current focus:** Phase 3: Todo Management (in progress)
 
 ## Current Position
 
-Phase: 2 of 3 (Calendar + Holidays)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-05 -- Completed 02-02-PLAN.md
+Phase: 3 of 3 (Todo Management)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-05 -- Completed 03-01-PLAN.md
 
-Progress: [██████░░░░] 60%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 4 min
-- Total execution time: 0.18 hours
+- Total plans completed: 4
+- Average duration: 3 min
+- Total execution time: 0.20 hours
 
 **By Phase:**
 
@@ -29,10 +29,11 @@ Progress: [██████░░░░] 60%
 |-------|-------|-------|----------|
 | 1 | 1 | 3 min | 3 min |
 | 2 | 2 | 8 min | 4 min |
+| 3 | 1 | 1 min | 1 min |
 
 **Recent Trend:**
-- Last 5 plans: 3 min, 3 min, 5 min
-- Trend: stable
+- Last 5 plans: 3 min, 3 min, 5 min, 1 min
+- Trend: improving
 
 *Updated after each plan completion*
 
@@ -53,6 +54,9 @@ Recent decisions affecting current work:
 - [02-01]: Noon construction for holiday checks to avoid timezone edge cases
 - [02-02]: Constructor dependency injection: New(provider, mondayStart) pattern
 - [02-02]: Added Estonia (ee) to holiday registry per user request
+- [03-01]: String dates (YYYY-MM-DD) over time.Time to avoid timezone corruption
+- [03-01]: Synchronous Save() on every mutation -- simplicity for single small JSON file
+- [03-01]: XDG data colocation -- todos.json alongside config.toml
 
 ### Pending Todos
 
@@ -65,5 +69,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Phase 2 complete, ready for Phase 3 planning
+Stopped at: Completed 03-01-PLAN.md
 Resume file: None
