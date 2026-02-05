@@ -5,16 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** v1.0 shipped -- planning next milestone or project complete
+**Current focus:** v1.1 Polish & Personalization — date indicators, todo editing, first day of week, themes
 
 ## Current Position
 
-Phase: 3 of 3 (Todo Management)
-Plan: 2 of 2 in current phase
-Status: v1.0 Milestone Complete
-Last activity: 2026-02-05 -- v1.0 milestone archived
-
-Progress: [██████████] 100%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-05 — Milestone v1.1 started
 
 ## Performance Metrics
 
@@ -39,7 +37,7 @@ See PROJECT.md Key Decisions table for complete log.
 
 ### Pending Todos
 
-None -- v1.0 complete.
+None.
 
 ### Blockers/Concerns
 
@@ -48,5 +46,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: v1.0 milestone complete
+Stopped at: Milestone v1.1 — defining requirements
 Resume file: None
