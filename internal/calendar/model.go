@@ -90,3 +90,12 @@ func (m Model) View() string {
 func (m *Model) SetFocused(f bool) {
 	m.focused = f
 }
+
+// Year returns the currently viewed year.
+func (m Model) Year() int { return m.year }
+
+// Month returns the currently viewed month.
+func (m Model) Month() time.Month { return m.month }
+
+// Keys returns the calendar key bindings (for help bar aggregation).
+func (m Model) Keys() KeyMap { return m.keys }
