@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** v1.4 Data & Editing -- Phase 14 Database Backend
+**Current focus:** v1.4 Data & Editing -- Phase 15 Markdown Templates
 
 ## Current Position
 
-Phase: 14 of 16 (Database Backend)
-Plan: 2 of 2 in phase
-Status: Phase complete
-Last activity: 2026-02-06 -- Completed 14-02-PLAN.md
+Phase: 15 of 16 (Markdown Templates)
+Plan: --
+Status: Ready to plan
+Last activity: 2026-02-06 -- Phase 14 verified and complete
 
 Progress: ████████████████████████████░░ 96% (24/25 plans estimated through v1.4)
 

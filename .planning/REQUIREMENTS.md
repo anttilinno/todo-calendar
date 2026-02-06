@@ -9,11 +9,11 @@ Requirements for milestone v1.4 Data & Editing.
 
 ### Database Backend
 
-- [ ] **DB-01**: Todos are stored in a SQLite database instead of JSON files
-- [ ] **DB-02**: Store interface extracted to decouple consumers from backend
-- [ ] **DB-03**: Database schema versioned via PRAGMA user_version with hand-written migrations
-- [ ] **DB-04**: Type-safe database queries via hand-written SQL with scan helpers
-- [ ] **DB-05**: All existing CRUD operations work identically with the new backend
+- [x] **DB-01**: Todos are stored in a SQLite database instead of JSON files
+- [x] **DB-02**: Store interface extracted to decouple consumers from backend
+- [x] **DB-03**: Database schema versioned via PRAGMA user_version with hand-written migrations
+- [x] **DB-04**: Type-safe database queries via hand-written SQL with scan helpers
+- [x] **DB-05**: All existing CRUD operations work identically with the new backend
 
 ### Markdown Templates
 
@@ -58,11 +58,11 @@ Deferred to later milestones.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DB-01 | Phase 14 | Pending |
-| DB-02 | Phase 14 | Pending |
-| DB-03 | Phase 14 | Pending |
-| DB-04 | Phase 14 | Pending |
-| DB-05 | Phase 14 | Pending |
+| DB-01 | Phase 14 | Complete |
+| DB-02 | Phase 14 | Complete |
+| DB-03 | Phase 14 | Complete |
+| DB-04 | Phase 14 | Complete |
+| DB-05 | Phase 14 | Complete |
 | MDTPL-01 | Phase 15 | Pending |
 | MDTPL-02 | Phase 15 | Pending |
 | MDTPL-03 | Phase 15 | Pending |
