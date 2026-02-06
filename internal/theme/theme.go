@@ -30,6 +30,10 @@ type Theme struct {
 	// General
 	NormalFg lipgloss.Color // default foreground
 	NormalBg lipgloss.Color // default background
+
+	// Overview
+	PendingFg        lipgloss.Color // pending todo count in overview
+	CompletedCountFg lipgloss.Color // completed todo count in overview
 }
 
 // Dark returns the default dark theme matching the original hardcoded colors.
@@ -49,6 +53,8 @@ func Dark() Theme {
 		EmptyFg:         lipgloss.Color("#585858"),  // ANSI 240
 		NormalFg:        lipgloss.Color(""),         // terminal default
 		NormalBg:        lipgloss.Color(""),         // terminal default
+		PendingFg:        lipgloss.Color("#D75F5F"), // warm rose
+		CompletedCountFg: lipgloss.Color("#87AF87"), // soft sage green
 	}
 }
 
@@ -69,6 +75,8 @@ func Light() Theme {
 		EmptyFg:         lipgloss.Color("#8A8A8A"), // medium grey
 		NormalFg:        lipgloss.Color("#303030"), // dark grey
 		NormalBg:        lipgloss.Color(""),         // terminal default
+		PendingFg:        lipgloss.Color("#D70000"), // medium red
+		CompletedCountFg: lipgloss.Color("#008700"), // forest green
 	}
 }
 
@@ -90,6 +98,8 @@ func Nord() Theme {
 		EmptyFg:         lipgloss.Color("#4C566A"), // nord3 polar night
 		NormalFg:        lipgloss.Color("#D8DEE9"), // nord4 snow storm
 		NormalBg:        lipgloss.Color(""),         // terminal default
+		PendingFg:        lipgloss.Color("#BF616A"), // nord11 aurora red
+		CompletedCountFg: lipgloss.Color("#A3BE8C"), // nord14 aurora green
 	}
 }
 
@@ -111,6 +121,8 @@ func Solarized() Theme {
 		EmptyFg:         lipgloss.Color("#586E75"), // base01
 		NormalFg:        lipgloss.Color("#839496"), // base0
 		NormalBg:        lipgloss.Color(""),         // terminal default
+		PendingFg:        lipgloss.Color("#DC322F"), // solarized red
+		CompletedCountFg: lipgloss.Color("#859900"), // solarized green
 	}
 }
 

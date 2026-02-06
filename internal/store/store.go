@@ -232,22 +232,22 @@ func (s *Store) EnsureSortOrder() {
 	}
 }
 
-// MonthCount holds the total number of todos for a given year and month.
+// MonthCount holds pending and completed todo counts for a given year and month.
 type MonthCount struct {
-	Year  int
-	Month time.Month
-	Count int
+	Year      int
+	Month     time.Month
+	Pending   int
+	Completed int
 }
 
-// TodoCountsByMonth returns the number of todos per month across all dated
-// todos, sorted chronologically (year ascending, then month ascending).
-// Undated (floating) todos are excluded.
+// TodoCountsByMonth returns pending and completed todo counts per month across
+// all dated todos, sorted chronologically. Undated (floating) todos are excluded.
 func (s *Store) TodoCountsByMonth() []MonthCount {
 	type ym struct {
 		y int
 		m time.Month
 	}
-	counts := make(map[ym]int)
+	counts := make(map[ym]*MonthCount)
 	for _, t := range s.data.Todos {
 		if t.Date == "" {
 			continue
@@ -256,11 +256,19 @@ func (s *Store) TodoCountsByMonth() []MonthCount {
 		if err != nil {
 			continue
 		}
-		counts[ym{d.Year(), d.Month()}]++
+		k := ym{d.Year(), d.Month()}
+		if counts[k] == nil {
+			counts[k] = &MonthCount{Year: k.y, Month: k.m}
+		}
+		if t.Done {
+			counts[k].Completed++
+		} else {
+			counts[k].Pending++
+		}
 	}
 	result := make([]MonthCount, 0, len(counts))
-	for k, c := range counts {
-		result = append(result, MonthCount{Year: k.y, Month: k.m, Count: c})
+	for _, mc := range counts {
+		result = append(result, *mc)
 	}
 	sort.Slice(result, func(i, j int) bool {
 		if result[i].Year != result[j].Year {
@@ -271,15 +279,25 @@ func (s *Store) TodoCountsByMonth() []MonthCount {
 	return result
 }
 
-// FloatingTodoCount returns the number of todos with no date assigned.
-func (s *Store) FloatingTodoCount() int {
-	count := 0
+// FloatingCount holds pending and completed counts for undated todos.
+type FloatingCount struct {
+	Pending   int
+	Completed int
+}
+
+// FloatingTodoCounts returns pending and completed counts for todos with no date.
+func (s *Store) FloatingTodoCounts() FloatingCount {
+	var fc FloatingCount
 	for _, t := range s.data.Todos {
 		if !t.HasDate() {
-			count++
+			if t.Done {
+				fc.Completed++
+			} else {
+				fc.Pending++
+			}
 		}
 	}
-	return count
+	return fc
 }
 
 // SwapOrder swaps the SortOrder values of two todos identified by ID
