@@ -44,6 +44,7 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - [ ] Settings: change country for holidays
 - [ ] Settings: change first day of week
 - [ ] Settings: save changes to config.toml
+- [ ] Overview panel below calendar showing todo counts per month + undated count
 
 ### v2 Candidates
 
