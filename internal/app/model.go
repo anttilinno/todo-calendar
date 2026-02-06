@@ -224,7 +224,7 @@ func (m Model) currentHelpKeys() helpKeyMap {
 	switch m.activePane {
 	case calendarPane:
 		calKeys := m.calendar.Keys()
-		bindings = append(bindings, calKeys.PrevMonth, calKeys.NextMonth)
+		bindings = append(bindings, calKeys.PrevMonth, calKeys.NextMonth, calKeys.ToggleWeek)
 	case todoPane:
 		bindings = append(bindings, m.todoList.HelpBindings()...)
 	}
