@@ -1,430 +1,241 @@
-# Feature Research: v1.3 Views & Usability
+# Features Research: v1.4 Data & Editing
 
-**Domain:** TUI Calendar v1.3 features (weekly view, search/filter, overview colors, date format)
+**Domain:** SQLite backend, markdown todo bodies with templates, external editor integration
 **Researched:** 2026-02-06
-**Confidence:** HIGH for UX patterns, MEDIUM for implementation details
+**Confidence:** HIGH for database migration and editor integration (well-documented patterns), MEDIUM for markdown templates (less established precedent in TUI todo apps)
 
-## Feature Landscape
+## Database Backend (Phase 14)
 
 ### Table Stakes
 
-Features users expect when these capabilities are announced. Missing any = feature feels half-baked.
+Features that are absolutely required when migrating from JSON to SQLite. Missing any of these and the migration feels broken or untrustworthy.
 
-#### Weekly Calendar View
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| 7-day grid showing one week | The whole point of a weekly view. Users expect to see Mon-Sun (or Sun-Sat) for the selected week. | MEDIUM | Must respect `first_day_of_week` setting. |
-| Toggle between monthly/weekly with single key | Calcurse toggles views. Calcure uses `v` key. Users expect seamless switching. | LOW | Single keybinding (e.g., `w` or `v`). Must remember which month/week context to return to. |
-| Navigate between weeks | If you can see a week, you need to move to next/previous week. Calcurse uses j/k in weekly mode. | LOW | Same keys as month navigation (h/l) but move by week instead of month. |
-| Current week highlighted / today visible | Orientation is critical. Users must know "where am I in time?" | LOW | Today gets the same highlight style as in monthly view. |
-| Weekday headers | Same as monthly view -- day-of-week labels at top of columns. | LOW | Already exist in monthly view; reuse the pattern. |
-| Todo indicators on days | Already exist as `[N]` in monthly view. Weekly view must show them too. | LOW | Same data source (`IncompleteTodosPerDay`), just different rendering. |
-| Holiday display on days | Already exist in monthly view. Weekly view must show holidays. | LOW | Same data source, different rendering context. |
-
-#### Search/Filter Todos
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Inline filter in todo panel | Taskwarrior-tui uses `/` to filter. This is the standard TUI pattern. Users type, list narrows in real time. | MEDIUM | Filter applies to visible todos only (current month + floating). |
-| Clear filter with Escape | Standard pattern across all TUI apps with search. Esc exits filter mode and restores full list. | LOW | Must cleanly restore cursor position and full list. |
-| Full-screen search overlay across all months | Differentiator -- searching beyond the current view. Users need to find "where did I put that todo?" | HIGH | Requires scanning all todos, displaying results with month context, and navigating to a result. |
-| Substring matching (case-insensitive) | Users expect typing "buy" to find "Buy groceries". Case-insensitive is the default expectation. | LOW | `strings.Contains(strings.ToLower(...))` -- trivial. |
-| Visual indication of active filter | When a filter is active, users must know the list is filtered, not empty. | LOW | Show filter text in a status line or change the section header. |
-
-#### Overview Color Coding
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Distinct colors for incomplete vs complete | If you color-code the overview, red/green (or equivalent semantic colors) for incomplete/complete is the obvious mapping. | LOW | Two new style fields per theme. |
-| Theme-aware colors | The app has 4 themes. Overview colors must work with all of them. | LOW | Add new semantic color roles to `Theme` struct (e.g., `OverviewIncompleteFg`, `OverviewCompleteFg`). |
-| Current month still visually distinct | Overview already highlights current month in bold. This must not regress. | LOW | Keep existing `OverviewActive` style; layer color on top. |
-
-#### Date Format Setting
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| At least 3 common presets | ISO (YYYY-MM-DD), European (DD.MM.YYYY), US (MM/DD/YYYY) cover the vast majority of users. Calcurse offers 4 formats. | LOW | Map preset names to Go layout strings. |
-| Setting accessible in settings overlay | The app already has a settings overlay. Adding a new option row is the natural place. | LOW | Same pattern as theme/country/first-day-of-week cycling. |
-| Dates update everywhere immediately | Calendar header, todo dates, date input prompts -- all must respect the format. | MEDIUM | Format string must propagate to all rendering code that displays dates. |
-| Persistence in config.toml | Same as other settings. | LOW | New `date_format` field in config. |
+| Feature | Why Expected | Complexity | Depends On | Notes |
+|---------|--------------|------------|------------|-------|
+| Automatic one-time JSON-to-SQLite migration | Users must not lose existing data. The app has been shipping with JSON since v1.0. First launch after upgrade must silently migrate. | MEDIUM | Existing `store.Data` JSON structure | Read existing `todos.json`, insert all rows into SQLite, preserve all fields (ID, Text, Date, Done, CreatedAt, SortOrder). Migrate `NextID` into a SQLite sequence or tracked value. |
+| Identical CRUD behavior post-migration | All 7 store methods (Add, Toggle, Delete, Update, Find, SwapOrder, SearchTodos) plus all query methods (Todos, TodosForMonth, FloatingTodos, IncompleteTodosPerDay, TodoCountsByMonth, FloatingTodoCounts) must behave identically. | MEDIUM | Current `Store` interface | The SQLite store must be a drop-in replacement. Tests should pass against both backends. |
+| Backup of JSON file before migration | Users need a safety net. If migration goes wrong, the original JSON file should still be intact. | LOW | File system access | Rename `todos.json` to `todos.json.bak` after successful migration, or copy it before starting. |
+| Schema versioning with migration support | Future schema changes (Phase 15 adds `body` column, templates table) need a clean upgrade path. | LOW | SQLite `PRAGMA user_version` or a `schema_version` table | Use `PRAGMA user_version` for simplicity in a single-user app. Check version on open, apply pending migrations. |
+| Atomic writes / crash safety | The existing JSON store uses atomic temp-file-then-rename pattern. SQLite must provide equivalent or better crash safety. | LOW | SQLite WAL mode | SQLite with WAL mode is inherently more crash-safe than the current atomic JSON pattern. Enable `PRAGMA journal_mode=WAL` on first open. |
+| Same file location convention | Data should live in the same XDG config directory (`~/.config/todo-calendar/`). | LOW | `config.paths.go` pattern | Place database at `~/.config/todo-calendar/todos.db` alongside existing `config.toml`. |
+| Store interface abstraction | The rest of the app should not know or care whether the backend is JSON or SQLite. | MEDIUM | Current `*store.Store` usage throughout codebase | Define a `Store` interface that both JSON and SQLite implementations satisfy. The app layer depends on the interface, not the concrete type. |
 
 ### Differentiators
 
-Features that go beyond what users minimally expect, creating competitive advantage.
+Features that go beyond basic migration and add real value from the database upgrade.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Full-screen search across all months | Neither calcurse nor calcure offer cross-month todo search in a TUI overlay. Taskwarrior-tui has it, but that is a different product class. For a calendar+todo app, being able to find "where is that todo?" across all time is genuinely useful. | HIGH | This is the expensive part of search/filter. |
-| Week view showing todos per day | Calcurse weekly view shows time-slotted appointments. Our weekly view would show todo counts or todo names per day -- a different and arguably more useful approach for a todo app (not a scheduler). | MEDIUM | This is the key design decision: our weekly view is todo-centric, not time-slot-centric. |
-| Overview showing split counts (incomplete/complete) | Current overview shows `[N]` total count. Showing `[3/5]` or color-coded incomplete vs complete gives much richer at-a-glance information. | LOW | Small change, high information density gain. |
-| Custom date format string | Beyond the 3 presets, allowing a custom Go layout string (e.g., `02 Jan 2006`) is power-user friendly. | LOW | Just a textinput in settings; validate by attempting `time.Format()`. |
+| Query-based filtering instead of in-memory scan | Current store scans all todos in memory for every query (TodosForMonth, SearchTodos, etc.). SQLite enables indexed queries that scale to thousands of todos. | MEDIUM | Add indexes on `date`, `done`, and a full-text search index for text. For a personal app this is marginal, but it is "free" with SQLite. |
+| Transaction support for batch operations | Currently each mutation calls `Save()` which rewrites the entire JSON file. SQLite transactions make batch operations (e.g., bulk delete, reordering multiple items) atomic and fast. | LOW | Wrap multi-step operations in `BEGIN/COMMIT`. |
+| Foundation for future features (tags, projects, recurring todos) | SQLite makes adding columns, new tables, and relational data trivial. JSON requires rewriting the entire file for any structural change. | N/A | This is the strategic reason for the migration. It enables Phase 15 (body/templates) and future milestones. |
 
 ### Anti-Features
 
-Things to deliberately NOT build for v1.3, even though they seem related.
+Things to deliberately NOT build during the database migration.
 
 | Anti-Feature | Why It Seems Related | Why Avoid | What to Do Instead |
 |--------------|---------------------|-----------|-------------------|
-| Day selection / cursor on calendar | Weekly view might tempt adding per-day cursor navigation in the calendar grid. | This was explicitly ruled out in PROJECT.md: "Individual day selection / day-by-day arrow navigation -- month-level navigation is sufficient." Adding it contradicts the core design. Weekly view navigates by week, not by day. | Navigate weeks (prev/next week), not individual days. |
-| Time-slotted weekly view | Calcurse shows 4-hour time slots in weekly view. Seems like the standard. | This app has no concept of time-of-day. Todos have dates, not times. Time slots are meaningless without appointments. Building time slots would require a data model change for zero benefit. | Show a simple 7-column grid with day numbers, holidays, and todo indicators. The todo panel shows todos for the visible week (all 7 days). |
-| Fuzzy matching in search | Taskwarrior-tui supports regex. Fuzzy finders like fzf are popular. | Fuzzy matching adds complexity (scoring, ranking) for minimal gain when the dataset is small (personal todo list). Substring match covers 95% of use cases. | Use case-insensitive substring matching. If users complain, add regex support later. |
-| Search result ranking / scoring | Results could be ranked by relevance, date proximity, completion status. | Over-engineering for a small dataset. Chronological order (by date) is the natural and expected ordering. | Show results in chronological order (dated todos by date, then floating todos). |
-| Locale-based auto-detection of date format | Could detect system locale and set date format automatically. | Go's locale detection is unreliable. The app already requires manual country selection for holidays. Consistency: let users choose explicitly. | Offer presets + custom. Default to ISO 8601 (YYYY-MM-DD) which is the existing internal format. |
-| Separate overview panels for incomplete/complete | Could split the overview into two sections. | Doubles the vertical space used. The overview already competes for space below the calendar grid. | Use color coding within the existing single-line-per-month format. |
-
-## Feature Details
-
-### Weekly Calendar View
-
-**Expected UX Behavior:**
-
-The weekly view replaces the monthly grid in the calendar pane (left panel). It shows 7 days as columns, similar to the monthly view but zoomed in to one week. The critical design insight: this is a **todo calendar**, not a scheduling app. The weekly view shows day numbers, holiday indicators, and todo count indicators -- NOT time slots.
-
-**Layout concept (34 chars wide, matching monthly grid width):**
-
-```
-     Week 6 -- February 2026
- Mo   Tu   We   Th   Fr   Sa   Su
-  2    3    4    5    6    7    8
-     [1]             [2]
-```
-
-Each day column shows: day number (top), todo indicator `[N]` if applicable (below), and holiday coloring on the day number. The todo panel (right) shows todos for all 7 days of the visible week, grouped by day, plus the floating section.
-
-**Interaction patterns:**
-
-| Action | Key | Behavior |
-|--------|-----|----------|
-| Toggle monthly/weekly | `w` | Switch view mode. Remember position: if viewing Feb 2026 monthly, switch to the week containing today (or the first of the month if not current month). |
-| Next week | `l` or `right` | Advance by 1 week. If crossing month boundary, update month context. |
-| Previous week | `h` or `left` | Go back 1 week. If crossing month boundary, update month context. |
-| Return to monthly | `w` | Toggle back. Return to the month that contains the current week. |
-
-**Edge cases:**
-
-1. **Week spanning two months:** A week starting Mon Jan 26 includes days in both January and February. The week view must show all 7 days regardless of month boundaries. The todo panel should show todos for all 7 days (from both months).
-2. **First/last week of year:** Week containing Jan 1 or Dec 31 may span years. Must handle year boundaries.
-3. **Week numbering:** ISO 8601 week numbers (1-53) are standard in Europe. US uses different conventions. Since the app has `first_day_of_week`, use it: Monday-start = ISO week numbers, Sunday-start = simple "Week N" count.
-4. **Returning to monthly view:** When toggling back from weekly to monthly, display the month that contains the majority of the current week (or the month of the first day of the week).
-5. **Overview panel in weekly mode:** The overview panel below the calendar should still show per-month todo counts. It does not change between views.
-6. **Todo panel grouping:** In weekly mode, the todo panel should group todos by day within the week (7 sections for dated, plus floating), rather than showing the entire month. Each day section shows the day name and date.
-
-**Dependencies on existing features:**
-- Calendar grid rendering (`RenderGrid`) -- needs a new `RenderWeekGrid` function or a mode parameter
-- `first_day_of_week` setting -- determines which day starts the week
-- `IncompleteTodosPerDay` -- needs to work across month boundaries for cross-month weeks
-- Todo panel (`visibleItems`) -- needs a "week mode" that shows todos for 7 specific dates instead of a whole month
-- Help bar -- needs to show week-specific navigation hints when in weekly mode
-
-**Complexity assessment:** MEDIUM-HIGH. The rendering is straightforward, but the cross-month week boundary handling and the todo panel regrouping add real complexity. The biggest challenge is making the todo panel work with a 7-day range that may span two months.
+| ORM or heavy query builder | Go has GORM, ent, sqlc. Seems like the "proper" way to do database access. | This is a 3,200 LOC personal app with 6 tables max. An ORM adds dependency weight, code generation steps, and abstraction overhead that is not justified. The notepad-tui project used GORM and it adds significant dependency bloat. | Use `database/sql` with raw SQL strings. The queries are simple (CRUD + a few aggregates). Hand-written SQL is more readable and debuggable at this scale. |
+| Concurrent multi-process access | SQLite supports multiple readers. Could design for external tools accessing the same DB. | Single-user TUI app. One process at a time. Designing for concurrency adds complexity (connection pooling, retry logic, lock handling) for zero benefit. | Use `SetMaxOpenConns(1)`. Single connection is simplest and correct for this use case. |
+| Encryption at rest | SQLite can be encrypted with SQLCipher. Seems security-conscious. | Personal local app. The JSON file was not encrypted either. Encryption adds a C dependency (SQLCipher) or forces CGo. | Store the DB file with standard filesystem permissions (0600). If users want encryption, they can use full-disk encryption. |
+| Export/import commands | Migration feels like it should come with data portability tools. | Over-scoping Phase 14. The migration is one-time JSON-to-SQLite. Export can be added later if needed. | Focus on the one-way migration. Keep the `.bak` JSON file as the "export." |
+| Dual backend (keep JSON as option) | Could make the backend configurable: JSON or SQLite. Gives users a choice. | Maintaining two backends doubles testing and bug surface. The whole point of migrating is to move to a better foundation. Having two options means neither gets full attention. | Migrate to SQLite unconditionally. Remove JSON store code after migration is validated. |
 
 ---
 
-### Search/Filter Todos
+## Markdown Templates (Phase 15)
 
-**Expected UX Behavior:**
+### Table Stakes
 
-Two distinct modes with different scopes:
+Features users expect when "markdown body" and "templates" are advertised.
 
-**Mode 1: Inline filter (todo panel)**
-- User presses `/` while focused on the todo panel
-- A filter input appears at the top of the todo panel (or below the section headers)
-- As the user types, todos are filtered in real time (case-insensitive substring match)
-- Only matching todos are shown; non-matching todos are hidden
-- Headers ("February 2026", "Floating") remain visible even if their section is empty after filtering
-- Pressing `Escape` clears the filter and restores the full list
-- Pressing `Enter` accepts the filter and returns to normal mode with the filter active
-- A visual indicator shows that a filter is active (e.g., "Filter: buy" in the header area)
+| Feature | Why Expected | Complexity | Depends On | Notes |
+|---------|--------------|------------|------------|-------|
+| Multi-line body field on todos | The core promise. Todos currently have only a single-line `Text` field. Adding a `Body` field (markdown string) allows notes, checklists, details. | LOW | Phase 14 (SQLite -- add `body TEXT` column) | This is an `ALTER TABLE todos ADD COLUMN body TEXT DEFAULT ''` migration. Existing todos get empty bodies. |
+| In-app preview of markdown body | When viewing a todo, users should see the body rendered (or at minimum, displayed as raw text in a scrollable area). | MEDIUM | Glamour library for rendering, bubbles/viewport for scrolling | Use `charmbracelet/glamour` to render markdown to ANSI. Display in a viewport component. If body is empty, show nothing extra (preserve current compact view). |
+| Template CRUD (create, list, delete) | If templates exist, users need to manage them. At minimum: create a template, see available templates, delete one. | MEDIUM | New `templates` table in SQLite | Templates are stored as rows: `id`, `name`, `body` (markdown with placeholders). |
+| Create todo from template | The primary workflow. User picks a template, gets prompted for placeholder values, and a new todo is created with the filled-in body. | MEDIUM | Template storage, placeholder parsing | Use Go `text/template` or simpler `strings.ReplaceAll` with `{{.VariableName}}` syntax. The simpler approach is better for non-programmers. |
+| Placeholder prompting during creation | When creating a todo from a template with `{{.ProjectName}}` and `{{.DueDate}}`, the app must prompt for each value interactively. | MEDIUM | TUI input flow, template parsing | Parse template for `{{.VarName}}` patterns, present each as a textinput prompt in sequence. |
+| Template body supports standard markdown | Headers, bullet lists, checkboxes (`- [ ]`), bold, italic, code blocks. This is what users expect from "markdown." | LOW | Glamour rendering handles this natively | Do not build a custom markdown parser. Glamour supports GFM (GitHub Flavored Markdown). |
 
-**Mode 2: Full-screen search overlay**
-- User presses a different key (e.g., `Ctrl+f` or `?` -- needs to not conflict with existing bindings) from any context
-- A full-screen overlay appears (similar to the settings overlay pattern)
-- A search input at the top
-- Results show all matching todos across ALL months, grouped by month
-- Each result shows: todo text, date, completion status
-- User can scroll through results
-- Pressing `Enter` on a result navigates to that month and highlights/selects that todo
-- Pressing `Escape` closes the overlay without navigating
+### Differentiators
 
-**Interaction patterns for inline filter:**
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Inline body preview in todo list | Show first 1-2 lines of the body below the todo title in the list view (truncated). Gives at-a-glance context without opening the full view. | MEDIUM | Requires adjusting todo list item height calculation. Multi-line list items need careful layout math. |
+| Checkbox toggling in preview | If the body contains `- [ ] subtask`, allow toggling checkboxes directly from the preview without opening the editor. dstask uses this pattern -- "checklists are useful here." | HIGH | Would require parsing markdown checkboxes, tracking line positions, updating body on toggle. Likely too complex for v1.4. |
+| Default template for new todos | A setting that automatically applies a specific template when creating a new todo, so every todo starts with a consistent structure. | LOW | Config field `default_template` referencing a template name/ID. |
+| Template variables with defaults | Placeholders like `{{.Date | default "today"}}` that auto-fill if the user skips the prompt. Reduces friction for repetitive templates. | MEDIUM | Requires extending the placeholder parser beyond simple substitution. |
 
-| Action | Key | Behavior |
-|--------|-----|----------|
-| Start filter | `/` | Enter filter mode. Show text input at top of todo panel. |
-| Type filter | (any text) | Filter list in real time. Case-insensitive substring match on todo text. |
-| Accept filter | `Enter` | Lock in the current filter. Return to normal mode. Filter indicator stays visible. |
-| Clear filter | `Escape` | Remove filter text, restore full list, return to normal mode. |
-| Navigate filtered list | `j`/`k` | Move cursor within filtered results only. |
+### Anti-Features
 
-**Interaction patterns for full-screen search:**
-
-| Action | Key | Behavior |
-|--------|-----|----------|
-| Open search | `/` (from calendar pane) or `Ctrl+f` (from either pane) | Show full-screen search overlay. |
-| Type query | (any text) | Search all todos. Results update as you type. |
-| Navigate results | `j`/`k` or `up`/`down` | Move cursor through search results. |
-| Go to result | `Enter` | Close overlay, navigate calendar to the result's month, select the todo in the todo panel. |
-| Close search | `Escape` | Close overlay, no navigation change. |
-
-**Edge cases:**
-
-1. **Empty search results:** Show "No matching todos" message, not a blank screen.
-2. **Filter + add todo:** If a filter is active and user adds a todo, should the new todo appear even if it does not match the filter? Recommendation: Yes, temporarily show it (clear the filter on add).
-3. **Filter + month navigation:** If user navigates to a different month while filter is active, should the filter persist? Recommendation: Yes, keep the filter active across month changes.
-4. **Search result in a month far from current:** Navigating to the result must update both the calendar month and the todo panel.
-5. **Multiple matches in same month:** Group them together in the search results with the month as header.
-6. **Floating todos in search results:** Show them in a separate "Floating" section at the bottom of results.
-7. **Completed todos in search:** Include them by default. Users searching across months may be looking for completed work.
-
-**Dependencies on existing features:**
-- Todo panel input modes (already have `inputMode`, `dateInputMode`, etc.) -- add `filterMode`
-- Store methods -- need `SearchTodos(query string) []Todo` that scans all todos
-- Settings overlay pattern -- reuse for full-screen search overlay
-- Calendar month navigation -- search "go to result" must trigger month change
-- Help bar -- needs filter-specific bindings when filter is active
-
-**Complexity assessment:** MEDIUM for inline filter (reuses existing textinput and mode patterns). HIGH for full-screen search overlay (new component, cross-month data access, result navigation).
-
-**Recommendation:** Build inline filter first (Phase 1 of search). Full-screen search can be a separate phase. Inline filter alone provides 80% of the value for 30% of the cost.
+| Anti-Feature | Why It Seems Related | Why Avoid | What to Do Instead |
+|--------------|---------------------|-----------|-------------------|
+| Built-in markdown editor | If todos have markdown bodies, building an in-app editor seems natural. TUI-Journal has a built-in editor with Emacs keybindings. | Building a good text editor is an enormous undertaking. Even TUI-Journal's built-in editor is limited and they still offer external editor fallback. The external editor (Phase 16) is the correct solution. | Use external editor for editing bodies. The TUI shows a read-only rendered preview. |
+| WYSIWYG markdown editing | Rich text editing in the terminal. Bold text appears bold as you type. | This does not exist in a practical form for terminal apps. Even the nhn/tui.editor is a web component, not a terminal one. Terminal WYSIWYG markdown is not a solved problem. | Render markdown for display. Edit as raw markdown in external editor. |
+| Template inheritance / composition | Templates that extend other templates, or templates that include partials. | Go `text/template` supports this, but it is over-engineering for a todo app. Users want "meeting notes template" and "weekly review template," not a template programming language. | Flat templates only. Each template is a standalone markdown document with simple `{{.Variable}}` placeholders. |
+| Template sharing / import-export | Import templates from files, export to share with others. | This is a personal single-user app. Template sharing adds UI for file picking, format validation, conflict handling. | Templates are managed in-app only. Users can create templates by typing or pasting markdown. If they want to share, they can copy the body text. |
+| Markdown rendering of the title field | Could render the todo title as markdown (bold, links, etc.). | The title is a single line shown in a list. Markdown rendering would break alignment, introduce variable widths, and make the list visually inconsistent. | Title remains plain text. Only the body field is markdown. |
+| Complex placeholder types (date pickers, dropdowns) | Templates could have typed placeholders: `{{.Date:date}}` for a date picker, `{{.Priority:select:high,medium,low}}`. | Massive UI complexity for minimal gain. Text input covers all cases. | All placeholders are text inputs. Users type whatever they want. The template provides structure, not validation. |
 
 ---
 
-### Overview Color Coding
+## External Editor (Phase 16)
 
-**Expected UX Behavior:**
+### Table Stakes
 
-The overview panel currently shows lines like:
+Features users expect when an app offers external editor integration. This is a well-established pattern in CLI/TUI apps (git commit, crontab -e, kubectl edit, lazygit).
 
-```
-Overview
- February 2026   [5]
- March 2026      [2]
- Unknown         [3]
-```
+| Feature | Why Expected | Complexity | Depends On | Notes |
+|---------|--------------|------------|------------|-------|
+| `$VISUAL` / `$EDITOR` environment variable support | The Unix standard. Check `$VISUAL` first (screen-based editor), then `$EDITOR` (line editor), then fall back to a sensible default. | LOW | `os.Getenv` | Fallback chain: `$VISUAL` -> `$EDITOR` -> `vi`. Not `vim` -- `vi` is more universally available. TUI-Journal uses the same chain with `vi` as final fallback. |
+| Clean TUI suspend and resume | The TUI must fully release the terminal before the editor launches, and fully restore it after the editor exits. No visual artifacts, no lost state. | LOW | Bubble Tea `tea.ExecProcess` handles this natively | Bubble Tea's `ExecProcess` calls `ReleaseTerminal()`, runs the process, then `RestoreTerminal()`. This is battle-tested. |
+| Write todo body to temp file, open in editor, read back | The standard temp-file workflow: write current body to a temp file, open editor pointing at that file, read file contents after editor exits, update the todo body. | LOW | `os.CreateTemp`, `os.ReadFile` | Use `.md` extension on the temp file so editors enable markdown syntax highlighting. TUI-Journal configures this with `temp_file_extension`. |
+| Handle editor errors gracefully | If the editor crashes, exits with non-zero status, or the temp file is deleted, the app must not crash or corrupt data. | LOW | Error handling in `ExecCallback` | If `err != nil` from `ExecProcess`, show an error message and keep the original body unchanged. |
+| Single keybinding to open editor | A clear, discoverable key (e.g., `e` for edit) that opens the currently selected todo in the editor. | LOW | Key binding system, help bar | Only active when a todo is selected. Show in help bar: `e: edit in editor`. |
+| Preserve original body if editor exits without saving | If the user opens vim, types `:q!` (quit without saving), the body should remain unchanged. | LOW | Compare file modification time or content hash before/after | Simplest approach: read file after editor exits. If content is the same as what was written, no update. Alternatively, always read and update -- if user quit without saving, the file content is unchanged anyway. |
+| App state preserved during editor session | When the user returns from the editor, the app should be in the same state: same todo selected, same calendar month, same view mode. | LOW | Bubble Tea handles this -- the `Model` is preserved across `ExecProcess` | The Elm Architecture means model state persists. The `ExecProcess` only suspends rendering, not state. |
 
-With color coding, the counts would show completion information:
+### Differentiators
 
-```
-Overview
- February 2026   [3] [2]    (3 incomplete in red/warm, 2 complete in green/cool)
- March 2026      [2]        (2 incomplete, 0 complete -- no green indicator)
- Unknown         [1] [2]    (1 incomplete, 2 complete)
-```
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Editor setting in config/settings overlay | Allow overriding the editor in `config.toml` (e.g., `editor = "nvim"`) without setting environment variables. Settings overlay gets a new "Editor" row. | LOW | New config field. If set, takes priority over `$VISUAL`/`$EDITOR`. Useful for users who want a different editor for todos vs. git commits. |
+| Pre-populated body from template on first edit | If a todo has no body yet, opening the editor could pre-populate the temp file with a default template or structured markdown (e.g., `# Notes\n\n## Checklist\n- [ ] `). | LOW | Check if body is empty, write template instead of empty file. |
+| Edit title + body together | The temp file could contain the title as the first line and the body below a separator (like git commit messages: first line = subject, blank line, then body). | MEDIUM | Requires parsing the file back: split on first blank line, extract title and body. Edge cases with empty titles, missing separators. |
+| Visual indicator that a todo has a body | In the todo list, show a small icon or marker (e.g., a trailing `[+]` or different color) for todos that have a non-empty body. | LOW | Check `len(todo.Body) > 0` in the render function. Simple visual cue. |
 
-**Design decisions:**
+### Anti-Features
 
-1. **Format options:**
-   - Option A: `[3] [2]` -- two separate brackets, red and green respectively
-   - Option B: `[3/5]` -- fraction format (incomplete/total)
-   - Option C: `[3+2]` -- additive format
-
-   **Recommendation: Option A** (`[3] [2]`). Reasons:
-   - Consistent with existing `[N]` bracket indicator pattern on calendar dates
-   - Each bracket can be independently colored
-   - Clearer at a glance than fraction notation
-   - If complete count is 0, just show `[3]` in red (no green bracket) -- cleaner than `[3/3]` or `[3+0]`
-
-2. **Color mapping across themes:**
-
-   | Theme | Incomplete (pending work) | Complete (done) |
-   |-------|--------------------------|-----------------|
-   | Dark | Red (`#AF0000`) | Green (`#5F8700`) |
-   | Light | Red (`#D70000`) | Green (`#008700`) |
-   | Nord | Aurora Red (`#BF616A`) | Aurora Green (`#A3BE8C`) |
-   | Solarized | Red (`#DC322F`) | Green (`#859900`) |
-
-   These colors already exist in the theme palettes (red is used for holidays, green/aurora green is used for indicators in Nord/Solarized). This is deliberate: reuse established palette colors for semantic consistency.
-
-3. **Colorblind accessibility:** Red-green is the most common form of color blindness (8% of men). Mitigation:
-   - The bracket format `[3] [2]` provides positional information (first bracket = incomplete, second = complete) even without color
-   - The existing `[N]` indicator on calendar dates is already position-dependent (it only appears on dates with incomplete todos)
-   - Optional: use bold on incomplete counts for additional visual differentiation
-
-**Edge cases:**
-
-1. **Month with only completed todos:** Show `[5]` in green only (no red bracket). This is the "all done" state.
-2. **Month with only incomplete todos:** Show `[3]` in red only (no green bracket). Current behavior, just colored.
-3. **Month with zero todos:** Should not appear in overview (current behavior, no change needed).
-4. **Current month emphasis:** The active month is already bold. Colors layer on top of bold.
-5. **Floating section:** Same coloring applies to the "Unknown" (floating) line.
-
-**Dependencies on existing features:**
-- Theme struct -- add 2 new color fields: `OverviewIncompleteFg`, `OverviewCompleteFg`
-- Calendar styles -- add 2 new styles: `OverviewIncomplete`, `OverviewComplete`
-- Store -- need `TodoCountsByMonthSplit()` returning incomplete AND complete counts (current `TodoCountsByMonth()` returns total count only)
-- Overview rendering in `calendar/model.go` -- update `renderOverview()` to use new data and styles
-
-**Complexity assessment:** LOW. This is mostly adding 2 new theme colors, a new store method, and updating the render function. Small, well-scoped change.
-
----
-
-### Date Format Setting
-
-**Expected UX Behavior:**
-
-Users select a date format from the settings overlay. The format affects how dates are displayed throughout the app. The internal storage format remains `YYYY-MM-DD` (ISO 8601) -- only the display changes.
-
-**Three presets:**
-
-| Preset Name | Display Format | Go Layout | Regions |
-|-------------|---------------|-----------|---------|
-| ISO | 2026-02-06 | `2006-01-02` | International, developer preference |
-| European | 06.02.2026 | `02.01.2006` | Germany, Finland, most of EU |
-| US | 02/06/2026 | `01/02/2006` | United States |
-
-**Custom format:** Allow entering a Go time layout string directly. The settings overlay shows a preview of the current date in the selected format for immediate feedback.
-
-**Where dates appear in the app (places that must update):**
-
-1. **Calendar header:** "February 2026" -- this is month+year, not a full date. The date format setting should NOT change this. Month names are always English (no locale). Only full dates (day+month+year) are affected.
-2. **Todo date display:** `2026-02-06` shown next to todo text in the todo panel. THIS is the primary place the format matters.
-3. **Date input prompt:** When adding a dated todo or editing a date, the placeholder should show the active format (e.g., "DD.MM.YYYY" or "YYYY-MM-DD") so users know what to type.
-4. **Date input parsing:** The input parser must accept the configured format AND the ISO format (as fallback). Users may paste ISO dates regardless of display setting.
-5. **Search results:** If full-screen search is implemented, dates in results must use the configured format.
-
-**Settings overlay integration:**
-
-Add a fourth row to the settings overlay:
-
-```
-> Theme              <  Dark  >
-  Country            <  FI - Finland  >
-  First Day of Week  <  Monday  >
-  Date Format        <  ISO (2026-02-06)  >
-```
-
-The display value shows both the preset name and a preview of today's date in that format. For custom format, show the format string and preview:
-
-```
-  Date Format        <  Custom: 02 Jan 2006  >
-```
-
-**Interaction for custom format:**
-- Cycling through options: ISO -> European -> US -> Custom
-- When "Custom" is selected, pressing Enter (or right arrow) opens a text input for the format string
-- The preview updates as the user types
-
-**Edge cases:**
-
-1. **Invalid custom format:** If user enters a non-sensical format string, validate by attempting `time.Now().Format(layout)` and checking the result contains expected components. If invalid, reject and keep previous.
-2. **Date input parsing ambiguity:** `01/02/2026` -- is that Jan 2 or Feb 1? The parser must use the configured format, not guess. The placeholder text must make the expected format clear.
-3. **Existing data:** Stored dates are always ISO 8601 (`YYYY-MM-DD`). The format setting is display-only. No data migration needed.
-4. **Config serialization:** Store the Go layout string in config.toml: `date_format = "2006-01-02"` (default), `date_format = "02.01.2006"`, etc. Presets are just convenient names for specific layout strings.
-5. **Date input must accept configured format:** If user's format is `DD.MM.YYYY`, typing `06.02.2026` in the date input must parse correctly. The input parser should try the configured format first, then fall back to ISO.
-
-**Dependencies on existing features:**
-- Config struct -- add `DateFormat string` field with default `"2006-01-02"`
-- Settings overlay -- add fourth option row with cycling + custom input
-- Todo rendering (`renderTodo`) -- format `todo.Date` using config format instead of raw string
-- Date input mode (`dateInputMode`, `editDateMode`) -- update placeholder and parser to use config format
-- Theme -- no change needed (this is not a visual styling feature)
-
-**Complexity assessment:** LOW-MEDIUM. The config/settings/display parts are straightforward. The tricky part is date input parsing -- accepting the configured format while remaining robust against typos and ambiguous inputs.
+| Anti-Feature | Why It Seems Related | Why Avoid | What to Do Instead |
+|--------------|---------------------|-----------|-------------------|
+| Built-in editor as fallback | If `$EDITOR` is not set and `vi` is not available, could provide a basic built-in editor. | Building even a minimal editor (multi-line text input with save/cancel) is surprisingly complex. The bubbles library has `textarea` but it is not a file editor. If the user has no editor installed, that is a system configuration issue, not our problem. | Show a clear error message: "No editor found. Set $EDITOR or install vi." |
+| Auto-save / live sync while editor is open | Could watch the temp file for changes and update the todo body in real-time while the editor is still open. | The TUI is suspended during `ExecProcess`. There is no event loop running to watch files. This would require a fundamentally different architecture (background process, file watcher). | Read the file once when the editor exits. Single-shot update. |
+| Multiple file editing | Open multiple todos in separate editor buffers/tabs. | This requires a much more complex temp file management system, and editors handle multi-file workflows differently. | One todo at a time. User edits one, saves, returns, then can open another. |
+| Diff view of changes | After editor exits, show a diff of what changed before saving. | Over-engineering. The user just edited the content -- they know what they changed. A diff view adds UI complexity for no practical benefit in a personal app. | Save changes immediately on editor exit. The user can undo by reopening the editor. |
+| Remote editor / SSH editor support | The Charmbracelet `wish` library enables running Bubble Tea over SSH. Supporting remote editors would extend this. | The `wish` library's `ExecProcess` does not work for remote editor spawning (confirmed by GitHub issue #196). This is a local-only app. | Local editor only. If running over SSH, the user's `$EDITOR` on the remote machine works naturally. |
 
 ---
 
 ## Feature Dependencies
 
 ```
-[Weekly Calendar View]
+Phase 14: Database Backend
     |
-    +--requires--> [first_day_of_week] (determines week start)
-    |
-    +--requires--> [Calendar grid rendering] (new RenderWeekGrid or mode)
-    |
-    +--requires--> [IncompleteTodosPerDay] (indicators in weekly grid)
-    |
-    +--requires--> [Holiday provider] (holidays in weekly grid)
-    |
-    +--modifies--> [Todo panel grouping] (show todos for 7 days, not full month)
-    |
-    +--modifies--> [Help bar] (show week navigation hints)
-    |
-    +--independent-of--> [Search/filter] (no dependency)
-    +--independent-of--> [Overview colors] (no dependency)
-    +--independent-of--> [Date format] (uses same format for display)
+    +-- No dependencies on other v1.4 features
+    +-- Replaces: internal/store/store.go (JSON implementation)
+    +-- Preserves: Store interface used by app, calendar, todolist, search
+    +-- Enables: Phase 15 (body column), Phase 16 (body editing)
 
-[Search/Filter Todos]
+Phase 15: Markdown Templates
     |
-    +-- Inline filter:
-    |   +--requires--> [Todo panel] (renders filtered list)
-    |   +--requires--> [textinput component] (already used for add/edit)
-    |   +--requires--> [mode state machine] (add filterMode)
-    |   +--independent-of--> [Calendar pane] (filter is todo-panel only)
-    |
-    +-- Full-screen search:
-        +--requires--> [Store.SearchTodos()] (scan all todos)
-        +--requires--> [Overlay pattern] (reuse settings overlay approach)
-        +--requires--> [Calendar month navigation] (go-to-result)
-        +--enhanced-by--> [Date format] (display dates in configured format)
+    +-- REQUIRES Phase 14 (SQLite for body column + templates table)
+    +-- REQUIRES charmbracelet/glamour (new dependency for rendering)
+    +-- REQUIRES bubbles/viewport (already available, for scrollable body preview)
+    +-- Modifies: Todo struct (add Body field)
+    +-- Modifies: Todo list rendering (show body preview)
+    +-- Modifies: Store interface (add body to CRUD, add template methods)
+    +-- Enables: Phase 16 (body content exists to edit)
 
-[Overview Color Coding]
+Phase 16: External Editor
     |
-    +--requires--> [Theme struct] (new color fields)
-    |
-    +--requires--> [Store split counts] (incomplete + complete per month)
-    |
-    +--requires--> [Overview rendering] (update renderOverview)
-    |
-    +--independent-of--> [Weekly view] (overview works same in both views)
-    +--independent-of--> [Search/filter] (no dependency)
-
-[Date Format Setting]
-    |
-    +--requires--> [Config struct] (new field)
-    |
-    +--requires--> [Settings overlay] (new option row)
-    |
-    +--modifies--> [Todo date rendering] (format display dates)
-    |
-    +--modifies--> [Date input parsing] (accept configured format)
-    |
-    +--independent-of--> [Weekly view] (format applies to both views)
-    +--independent-of--> [Search/filter] (format used in search results)
-    +--independent-of--> [Overview colors] (overview shows counts, not dates)
+    +-- REQUIRES Phase 15 (body field must exist to edit)
+    +-- REQUIRES tea.ExecProcess (already available in bubbletea v1.3.10)
+    +-- Modifies: Todo list keys (add 'e' for edit)
+    +-- Modifies: App model (handle editor launch/return messages)
+    +-- Modifies: Help bar (show editor keybinding)
+    +-- Independent of: Glamour rendering (editor works with raw markdown)
 ```
 
-**Key insight: All four features are independent of each other.** They can be built in any order. The only soft dependency is that date format affects how dates appear in search results -- but search can launch with ISO dates and pick up the format setting when it arrives.
+**Strict dependency chain: Phase 14 -> Phase 15 -> Phase 16.** These cannot be reordered. Each phase builds on the previous one's data model changes.
+
+## MVP Recommendation
+
+For each phase, the minimum viable implementation:
+
+### Phase 14 MVP (Database Backend)
+1. SQLite store implementing the existing Store interface
+2. Automatic JSON-to-SQLite migration on first launch
+3. JSON file backed up as `.bak`
+4. Schema versioning with `PRAGMA user_version`
+5. WAL mode enabled
+
+**Defer:** Query optimization, indexes, full-text search. The dataset is small enough that table scans are fine.
+
+### Phase 15 MVP
+1. `body TEXT` column added to todos table
+2. Templates table with `id`, `name`, `body`
+3. Body preview (rendered markdown) visible when todo is selected (could be a detail pane, overlay, or inline)
+4. At least one way to create/manage templates
+5. Create-todo-from-template flow with placeholder prompting
+
+**Defer:** Inline body preview in the list (multi-line items are hard), checkbox toggling, default template setting.
+
+### Phase 16 MVP
+1. `e` key opens selected todo body in `$VISUAL`/`$EDITOR`/`vi`
+2. Temp file with `.md` extension
+3. Body saved back on editor exit
+4. Error handling for missing editor / editor failure
+5. Help bar shows editor keybinding
+
+**Defer:** Config-based editor override, title+body combined editing, pre-populated template for empty bodies.
 
 ## Feature Prioritization Matrix
 
-| Feature | User Value | Implementation Cost | Risk | Priority | Rationale |
-|---------|-----------|-------------------|------|----------|-----------|
-| Overview color coding | HIGH | LOW | LOW | P1 (build first) | Highest value-to-cost ratio. Small, self-contained change. Instant visual improvement. |
-| Date format setting | MEDIUM | LOW-MEDIUM | LOW | P2 | Well-understood problem. Settings overlay pattern is proven. Main risk is date input parsing. |
-| Inline filter (todo panel) | HIGH | MEDIUM | LOW | P3 | Reuses existing textinput and mode patterns. High utility as todo lists grow. |
-| Weekly calendar view | MEDIUM | MEDIUM-HIGH | MEDIUM | P4 | Cross-month boundary handling is the hardest problem. Todo panel regrouping is non-trivial. |
-| Full-screen search overlay | MEDIUM | HIGH | MEDIUM | P5 (build last) | Most complex feature. New component. Can be deferred if time-constrained. |
+| Feature | User Value | Implementation Cost | Risk | Priority |
+|---------|-----------|-------------------|------|----------|
+| JSON-to-SQLite migration | CRITICAL | MEDIUM | MEDIUM (data loss risk) | P0 |
+| Store interface abstraction | HIGH | MEDIUM | LOW | P0 (part of Phase 14) |
+| Schema versioning | HIGH | LOW | LOW | P0 (part of Phase 14) |
+| Body field on todos | HIGH | LOW | LOW | P1 (Phase 15 start) |
+| External editor for body | HIGH | LOW | LOW | P1 (Phase 16 core) |
+| Markdown preview in-app | MEDIUM | MEDIUM | LOW | P2 (Phase 15) |
+| Template CRUD | MEDIUM | MEDIUM | LOW | P2 (Phase 15) |
+| Create from template | MEDIUM | MEDIUM | MEDIUM | P2 (Phase 15) |
+| Body indicator in list | MEDIUM | LOW | LOW | P3 (nice-to-have) |
+| Editor config in settings | LOW | LOW | LOW | P3 (nice-to-have) |
 
-**Recommended build order rationale:**
+## Competitor Feature Comparison (v1.4 Scope)
 
-1. **Overview colors first** -- quick win, builds confidence, no risk
-2. **Date format second** -- adds a settings row (warm-up for settings pattern), date parsing is a foundation for any future date work
-3. **Inline filter third** -- adds a new mode to an existing component (known pattern), provides immediate search value
-4. **Weekly view fourth** -- most architectural change, benefits from having date format and filter already working
-5. **Full-screen search last** -- highest cost, most optional, inline filter already covers 80% of search needs
+| Feature | dstask | tui-journal | notepad-tui | taskwarrior | Our v1.4 Approach |
+|---------|--------|-------------|-------------|-------------|-------------------|
+| Storage backend | JSON files (git-synced) | JSON or SQLite (configurable) | SQLite (GORM) | Custom binary format | SQLite only (migrated from JSON) |
+| Note/body per task | Markdown note per task (`note` command) | Full markdown body with title | Markdown in BLOB column | Annotations (short text) | Markdown body field per todo |
+| Templates | None | None | None | Recurrence only | Markdown templates with placeholders |
+| External editor | `$EDITOR` for notes | Built-in + external fallback | `$EDITOR` for .md files | `$EDITOR` for annotations | `$VISUAL`/`$EDITOR` via tea.ExecProcess |
+| Markdown rendering | Raw text display | Built-in rendering | Not in TUI | N/A | Glamour-rendered preview in viewport |
+| Body in list view | Not shown in list | Not shown in list | Not in TUI | Not shown | Body indicator icon, optional preview |
 
-## Competitor Feature Comparison (v1.3 Scope)
-
-| Feature | calcurse | calcure | taskwarrior-tui | Our v1.3 Approach |
-|---------|----------|---------|-----------------|-------------------|
-| Weekly view | Yes (time-slotted, 4hr blocks) | Daily view (not weekly) | N/A (task list) | Todo-centric 7-day grid (no time slots) |
-| Search/filter | CLI flags only (no TUI search) | Not documented | `/` inline filter | Inline filter + full-screen overlay |
-| Overview colors | N/A | `color_todo`, `color_done` | Taskwarrior colors | Semantic red/green per theme |
-| Date format | 4 presets (mm/dd, dd/mm, yyyy/mm/dd, yyyy-mm-dd) | Not configurable | Taskwarrior rc | 3 presets + custom Go layout |
+**Key insight:** Markdown templates with placeholder prompting is genuinely novel among TUI todo apps. No competitor found in research offers this. This is the primary differentiator of v1.4.
 
 ## Sources
 
-- [calcurse manual -- weekly view, date formats, key bindings](https://calcurse.org/files/manual.html) -- HIGH confidence, authoritative official docs
-- [calcure documentation and key bindings](https://anufrievroman.gitbook.io/calcure) -- MEDIUM confidence, official but sparse on search details
-- [calcure settings -- color configuration, view options](https://anufrievroman.gitbook.io/calcure/settings) -- HIGH confidence, confirmed "weekly view is not supported" in calcure
-- [taskwarrior-tui keybindings -- `/` filter pattern, Esc to exit](https://kdheepak.com/taskwarrior-tui/keybindings/) -- HIGH confidence, authoritative
-- [Bubble Tea framework and bubbles components](https://github.com/charmbracelet/bubbles) -- HIGH confidence, list component has built-in fuzzy filtering
-- [Go time.Format reference -- layout patterns](https://pkg.go.dev/time) -- HIGH confidence, stdlib docs
-- [Go date formatting guide](https://yourbasic.org/golang/format-parse-string-time-date-example/) -- HIGH confidence, well-verified reference
-- [Color blind accessibility guidelines](https://rgblind.com/blog/color-blind-friendly-palette) -- MEDIUM confidence, general UX guidance
+### HIGH Confidence (official docs, authoritative)
+
+- [Bubble Tea `tea.ExecProcess` API and exec.go source](https://github.com/charmbracelet/bubbletea/blob/main/exec.go) -- Confirmed API for suspending TUI and launching external process
+- [Bubble Tea exec example](https://github.com/charmbracelet/bubbletea/blob/main/examples/exec/main.go) -- Working example of editor integration pattern
+- [Charmbracelet Glamour markdown rendering](https://github.com/charmbracelet/glamour) -- Stylesheet-based markdown to ANSI rendering, used by glow, gh CLI, and GitLab CLI
+- [SQLite PRAGMA user_version](https://www.sqlite.org/pragma.html) -- Official SQLite pragma documentation for schema versioning
+- [SQLite WAL mode documentation](https://sqlite.org/wal.html) -- Official write-ahead logging documentation
+- [Go `text/template` package](https://pkg.go.dev/text/template) -- Standard library template system with `{{.Variable}}` syntax
+- [modernc.org/sqlite CGo-free driver](https://pkg.go.dev/modernc.org/sqlite) -- Pure Go SQLite implementation, no C compiler needed
+
+### MEDIUM Confidence (multiple sources agree, verified patterns)
+
+- [SQLite migrations with PRAGMA user_version](https://levlaz.org/sqlite-db-migrations-with-pragma-user_version/) -- Practical pattern for lightweight schema versioning
+- [modernc.org/sqlite vs mattn/go-sqlite3 benchmarks](https://datastation.multiprocess.io/blog/2022-05-12-sqlite-in-go-with-and-without-cgo.html) -- Performance comparison showing modernc is 2x slower but CGo-free
+- [tui-journal architecture](https://github.com/AmmarAbouZor/tui-journal) -- Reference implementation: Rust TUI with SQLite + markdown + external editor
+- [dstask markdown note per task](https://github.com/naggie/dstask) -- Go CLI todo with markdown notes, `$EDITOR` integration
+- [notepad-tui SQLite + markdown](https://github.com/Tempost/notepad-tui) -- Go TUI with SQLite (GORM) storing markdown in BLOB column
+- [$VISUAL vs $EDITOR convention](https://bash.cyberciti.biz/guide/$VISUAL_vs._$EDITOR_variable_%E2%80%93_what_is_the_difference%3F) -- Standard fallback chain: $VISUAL -> $EDITOR -> vi
+- [SQLite performance tuning for local apps](https://phiresky.github.io/blog/2020/sqlite-performance-tuning/) -- WAL mode, synchronous=NORMAL, cache_size pragmas
+
+### LOW Confidence (single source, needs validation during implementation)
+
+- Glamour v2 may have different API than v1 -- verify import path and API during Phase 15 implementation
+- `tea.ExecProcess` behavior with alt-screen mode -- the app uses `tea.WithAltScreen()`, verify clean transition when editor launches
 
 ---
-*Feature research for: TUI Calendar v1.3 Views & Usability*
+*Feature research for: TUI Calendar v1.4 Data & Editing*
 *Researched: 2026-02-06*

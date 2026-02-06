@@ -1,245 +1,168 @@
-# Project Research Summary
+# Research Summary: v1.4 Data & Editing
 
-**Project:** Todo Calendar v1.3 - Views & Usability Enhancements
-**Domain:** TUI Calendar Application Feature Integration
+**Project:** TUI Calendar - v1.4 Data & Editing Milestone
+**Domain:** Desktop TUI todo application with SQLite persistence, markdown bodies, and external editor integration
 **Researched:** 2026-02-06
 **Confidence:** HIGH
 
 ## Executive Summary
 
-This is a feature expansion for an existing, stable Go TUI calendar+todo application (phases 1-9 shipped). Version 1.3 adds four usability enhancements: weekly calendar view toggle, search/filter capabilities, overview color coding for completion status, and configurable date formats. Research confirms all four features can be implemented with zero new dependencies - the existing stack (Go 1.25.6, Bubble Tea v1.3.10, Lipgloss v1.1.0, Bubbles v0.21.1) provides everything needed.
+v1.4 transforms the TUI Calendar from a JSON-backed single-line todo app into a database-backed system supporting rich markdown bodies. The migration requires three tightly coupled changes: (1) replacing the JSON file store with SQLite for ACID persistence and schema evolution, (2) adding a markdown `body` field to support detailed notes and checklists beyond the title, and (3) integrating external editor support for editing these markdown bodies. The existing Bubble Tea stack already provides the external editor capability via `tea.ExecProcess` with zero new dependencies. SQLite and markdown rendering require exactly 2 new libraries: `modernc.org/sqlite` (pure Go driver, no CGo) and `charmbracelet/glamour` (markdown-to-ANSI renderer from the same ecosystem).
 
-The recommended approach prioritizes quick wins before complex features. Start with overview color coding (smallest scope, highest value-to-cost ratio), followed by date format settings (establishes format propagation patterns), then weekly view (contained within calendar component), and finish with search/filter (most architecturally impactful, splits naturally into inline filter and full-screen overlay). All four features are architecturally independent - they can be built in any order without blocking dependencies.
+The recommended approach prioritizes data safety and minimizes dependency bloat. Use `modernc.org/sqlite` over the CGo-based `mattn/go-sqlite3` to preserve the project's zero-CGo build. Implement the SQLite store behind an interface extracted from the existing concrete `Store` struct to enable incremental migration and testing. The one-time JSON-to-SQLite migration must be transactional and preserve the original JSON as backup. Markdown templates use Go's stdlib `text/template` for placeholder substitution (zero new dependencies). The editor integration follows the established Bubble Tea `ExecProcess` pattern with a critical gotcha: the `editing` flag must suppress `View()` output to prevent alt-screen buffer leakage.
 
-Key risks center on state management rather than technology. Critical pitfalls include: weekly view grid width contract (must stay at 34 chars), date format round-trip corruption (display format must never touch storage), input state machine conflicts (search needs separate textinput), and overlay routing complexity (generalize before adding second overlay). All risks are mitigable with upfront design decisions documented in the pitfalls research.
+The key risks are data migration integrity (addressed through transactional migration with backup), SQLite connection pool misconfiguration (solved with `MaxOpenConns(1)` for single-user desktop use), and the subtle alt-screen output leak during editor launch (mitigated with the `editing` flag pattern from Bubble Tea's official examples). The strict dependency chain (SQLite backend → body field → editor integration) means phases cannot be reordered without breaking functionality.
 
 ## Key Findings
 
 ### Recommended Stack
 
-No new dependencies required. All four v1.3 features integrate cleanly into the existing technology stack with zero library additions. The Go standard library (`strings`, `time`, `fmt`) covers substring search and date formatting. Bubble Tea's Elm Architecture handles new view modes and overlays through existing message routing. Lipgloss provides color coding via `Foreground()` styling. Bubbles textinput, already used for todo add/edit, serves search input needs.
+The existing Bubble Tea (v1.3.10) stack requires minimal additions. External editor support already exists via `tea.ExecProcess`, and templates use stdlib `text/template`. Only 2 new direct dependencies are needed.
 
-**Core technologies (unchanged):**
-- **Go 1.25.6**: Standard library (`strings.Contains` for search, `time.Format` for dates) - sufficient for all new features
-- **Bubble Tea v1.3.10**: Elm Architecture handles view mode toggles and overlay state - no framework limitations
-- **Lipgloss v1.1.0**: `Foreground()`, `Background()`, `Bold()` methods cover overview color coding - existing theme system extends naturally
-- **Bubbles v0.21.1**: `textinput.Model` reusable for search filter - no new components needed
-- **BurntSushi/toml v1.6.0**: New `date_format` config field is a simple string - no schema changes
+**Core technologies:**
+- **modernc.org/sqlite v1.44.3**: Pure Go SQLite driver (no CGo required) — preserves zero-CGo build, provides standard `database/sql` interface, actively maintained with 4 releases in January 2026 alone. Trades ~10-50% performance overhead for build simplicity, which is irrelevant for a single-user desktop todo app with sub-1000 todos.
+- **charmbracelet/glamour v0.10.0**: Markdown-to-ANSI renderer — integrates with existing Charmbracelet ecosystem (shares lipgloss/termenv deps), purpose-built for terminal markdown rendering with word wrapping and theme support. Used by GitHub CLI (`gh`) and Charmbracelet's own `glow` tool.
+- **text/template (stdlib)**: Template system for markdown placeholders — zero new dependencies, handles `{{.Variable}}` substitution with conditionals/loops if needed later. Text (not HTML) template avoids escaping markdown syntax.
+- **tea.ExecProcess (already in bubbletea v1.3.10)**: External process execution — built-in TUI suspension, clean terminal handoff, message-passing on editor exit. No new library needed.
 
-**Deliberately NOT adding:**
-- sahilm/fuzzy: Overkill for personal todo lists; `strings.Contains` substring matching is clearer and adds zero dependencies
-- bubbles/list: Would require rewriting existing custom todo list rendering
-- bubbles/viewport: Search results fit in manual scroll tracking, same pattern as current todo list
-- charmbracelet/huh: No forms needed; existing textinput and settings cycling patterns suffice
+**Deliberately rejected:**
+- ORMs (GORM, ent): Massive overkill for 1 table with 7 columns. Hand-written SQL is clearer and adds zero dependencies.
+- Migration frameworks (goose, migrate): Use `PRAGMA user_version` for schema versioning instead. Single-user desktop app needs simplicity, not multi-environment migration tooling.
+- ncruces/go-sqlite3: Pre-v1.0, adds wazero WASM runtime as transitive dependency. modernc.org/sqlite is more conservative and widely adopted.
+- Built-in markdown editor: Building even a basic text editor is an enormous undertaking. External `$EDITOR` is the correct architectural boundary.
 
 ### Expected Features
 
-All four features follow established TUI patterns from calcurse, calcure, and taskwarrior-tui. Research identified clear table stakes vs differentiators.
-
 **Must have (table stakes):**
-- Weekly view: 7-day grid with single-key toggle, respects `first_day_of_week`, shows todo indicators and holidays
-- Inline filter: `/` key activates, Escape clears, case-insensitive substring match (standard TUI pattern from taskwarrior-tui)
-- Overview colors: Red/green semantic coloring for incomplete/complete months, theme-aware across all 4 themes
-- Date format: 3 common presets (ISO YYYY-MM-DD, European DD.MM.YYYY, US MM/DD/YYYY), persisted in config
+- **Automatic JSON-to-SQLite migration**: Users must not lose existing data. First launch after upgrade silently migrates `todos.json` to `todos.db`, preserves all fields, and backs up the JSON file.
+- **Identical CRUD behavior post-migration**: All 7 store methods plus 6 query methods must behave identically. SQLite store is a drop-in replacement behind the same interface.
+- **Multi-line markdown body field**: Core promise of Phase 15. Todos gain a `Body` field (TEXT column in SQLite) for notes, checklists, and details beyond the single-line title.
+- **$EDITOR integration**: Standard Unix workflow (check `$VISUAL` → `$EDITOR` → fallback to `vi`). TUI suspends, editor opens temp file, TUI resumes on editor exit and saves body content.
+- **Markdown preview in-app**: When viewing a todo, render the body (or display raw text in scrollable area). Use Glamour for markdown-to-ANSI rendering, displayed in a viewport component.
+- **Template CRUD**: Users create/list/delete templates. Templates are stored in a `templates` table with `id`, `name`, `body` (markdown with `{{.Placeholder}}` syntax).
+- **Create todo from template**: Pick template, get prompted for placeholder values, create todo with filled-in body. Uses `text/template` or simple string substitution.
 
-**Should have (competitive differentiators):**
-- Full-screen search across all months: Neither calcurse nor calcure offer cross-month search; provides genuine "where did I put that?" utility
-- Week view showing todo counts per day: Todo-centric design (not time-slot appointments like calcurse)
-- Overview split counts: `[3] [2]` format showing incomplete/complete provides richer information than `[5]` total
-- Custom date format: Beyond presets, allow Go layout strings for power users
+**Should have (competitive):**
+- **Inline body preview in list**: Show first 1-2 lines of body below todo title in list view (truncated). Gives context without opening full view. Requires multi-line list item height calculation — deferred to v1.5.
+- **Default template setting**: Config field `default_template` automatically applies a template when creating new todos. Reduces friction for repetitive workflows.
+- **Visual body indicator**: In todo list, show `[+]` icon or marker for todos with non-empty bodies. Simple `len(todo.Body) > 0` check in render function.
+- **Search includes body text**: Extend `SearchTodos` to query `WHERE text LIKE ? OR body LIKE ?`. For v1.4, basic LIKE search works; FTS5 virtual table is a v1.5 optimization.
 
-**Defer (explicitly ruled out):**
-- Day selection/cursor on calendar: Contradicts PROJECT.md core design; weekly view navigates by week, not day
-- Time-slotted weekly view: App has no concept of time-of-day; todos have dates only
-- Fuzzy matching in search: Over-engineering for small dataset; substring covers 95% of use cases
-- Search result ranking: Chronological order is natural and expected
+**Defer (v2+):**
+- **Checkbox toggling in preview**: Parse markdown checkboxes (`- [ ] subtask`), toggle directly from preview without opening editor. High complexity, requires line position tracking and body updates.
+- **Template inheritance/composition**: Templates extending other templates or including partials. Over-engineering for a personal app. Users want standalone templates, not a programming language.
+- **WYSIWYG markdown editing**: Terminal WYSIWYG markdown is not a solved problem. Render markdown for display, edit as raw markdown in external editor.
 
 ### Architecture Approach
 
-The existing architecture follows Bubble Tea Elm patterns with clean component boundaries: app.Model orchestrates, calendar.Model and todolist.Model handle respective panes, settings.Model provides overlay, store.Store is pure data. All four features integrate into this structure without architectural changes - only component extensions.
+The migration from JSON to SQLite requires interface extraction to decouple consumers (calendar, todolist, search models) from the concrete store implementation. Extract a `TodoStore` interface matching the existing `Store` API, then implement `SQLiteStore` behind this interface. The SQLite backend uses query-on-read semantics (no in-memory cache) — the dataset is small enough (<1000 todos) that querying the database on every `View()` cycle has zero perceptible latency and eliminates cache invalidation bugs.
 
-**Major components and v1.3 modifications:**
+**Major components:**
+1. **Store Interface (`store.TodoStore`)**: Defines domain operations (Add, Toggle, Delete, Update, Find, Search, TodosForMonth, etc.). Both JSON and SQLite stores implement this interface. Consumers depend on the interface, not concrete types.
+2. **SQLite Store (`store.SQLiteStore`)**: Implements `TodoStore` via `database/sql` with hand-written SQL queries. Uses `modernc.org/sqlite` driver. Schema includes `todos` table with `body TEXT DEFAULT ''` column from the start (Phase 14 schema anticipates Phase 15 body field).
+3. **JSON-to-SQLite Migration (`store/migrate.go`)**: One-time migration triggered on first launch when `todos.db` doesn't exist but `todos.json` does. Transaction-wrapped INSERT of all todos with explicit IDs (not autoincrement), then rename JSON to `.bak`.
+4. **External Editor Package (`internal/editor/`)**: Encapsulates temp file management, markdown parsing (extract title from `# heading`), and `$EDITOR` resolution. Returns `tea.ExecProcess` command that suspends TUI and delivers `EditorFinishedMsg` on completion.
+5. **Markdown Template System**: Templates stored in `templates` table. Creation flow: parse template for `{{.Variable}}` placeholders, prompt user for each value, execute `text/template`, store expanded result as todo body. Expansion happens once at creation — bodies are plain markdown thereafter.
 
-1. **calendar.Model** - Add `viewMode` enum (monthly/weekly), `weekOffset` for navigation, `RenderWeekGrid()` pure function alongside existing `RenderGrid()`, extend `renderOverview()` with done/pending color styles
-2. **todolist.Model** - Add `filterMode` to state machine, `filterQuery` field, date format propagation via `SetDateFormat()`, format conversion in `renderTodo()` and input validation
-3. **search.Model (NEW)** - Full-screen overlay following settings pattern, own textinput for query, `Search()` method on store, `SelectMsg`/`CloseMsg` bubble to app
-4. **store.Store** - Extend `TodoCountsByMonth()` to return done/pending breakdown (not just total), add `Search(query)` method for cross-month queries
-5. **config.Config** - Add `DateFormat` string field, `DateDisplayFormat()` helper translating presets to Go layouts
-6. **theme.Theme** - Add 2 new color roles (`OverviewDoneFg`, `OverviewPendingFg`) to existing 14, bringing total to 16 semantic roles
-
-**Key architectural patterns preserved:**
-- Pure rendering: `RenderGrid()` and new `RenderWeekGrid()` remain pure functions
-- Message routing: Root routes to focused child; overlays intercept when active
-- Theme propagation: New `SetDateFormat()` follows same setter pattern as `SetTheme()`
-- Overlay pattern: Search follows settings precedent (bool flag, message bubbling, full-screen replacement)
-- Fixed layout: Calendar grid stays exactly 34 chars wide in both views
+**Critical pattern: Editing flag for alt-screen workaround**: Bubble Tea's `ExecProcess` with `tea.WithAltScreen()` leaks the final `View()` output to the normal terminal buffer during alt-screen teardown. Solution: Add `editing bool` to `app.Model`. When `editing == true`, `View()` returns empty string to suppress the leak. Set flag before returning `tea.ExecProcess` command, clear it in `editorFinishedMsg` handler.
 
 ### Critical Pitfalls
 
-1. **Weekly View Grid Width Mismatch** - The calendar grid must remain exactly 34 characters wide in both monthly and weekly modes. The app layout hardcodes `calendarInnerWidth := 38`. Changing this breaks todo pane width calculation and causes rendering overflow. Avoid by keeping both views at 34-char width (same column format, just 1 row vs 5-6 rows).
+1. **Store Interface Extraction Breaks Existing Callers**: Replacing JSON with SQLite while simultaneously changing method signatures (adding `error` returns) creates a massive, error-prone changeover. Extract the `TodoStore` interface BEFORE changing the backend. Keep the interface matching current API (no new error returns during transition). SQLite failures are rare on local desktop — log errors internally rather than propagating them to TUI layer.
 
-2. **Date Format Round-Trip Corruption** - Display format must NEVER touch storage. Store always uses ISO `YYYY-MM-DD` (`"2006-01-02"` layout). If display format accidentally reaches store methods or parsing logic, dates get silently corrupted (e.g., `06/02/2026` as DD/MM/YYYY stored, later parsed as MM/DD/YYYY produces wrong date). Avoid by: hard rule that format conversion happens ONLY in View functions, create single `FormatDate(isoDate, layout)` helper, never pass display layout to store.
+2. **JSON-to-SQLite Migration Loses Data or Runs Repeatedly**: Migration must be idempotent (check if SQLite already has data before migrating). Wrap migration in a transaction (BEGIN → insert all todos → COMMIT). Preserve `todos.json` as `.bak` after successful migration, never delete it. Handle `NextID` explicitly: use existing JSON IDs as explicit values in INSERT (not autoincrement), then let autoincrement take over for new todos.
 
-3. **Search Input State Machine Conflict** - todolist.Model has 5-mode state machine sharing one `textinput.Model` field. Adding search mode creates edge case: user presses search while mid-edit, input state corrupts. Avoid by using separate `searchInput textinput.Model` field distinct from add/edit input, or ensure search key is blocked when `IsInputting()` returns true.
+3. **SQLite "Database Is Locked" Errors on Single-User Desktop App**: Go's `database/sql` uses connection pooling by default. Multiple connections trigger file-level lock contention in SQLite. Solution: `db.SetMaxOpenConns(1)` for single-connection mode. Enable WAL mode (`PRAGMA journal_mode=WAL`), set `PRAGMA busy_timeout=5000`, and `PRAGMA foreign_keys=ON`. These pragmas must be set via DSN string or per-connection hook (they're not all persistent across reconnections).
 
-4. **Full-Screen Overlay Routing Conflict** - Adding search as second overlay alongside settings creates dual-overlay risk if both `showSettings` and `showSearch` booleans exist. Two overlays open simultaneously causes message routing chaos. Avoid by converting to overlay enum before adding search: `type overlay int; const (noOverlay, settingsOverlay, searchOverlay)`.
+4. **tea.ExecProcess Leaks View Content to Terminal**: During alt-screen exit for editor launch, Bubble Tea renders one final frame to the normal buffer. Without mitigation, the entire TUI layout appears as garbled text in terminal scrollback. Workaround: `editing bool` flag that makes `View()` return empty string during editor execution (official pattern from Bubble Tea exec example).
 
-5. **View Mode State Not Synced to Todo List** - Calendar switches to weekly view but todo list shows full month, creating UX mismatch. Existing `SetViewMonth(year, month)` API has no concept of week ranges. Recommended approach: weekly view is calendar-only visual change, todo list always shows full month regardless (keeps API simple). If week-level filtering desired, extend to `SetViewRange(startDate, endDate)`.
+5. **Temp File Extension Breaks Editor Syntax Highlighting**: If temp file uses `.tmp` extension, editors don't detect markdown filetype. Users lose syntax highlighting, spell checking, and markdown keybindings. Solution: Use `.md` extension in `os.CreateTemp("", "todo-*.md")` pattern. Clean up temp file in `editorFinishedMsg` handler with `os.Remove()`.
 
 ## Implications for Roadmap
 
-Based on research, suggest 4 phases numbered 10-13 (continuing from shipped phase 9). All features are independent - no blocking dependencies - but ordering optimizes for risk and learning.
+Based on research, the milestone has a strict 3-phase dependency chain that cannot be reordered:
 
-### Phase 10: Overview Color Coding
-**Rationale:** Smallest scope (4 files modified, no new packages), highest value-to-cost ratio, builds confidence with quick win. Entirely contained within calendar + store + theme - no app-level routing changes. Zero risk of breaking existing functionality since it is purely additive.
+### Phase 14: Database Backend
+**Rationale:** Foundation for all v1.4 features. The SQLite backend must be working before adding body field or editor integration. Highest-risk item (data migration, new dependency, persistence change) should be addressed first so issues surface early.
+**Delivers:** SQLite store behind `TodoStore` interface, automatic JSON-to-SQLite migration with backup, schema versioning with `PRAGMA user_version`, WAL mode enabled, single-connection pool configuration.
+**Addresses:** Must-have table-stakes features (migration, CRUD parity, crash safety, schema evolution).
+**Avoids:** Pitfalls #1 (interface extraction first), #2 (transactional migration), #3 (connection config), and Patterns 1-2 (directory creation, ID preservation).
 
-**Delivers:**
-- Overview panel shows completion status via color: red for months with incomplete todos, green for all-done months
-- Two new theme color roles defined for all 4 themes (dark, light, nord, solarized)
-- Extended `MonthCount` struct with done/pending breakdown
+### Phase 15: Markdown Templates
+**Rationale:** Requires Phase 14 (SQLite) because the `body TEXT` column must exist in the database schema. Adding the body field is a prerequisite for the editor integration (Phase 16) to have content to edit. Templates provide structured content creation but are secondary to the core body field feature.
+**Delivers:** `body TEXT DEFAULT ''` column on todos table (if not already in Phase 14 schema), templates table (`id`, `name`, `body`), template CRUD operations, create-todo-from-template flow with placeholder prompting, body indicator in todo list rendering.
+**Uses:** Glamour (markdown rendering), bubbles/viewport (scrollable preview), `text/template` (stdlib placeholder substitution).
+**Implements:** Markdown template system component, body preview rendering in TUI.
+**Avoids:** Pitfalls #6 (body field in schema from Phase 14), Integration #3 (pass pane width to renderer), Pattern 4 (expand templates once, store result), Pattern 7 (title-only in list view).
 
-**Addresses:**
-- Table stakes: Distinct colors for incomplete vs complete (FEATURES.md line 39)
-- Architecture: Modify renderOverview() and extend TodoCountsByMonth() (ARCHITECTURE.md lines 232-286)
-
-**Avoids:**
-- Overview color calculation in View(): Extend store method to return rich data in one pass (PITFALLS.md #7)
-- Colors invisible on themes: Use semantic color roles, test all themes (PITFALLS.md UX #3)
-
-**Research needed:** NO - standard Lipgloss color application, well-documented pattern
-
----
-
-### Phase 11: Date Format Setting
-**Rationale:** Establishes format propagation pattern before features that display dates (search). Cross-cutting but mechanically straightforward - config field flows through settings to display. Should precede search so results display in configured format. Main complexity is bidirectional conversion (display vs storage), better to solve early.
-
-**Delivers:**
-- Settings overlay gains 4th option row for date format with 3 presets (ISO, European, US)
-- `config.DateFormat` field with default `"2006-01-02"`
-- Format propagation via `SetDateFormat()` to todolist
-- Date display conversion in `renderTodo()`, input validation updated
-
-**Addresses:**
-- Table stakes: 3 presets, accessible in settings, dates update everywhere (FEATURES.md lines 46-51)
-- Architecture: Config addition, todolist format conversion, settings integration (ARCHITECTURE.md lines 290-380)
-
-**Avoids:**
-- Round-trip corruption: Storage always ISO, conversion in View only (PITFALLS.md #3)
-- Custom format injection: Use curated presets, validate layouts (PITFALLS.md #4)
-- Input prompt ambiguity: Keep input as YYYY-MM-DD always (PITFALLS.md "Looks Done" #9)
-
-**Research needed:** NO - Go time.Format is well-documented, pattern established in settings cycling
-
----
-
-### Phase 12: Weekly Calendar View
-**Rationale:** Self-contained within calendar package (no new packages). Calendar's pure-function pattern (`RenderGrid`) extends naturally to `RenderWeekGrid`. Should come after date format so week headers can use configured format. Main complexity is cross-month week boundaries, but contained in calendar component.
-
-**Delivers:**
-- `viewMode` enum in calendar.Model (monthly/weekly)
-- `RenderWeekGrid()` pure function rendering 7-day row
-- Toggle key binding (`w`) switching views
-- Week navigation (left/right moves by week in weekly mode, by month in monthly mode)
-- Week offset tracking with month boundary handling
-
-**Addresses:**
-- Table stakes: 7-day grid, single-key toggle, week navigation, respect first_day_of_week (FEATURES.md lines 16-23)
-- Differentiators: Todo-centric weekly view (not time-slots) (FEATURES.md line 59)
-- Architecture: Add viewMode to calendar, new RenderWeekGrid, navigation branching (ARCHITECTURE.md lines 42-104)
-
-**Avoids:**
-- Grid width mismatch: Keep weekly at 34 chars same as monthly (PITFALLS.md #1)
-- View sync issues: Weekly is calendar-only, todo list stays month-level (PITFALLS.md #2)
-- Navigation key overload: Define semantics per mode, update help bar (PITFALLS.md UX #5)
-- Month boundary weeks: Handle cross-month weeks like Jan 27 - Feb 2 (PITFALLS.md "Looks Done" #2)
-
-**Research needed:** NO - week calculation is stdlib time.Date, existing grid rendering patterns apply
-
----
-
-### Phase 13: Search/Filter Todos
-**Rationale:** Most complex - new package (search overlay) + todolist filter mode + store methods + app routing. Benefits from all prior phases being stable. Search overlay follows settings pattern established in phase 1-9. Search results should display dates in configured format (depends on phase 11). Consider splitting into 13a (inline filter) and 13b (full-screen overlay) if scope feels large.
-
-**Delivers:**
-- Inline filter mode in todolist: `/` key, textinput, real-time substring filtering in `visibleItems()`
-- Full-screen search overlay: new `search.Model` component, cross-month `store.Search()` method
-- Result navigation: `SelectMsg` navigates calendar to result's month, positions todolist cursor
-- Separate `searchInput` textinput to avoid state machine conflicts
-
-**Addresses:**
-- Table stakes: Inline filter with `/` and Escape, substring matching, visual filter indicator (FEATURES.md lines 29-33)
-- Differentiators: Full-screen cross-month search, result navigation (FEATURES.md line 58)
-- Architecture: Add search.Model package, extend store, add app overlay routing (ARCHITECTURE.md lines 106-229)
-
-**Avoids:**
-- Input state conflict: Use separate searchInput textinput (PITFALLS.md #5)
-- Overlay routing conflict: Convert overlays to enum before adding search (PITFALLS.md #6)
-- Special characters in search: Use strings.Contains, not regex (PITFALLS.md "Looks Done" #6)
-- Cross-month data source: Query store.Todos() directly, not visibleItems() (PITFALLS.md "Looks Done" #4)
-
-**Research needed:** NO for inline filter (standard textinput mode). MAYBE for full-screen overlay (first time with dual overlays, test enum pattern) - suggest quick spike on overlay enum refactor
-
-**Optional split:**
-- **Phase 13a:** Inline filter in todolist (contained, ~2 files, LOW complexity)
-- **Phase 13b:** Full-screen search overlay (new package, 5+ files, MEDIUM-HIGH complexity)
+### Phase 16: External Editor
+**Rationale:** The culmination of v1.4. Requires Phase 15 (body field must exist to edit). Uses `tea.ExecProcess` which is already available in current Bubble Tea version — no new dependency. This is the user-facing feature tying everything together and should be built last once the data infrastructure is stable.
+**Delivers:** `e` key binding to open selected todo in `$VISUAL`/`$EDITOR`/`vi`, temp file with `.md` extension, body content saved back on editor exit, error handling for missing/failed editor, help bar shows keybinding.
+**Uses:** `tea.ExecProcess` (bubbletea v1.3.10), `internal/editor/` package (template rendering, markdown parsing, editor resolution).
+**Implements:** External editor integration component, editing state management in app model.
+**Avoids:** Pitfall #4 (editing flag + View guard), #5 (.md extension), Integration #4 (RefreshIndicators after save), Integration #5 (split $EDITOR on spaces, fallback chain), Patterns 3, 5 (exit code handling, resize during edit).
 
 ### Phase Ordering Rationale
 
-- **Dependencies:** All features are architecturally independent. Soft dependency: search should come after date format so results display correctly.
-- **Risk management:** Start with smallest scope (overview colors) to build momentum. Tackle most complex (search) last when codebase changes are well-understood.
-- **Learning path:** Date format establishes propagation patterns reused in weekly view. Settings overlay experience informs search overlay design.
-- **Component isolation:** Phases 10-12 modify existing components only. Phase 13 adds new package - deferred until foundation is solid.
+- **Strict dependency chain enforced**: Phase 14 enables 15 (SQLite provides body column), Phase 15 enables 16 (body content exists to edit). These cannot be reordered without breaking functionality. The research confirms no parallelization is possible.
+- **Risk-first strategy**: Highest-risk item (database migration) comes first. If migration fails or SQLite integration has issues, the entire milestone is blocked. Building the risky foundation first means failures surface early when recovery cost is lower.
+- **Incremental testability**: Each phase delivers a working state. Phase 14: app runs with SQLite backend, all existing features work. Phase 15: todos have markdown bodies visible in preview. Phase 16: bodies are editable via external editor. Each checkpoint is independently testable and shippable.
+- **Interface abstraction prevents cascade failures**: Extracting the `TodoStore` interface in Phase 14 means Phases 15 and 16 build on a stable abstraction. If SQLite implementation has bugs, they're isolated behind the interface. If editor integration has issues, the store layer is unaffected.
 
 ### Research Flags
 
-**Phases with standard patterns (skip research-phase):**
-- **Phase 10 (Overview colors):** Lipgloss color application, theme system extension - well-documented, existing patterns in codebase
-- **Phase 11 (Date format):** Go time.Format, settings cycling pattern - stdlib documented, pattern established
-- **Phase 12 (Weekly view):** Pure rendering function, time.Date week calculation - standard Go patterns
-- **Phase 13a (Inline filter):** textinput mode, strings.Contains - existing patterns, trivial search
+**Phases with well-documented patterns (no additional research needed):**
+- **Phase 14**: SQLite with `database/sql` is a well-trodden path in Go. The `modernc.org/sqlite` driver documentation is comprehensive, migration patterns are established, and community resources are abundant. No research-phase needed — proceed directly to planning.
+- **Phase 16**: Bubble Tea's `tea.ExecProcess` API is documented with official examples. External editor integration is a standard Unix pattern (git commit, crontab -e). No research-phase needed — follow established patterns.
 
-**Phases possibly needing spike/investigation:**
-- **Phase 13b (Search overlay):** First dual-overlay scenario. Suggest quick spike on converting `showSettings` bool to overlay enum before full implementation. Not deep research, just 30min validation that enum refactor doesn't break settings.
+**Phases that MAY benefit from targeted research during planning:**
+- **Phase 15**: Markdown template placeholder prompting is a novel feature (no TUI todo app competitor offers this). The basic pattern (parse placeholders → prompt user → execute template) is straightforward, but the UX details (prompt sequencing, validation, error handling) may need a quick research spike during planning to survey text input best practices in TUI apps. This is a 30-minute "how do other Bubble Tea apps handle multi-step user input flows?" question, not a full research-phase.
+
+**No deep research needed for any phase**: All 3 phases use well-understood technologies with high-confidence documentation. The PITFALLS.md research already identified the gotchas (alt-screen leak, connection pooling, migration integrity). Proceed to planning with existing research.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Full codebase review (20 files, 2492 LOC). All dependencies verified in go.mod. Bubble Tea patterns observed in existing code. |
-| Features | HIGH | calcurse, calcure, taskwarrior-tui official docs reviewed. UX patterns well-established. All table stakes identified. |
-| Architecture | HIGH | Existing architecture fully documented. Component boundaries clear. Integration points identified with line numbers. |
-| Pitfalls | HIGH | Derived from actual codebase analysis + Bubble Tea community patterns. All critical pitfalls have concrete prevention strategies. |
+| Stack | HIGH | All recommendations based on official pkg.go.dev docs, verified library versions, and active community benchmarks. The modernc.org/sqlite driver is battle-tested in production (River queue, Watermill). Glamour is used by GitHub CLI. |
+| Features | HIGH | Table-stakes features derived from codebase analysis (existing Store API must be preserved) and established TUI/CLI patterns (external editor is standard). Differentiators validated against competitor research (dstask, tui-journal, notepad-tui). |
+| Architecture | HIGH | Store interface extraction is a standard Go refactoring pattern. SQLite query-on-read for small datasets is well-documented. Bubble Tea `ExecProcess` API is confirmed in v1.3.10 with official examples. Alt-screen workaround verified from maintainer-confirmed GitHub issues. |
+| Pitfalls | HIGH | Critical pitfalls derived from: (1) codebase analysis (current Store API, alt-screen usage), (2) verified Bubble Tea GitHub issues (#424, #431), (3) multiple independent sources on Go+SQLite connection pooling, and (4) SQLite PRAGMA documentation. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Weekly view todo panel grouping decision:** Must decide during phase 12 planning whether weekly view filters todo list to 7 days or shows full month. Research recommends month-level for simplicity (keeps existing `SetViewMonth` API), but team may prefer week-level filtering for UX. Decision affects todolist API design.
+**Markdown rendering width in narrow terminals:** The research recommends passing pane width to Glamour's renderer, but testing is needed at various terminal sizes (80, 100, 120+ columns) to ensure the todo list remains usable. The fallback of showing only title-in-list with body-in-preview sidesteps this issue, but if inline preview is desired, responsive layout testing is required. Handle during Phase 15 planning by deciding the display strategy (indicator-only vs. preview pane vs. inline expansion) upfront.
 
-- **Search overlay enum refactor timing:** Converting `showSettings` bool to overlay enum could happen in phase 13 or earlier. Recommend doing it immediately before phase 13b (search overlay) as a small preparatory refactor rather than bundled into search implementation. Keeps phase 13b focused.
+**Template placeholder parsing complexity:** The research assumes simple `{{.Variable}}` patterns. If users want advanced features (placeholders with defaults like `{{.Date | default "today"}}`, multi-select placeholders, date pickers), the parsing becomes significantly more complex. For v1.4, strictly limit to simple text input prompts for each placeholder. Document this decision in Phase 15 plan to avoid scope creep. Advanced placeholder types are explicitly deferred to v2+.
 
-- **Custom date format scope:** Research identifies Go layout strings as unintuitive for users. Three approaches: (1) presets only, (2) curated 5-6 options, (3) free-text with validation. Decide during phase 11 planning based on target user sophistication. Research leans toward presets-only for simplicity.
+**Editor exit code semantics:** The research recommends comparing file content before/after editor execution instead of trusting exit codes (vim `:cq` returns 1 but is intentional discard, some plugin errors return non-zero even on successful save). This pattern needs validation during Phase 16 implementation — does `os.Stat` modification time check or content hash comparison perform better? Test with vim, neovim, nano, and emacs to ensure the pattern works across editors.
 
-- **Week numbering convention:** ISO 8601 weeks (Monday start, 1-53 numbering) vs US convention (Sunday start, different numbering). App already has `first_day_of_week` setting. Research suggests: if Monday start, use ISO week numbers; if Sunday start, use simple "Week N of month" count. Clarify during phase 12 planning.
+**SQLite PRAGMA persistence across reconnections:** The research identifies that some pragmas (busy_timeout, foreign_keys, synchronous) are per-connection settings. With `MaxOpenConns(1)` and infinite `ConnMaxLifetime`, the connection should stay alive forever, but the DSN pragma syntax (`?_pragma=busy_timeout(5000)`) is the more robust approach. Verify during Phase 14 implementation that the `modernc.org/sqlite` driver supports DSN pragmas (documentation suggests it does, but confirm via testing).
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- Full codebase review: all 20 source files in internal/ (app, calendar, todolist, store, config, theme, settings, holidays) - 2492 total LOC
-- Go standard library documentation (pkg.go.dev): time package Format/Parse, strings package Contains/ToLower
-- Bubble Tea framework (github.com/charmbracelet/bubbletea): Elm Architecture patterns, message routing
-- Lipgloss documentation (pkg.go.dev/github.com/charmbracelet/lipgloss): Style API, Foreground/Background methods
-- Bubbles textinput (pkg.go.dev/github.com/charmbracelet/bubbles/textinput): CharLimit, Placeholder, Focus/Blur API
+- **Bubble Tea pkg.go.dev v1.3.10** — Confirmed `tea.ExecProcess` API, message-passing patterns
+- **Bubble Tea exec example (official GitHub repo)** — Editor integration pattern, editing flag workaround
+- **Bubble Tea GitHub Issue #431, Discussion #424** — Alt-screen output leak behavior, maintainer-confirmed workaround
+- **modernc.org/sqlite pkg.go.dev v1.44.3** — Pure Go SQLite driver, `database/sql` compatibility, release notes
+- **SQLite official documentation** — PRAGMA user_version, WAL mode, journal modes, connection pragmas
+- **Go text/template stdlib docs** — Template syntax, execution model, text vs HTML templates
+- **Charmbracelet Glamour GitHub v0.10.0** — Markdown-to-ANSI rendering, word wrap configuration
+- **Current codebase analysis** — Store API (store.go), Todo struct (todo.go), app model (app/model.go), alt-screen usage (main.go)
 
 ### Secondary (MEDIUM confidence)
-- calcurse official manual (calcurse.org/files/manual.html): weekly view UX, date format presets, key bindings
-- calcure documentation (anufrievroman.gitbook.io/calcure): view options, confirmed no weekly view
-- taskwarrior-tui keybindings (kdheepak.com/taskwarrior-tui/keybindings/): `/` filter pattern
-- Go time.Format guides (yourbasic.org, gosamples.dev): Reference time layout patterns, format cheatsheets
-- Bubble Tea community patterns (leg100.github.io, donderom.com, lmika.org): State management, overlay composition
+- **Go SQLite benchmarks (github.com/cvilsmeier/go-sqlite-bench)** — Performance comparison modernc.org vs mattn vs ncruces (Aug 2025)
+- **SQLite performance tuning blog (phiresky.github.io)** — WAL mode, synchronous=NORMAL, cache_size pragmas for local apps
+- **Go + SQLite best practices (jacob.gold)** — Connection pooling, MaxOpenConns(1) for single-user apps, pragma configuration
+- **dstask, tui-journal, notepad-tui GitHub repositories** — Competitor feature analysis, external editor patterns, SQLite usage in TUI apps
+- **$VISUAL vs $EDITOR convention (bash.cyberciti.biz)** — Fallback chain standard ($VISUAL → $EDITOR → vi)
 
-### Tertiary (LOW confidence)
-- ISO week date Wikipedia: Week boundary edge cases, ISO 8601 numbering - used for background, not primary design driver
+### Tertiary (LOW confidence, needs validation)
+- **Glamour v2 module path** — v2 exists but has no stable tagged release, use v0.10.0 instead
+- **ncruces/go-sqlite3 performance claims** — Benchmarks show it's faster than modernc, but it's pre-v1.0 and adds wazero runtime
 
 ---
 *Research completed: 2026-02-06*

@@ -1,316 +1,442 @@
-# Pitfalls Research: v1.3 Feature Integration
+# Pitfalls Research: v1.4 Data & Editing
 
-**Domain:** TUI Calendar v1.3 -- weekly view, search/filter, overview colors, date format
+**Domain:** TUI Calendar v1.4 -- SQLite backend, markdown todo bodies, external editor integration
 **Researched:** 2026-02-06
-**Confidence:** HIGH (pitfalls derived from analysis of actual codebase + verified Bubble Tea patterns)
+**Confidence:** HIGH (pitfalls derived from codebase analysis + verified library documentation + community issue reports)
 
-This document covers pitfalls specific to ADDING four v1.3 features to the existing stable codebase. It replaces the prior v1.0 scaffold-focused pitfalls document. The existing app already handles the v1.0 pitfalls (atomic writes, frame sizing, WindowSizeMsg guard, Elm Architecture discipline).
+This document covers pitfalls specific to ADDING SQLite persistence, markdown template bodies, and external editor integration to the existing Go Bubble Tea TUI app (3,263 LOC, 13 completed phases).
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Weekly View Grid Width Differs From Monthly Grid Width
+### Pitfall 1: Store Interface Extraction Breaks Existing Callers
 
-**What goes wrong:** The existing `RenderGrid` function produces a 34-character-wide grid (7 columns x 4-char cells + 6 separators). A weekly view shows only 7 days but typically needs MORE horizontal space per cell (to show todo previews or date labels), not less. If the weekly view renders at a different width than 34 characters, the layout in `app.View()` breaks because `calendarInnerWidth` is hardcoded to 38 (34 grid + padding). The calendar pane either overflows or has dead space, and the todo pane width calculation `todoInnerWidth := m.width - calendarInnerWidth - (frameH * 2)` produces wrong values.
+**What goes wrong:** The current `Store` is a concrete struct pointer (`*store.Store`) threaded through `app.New()`, `todolist.New()`, `search.New()`, and `calendar.Model`. Replacing JSON with SQLite requires changing the Store internals, but every consumer depends directly on the concrete type. If the SQLite store has a different method signature (e.g., methods now return `error` where before they silently called `Save()`), every call site must be updated simultaneously. This creates a massive, error-prone changeover with no incremental testing.
 
-**Why it happens:** The app model treats the calendar pane as fixed-width (line 255 of `app/model.go`: `calendarInnerWidth := 38`). Monthly and weekly grids have fundamentally different space needs. Developers add the weekly view to `RenderGrid` or a new `RenderWeekGrid` function but forget to update the width contract at the app level.
+**Why it happens:** The existing store methods (`Add`, `Toggle`, `Delete`, `Update`, `SwapOrder`) call `s.Save()` internally and swallow the error. With SQLite, each operation becomes a database call that can fail (locked, full disk, schema error). The natural impulse is to make methods return `error`, but this changes the interface for all 6+ callers across 4 packages.
 
 **How to avoid:**
-- Make the calendar pane width dynamic, queried from the calendar model based on current view mode: `calendarInnerWidth := m.calendar.ContentWidth()`
-- Alternatively, keep both views at exactly 34 characters wide. The weekly view renders 7 cells in the same 4-char format but with a single row instead of 5-6 rows. This is simpler and avoids the width problem entirely.
-- Decide the approach BEFORE implementation. The "same width" approach is strongly recommended -- it preserves the existing layout contract and only changes the vertical dimension.
+- Extract a `Store` interface BEFORE changing the backend. The interface should match the current concrete API exactly -- methods that don't return errors continue not returning errors. The SQLite implementation can log or handle errors internally during the transition.
+- Alternatively, keep the current API contract (no returned errors) for the SQLite store too. A personal desktop SQLite database on a local filesystem should virtually never fail. Log errors rather than propagating them up to the TUI layer, which has no meaningful way to display them anyway.
+- Do NOT attempt to add error returns to the store methods and simultaneously swap to SQLite. These are two separate changes.
 
 **Warning signs:**
-- Todo pane suddenly shrinks or grows when toggling views
-- Calendar content wraps to next line in weekly mode
-- Hardcoded `38` still present in app model after adding weekly view
+- Store method signatures change (adding `error` returns) in the same commit that adds SQLite
+- Compile errors in 4+ packages during the migration
+- Tests for existing features break because of interface changes, not SQLite bugs
 
-**Recovery cost:** LOW -- layout arithmetic fix, no data impact.
+**Recovery cost:** MEDIUM -- requires touching every call site. If done after SQLite is already integrated, you cannot tell whether bugs are from the interface change or the backend change.
 
-**Phase to address:** Weekly view phase (first).
+**Phase to address:** Phase 14 (Database Backend). Extract interface first, then swap implementation.
 
 ---
 
-### Pitfall 2: View Mode State Not Synced Across Calendar and Todo List
+### Pitfall 2: JSON-to-SQLite Migration Loses Data or Runs Repeatedly
 
-**What goes wrong:** When toggling between monthly and weekly view, the calendar model changes its view mode but the todo list model still shows the full month of todos. Or worse: the calendar shows "week of Feb 3-9" but the todo list shows all of February, creating a confusing mismatch. The `SetViewMonth(year, month)` API on the todo list has no concept of "week" -- it only accepts year+month.
+**What goes wrong:** The auto-migration (read existing `todos.json`, write to SQLite, optionally rename/delete JSON) either: (a) silently loses data if the JSON has fields the SQLite schema doesn't expect, (b) runs on every startup instead of once because the "already migrated" flag is unreliable, or (c) creates duplicate todos if the migration is interrupted mid-way and re-run.
 
-**Why it happens:** The existing sync point is in `app/model.go` line 137 and 170: `m.todoList.SetViewMonth(m.calendar.Year(), m.calendar.Month())`. This works because the calendar only navigates at month granularity. Adding weekly navigation means the calendar now has sub-month positioning (which week), but the todo list API cannot express "show only this week's todos."
+**Why it happens:** The current JSON envelope (`Data{NextID, Todos}`) is simple, but edge cases exist: what if `todos.json` contains a todo with `SortOrder: 0` (legacy data -- the `EnsureSortOrder()` method already handles this)? What if `CreatedAt` is empty (older entries before that field was added)? The migration must handle ALL historical variations of the JSON format, not just the current schema.
 
 **How to avoid:**
-- Decide upfront whether weekly view filters the todo list to that week's todos or not.
-- **Recommended approach:** Weekly view is a CALENDAR-ONLY visual change. The todo list always shows the full month regardless of view mode. This avoids the sync problem entirely and keeps the existing `SetViewMonth` API unchanged.
-- If week-level todo filtering IS desired: extend the todo list API to `SetViewRange(startDate, endDate string)` and update the sync points in app.Update() to pass the week boundaries.
+- Migration must be idempotent. Check if the SQLite database already has data (a schema version table, or simply `SELECT COUNT(*) FROM todos`). If data exists, skip migration.
+- Preserve the original `todos.json` file as `todos.json.bak` after successful migration. Never delete it during migration. Let users manually clean up.
+- Use a transaction for the entire migration: BEGIN, insert all todos, COMMIT. If anything fails, ROLLBACK and fall back to JSON mode. Never leave the user with neither working backend.
+- Handle the `NextID` value explicitly. SQLite autoincrement and the JSON `NextID` are different ID schemes. Either seed the SQLite autoincrement to `NextID` or use the existing integer IDs as explicit values (not autoincrement).
+- Run `EnsureSortOrder()` equivalent during migration, not after, so migrated data is clean.
 
 **Warning signs:**
-- Calendar shows week view but todo list shows todos from dates not visible in the grid
-- Toggling view mode does not update the todo list at all
-- Navigation in weekly mode (prev/next week) does not call the todo list sync point
+- Migration code does not check whether SQLite already has data
+- No transaction wrapping the migration inserts
+- `todos.json` deleted before SQLite write is confirmed
+- `NextID` from JSON not carried over, causing ID collisions with existing references
 
-**Recovery cost:** MEDIUM -- requires API redesign of the calendar-todolist sync if discovered late.
+**Recovery cost:** HIGH -- data loss is irrecoverable if the JSON backup was deleted. Duplicate data requires manual dedup.
 
-**Phase to address:** Weekly view phase. Decide the sync strategy during planning, not during coding.
+**Phase to address:** Phase 14 (Database Backend). Migration logic is the highest-risk code in the entire milestone.
 
 ---
 
-### Pitfall 3: Date Format Round-Trip Corruption
+### Pitfall 3: SQLite Connection Misconfiguration Causes "Database Is Locked" on Single-User Desktop App
 
-**What goes wrong:** The store uses `YYYY-MM-DD` internally (`store.dateFormat = "2006-01-02"`). A "date format" setting changes how dates are DISPLAYED (e.g., `DD/MM/YYYY`, `MM/DD/YYYY`). If the display format is accidentally used for storage or parsing, dates get silently corrupted. For example, storing `"06/02/2026"` (Feb 6 in DD/MM/YYYY) and later parsing it as MM/DD/YYYY produces June 2 -- a silent, data-corrupting bug with no error.
+**What goes wrong:** Go's `database/sql` package uses a connection pool by default. With SQLite (a file-level lock database), multiple connections from the pool attempt concurrent access and produce `SQLITE_BUSY` / "database is locked" errors. This manifests as random, non-reproducible save failures -- a todo toggle works 99% of the time but occasionally silently fails.
 
-**Why it happens:** Go's `time.Format` and `time.Parse` use layout strings, not format specifiers. The layout `"01/02/2006"` means MM/DD/YYYY while `"02/01/2006"` means DD/MM/YYYY. These look nearly identical in code. A developer might pass the display format layout to `time.Parse` when reading from the store, or pass the display format to `store.Add()` instead of the canonical format.
+**Why it happens:** The default `database/sql` pool has unlimited `MaxOpenConns`. For PostgreSQL or MySQL this is fine (server handles concurrency). For SQLite, the database file itself IS the server. Multiple goroutines opening connections trigger file-level lock contention. Even with WAL mode, write contention from multiple connections in the same process is problematic.
 
 **How to avoid:**
-- **Hard rule:** The store NEVER changes. All dates in the store remain `YYYY-MM-DD` strings. The format setting is display-only.
-- The date format conversion happens exclusively in `View()` functions and `renderTodo()`. Never in `Update()`, never in store methods.
-- Create a single conversion function:
+- Set `db.SetMaxOpenConns(1)` for a single-user desktop app. This eliminates lock contention entirely. SQLite operations are fast enough that serialized access through one connection has no perceptible latency for a personal todo app.
+- Set `db.SetMaxIdleConns(1)` and `db.SetConnMaxLifetime(0)` (infinite) to keep that one connection alive.
+- Enable WAL mode via pragma: `PRAGMA journal_mode=WAL` -- this allows concurrent reads even with a single writer, useful if future features add background queries.
+- Set `PRAGMA busy_timeout=5000` as a safety net, even with single-connection config.
+- Set `PRAGMA foreign_keys=ON` explicitly (SQLite defaults to OFF for backward compatibility).
+- These pragmas must be run on EVERY new connection. Use a connection-init hook or run them immediately after `sql.Open()`.
+
+**Warning signs:**
+- `sql.Open()` called without `SetMaxOpenConns(1)`
+- Pragmas set only once at startup instead of per-connection
+- Intermittent "database is locked" errors during rapid todo toggling
+- `_journal_mode` or `_busy_timeout` not in the DSN or connection setup
+
+**Recovery cost:** LOW -- configuration fix, no data impact. But the intermittent nature makes it hard to diagnose.
+
+**Phase to address:** Phase 14 (Database Backend). Set connection config as the very first thing after `sql.Open()`.
+
+---
+
+### Pitfall 4: tea.ExecProcess Leaks View Content to Terminal
+
+**What goes wrong:** When using `tea.ExecProcess` to launch `$EDITOR`, Bubble Tea exits the alternate screen buffer before the editor starts. During this transition, the `View()` function renders one final frame to the NORMAL terminal buffer (not the alternate screen). The entire TUI layout (calendar, todos, help bar) appears as garbled text in the regular terminal, persisting even after the editor closes and the TUI resumes.
+
+**Why it happens:** This is a known Bubble Tea behavior ([GitHub Issue #431](https://github.com/charmbracelet/bubbletea/issues/431), [Discussion #424](https://github.com/charmbracelet/bubbletea/discussions/424)). When `ExecProcess` is called, the framework does a final render during alternate screen teardown. Since the app uses `tea.WithAltScreen()` (line 42 of `main.go`), this transition leaks the current `View()` output to stdout.
+
+**How to avoid:**
+- Set an `editing` boolean flag on the model BEFORE returning the `tea.ExecProcess` command. In `View()`, check this flag and return an empty string (or minimal "Editing..." text):
   ```
-  func FormatDate(isoDate string, layout string) string
+  if m.editing {
+      return ""
+  }
   ```
-  This function takes the ISO date from the store and returns the display string. There is no reverse function needed -- user input for dates always uses `YYYY-MM-DD` (the existing dateInputMode already enforces this).
-- Store the display format layout string in config, NOT the formatted date.
+- After the editor exits (in the `editorFinishedMsg` handler), set `m.editing = false` to restore normal rendering.
+- This is the same pattern documented in the official exec example (`m.quitting` flag). It is not optional -- without it, every editor launch produces visual garbage.
 
 **Warning signs:**
-- `time.Parse` called with any layout other than `"2006-01-02"` on store data
-- Display format layout string passed to any store method
-- User-entered dates parsed with the display format instead of `"2006-01-02"`
-- Dates appearing correct in one format setting but wrong after changing the setting
+- No state flag checked in `View()` before `ExecProcess` returns
+- TUI content appears in terminal scrollback after editor closes
+- Testing only with non-altscreen mode (where the bug doesn't manifest)
 
-**Recovery cost:** HIGH -- silent data corruption. Dates in the JSON file become ambiguous. If `"03/04/2026"` is stored, you cannot determine if it was March 4 or April 3 without external context. Recovery may require user to manually fix their data file.
+**Recovery cost:** LOW -- adding a flag and View guard is a small change. But if discovered late, users have already seen the broken behavior.
 
-**Phase to address:** Date format phase. Must be enforced from the first line of implementation.
+**Phase to address:** Phase 16 (External Editor). Must be in the initial implementation, not a follow-up fix.
 
 ---
 
-### Pitfall 4: Custom Date Format Layout String Injection
+### Pitfall 5: Temp File for Editor Has Wrong Extension, Breaking Syntax Highlighting
 
-**What goes wrong:** The date format feature offers "3 presets + custom." If the custom format allows arbitrary Go time layout strings, users can create formats that produce ambiguous output (e.g., `"01 02"` -- is that month-day or day-month?) or formats that cannot round-trip at all (e.g., `"Jan 2"` -- loses the year). Even worse, certain characters in Go layout strings have magic meaning: `1`, `2`, `3`, `4`, `5`, `6`, `7`, `01`, `02`, `15`, `Jan`, `Mon`, `MST`, etc. A user typing `"My date: 12/25"` as a custom format would see garbled output because Go interprets `1`, `2`, `5` as format verbs.
+**What goes wrong:** The external editor workflow writes the todo's markdown body to a temp file, opens the editor, then reads it back. If the temp file is created with `os.CreateTemp("", "todo-*.tmp")`, editors like vim/neovim detect filetype from the extension. A `.tmp` extension means no markdown syntax highlighting, no spell checking, and no markdown-specific keybindings. Users editing a markdown body see plain text with no formatting aids.
 
-**Why it happens:** Go's time layout system is notoriously unintuitive. Every digit and many words in the reference time `Mon Jan 2 15:04:05 MST 2006` are format specifiers. Users unfamiliar with Go's system (which is everyone) will expect strftime-style `%Y-%m-%d` or moment.js-style `YYYY-MM-DD`.
+**Why it happens:** `os.CreateTemp` generates random filenames with the provided pattern. The `*` is replaced with random characters, so `"todo-*.tmp"` produces `todo-abc123.tmp`. Vim/neovim use the extension for filetype detection. The `.tmp` extension maps to no known filetype.
 
 **How to avoid:**
-- **Recommended:** Do NOT expose raw Go layout strings to the user. Instead, offer a small set of validated presets:
-  - `YYYY-MM-DD` (ISO) -> layout `"2006-01-02"`
-  - `DD/MM/YYYY` (European) -> layout `"02/01/2006"`
-  - `MM/DD/YYYY` (US) -> layout `"01/02/2006"`
-- If a "custom" option is truly needed, present it as a preset-picker with perhaps 5-6 curated options, not a free-text field.
-- If free-text custom IS implemented: validate the layout by formatting a known reference date and checking the output looks reasonable. Show a live preview in the settings overlay (the existing live-preview pattern supports this).
+- Use `.md` as the extension in the temp file pattern: `os.CreateTemp("", "todo-*.md")`. This gives vim/neovim the `markdown` filetype automatically.
+- Alternatively, pass `+set ft=markdown` as a vim/neovim argument, but this is editor-specific and breaks for other editors (nano, micro, emacs). The `.md` extension approach works universally.
+- Clean up the temp file after reading it back. Use `defer os.Remove(tmpFile.Name())` -- but be aware this runs even if the editor fails to launch. That's fine; the file should be cleaned up regardless.
 
 **Warning signs:**
-- Free-text input field for date format with no validation
-- Settings overlay does not preview the formatted date
-- Layout string stored in config but never validated on load (corrupt config produces garbled dates on next startup)
+- Temp file pattern uses `.tmp` or no extension
+- Editor opens with plain text mode when editing markdown content
+- No `defer os.Remove()` for the temp file
 
-**Recovery cost:** LOW -- display-only, no data corruption. But poor UX if dates render as nonsense.
+**Recovery cost:** LOW -- one-line fix to the temp file pattern. But poor UX if users don't get syntax highlighting for their markdown.
 
-**Phase to address:** Date format phase. Design the preset list during planning.
+**Phase to address:** Phase 16 (External Editor). Use `.md` extension from the start.
 
 ---
 
-### Pitfall 5: Search Mode Conflicts With Existing Input State Machine
+### Pitfall 6: Adding "Body" Field to Todo Struct Breaks JSON Backward Compatibility
 
-**What goes wrong:** The todolist already has a 5-mode state machine: `normalMode`, `inputMode`, `dateInputMode`, `editTextMode`, `editDateMode`. Adding search introduces at least one new mode (`searchMode`), possibly two (inline filter + full-screen overlay). If the search textinput reuses the same `m.input` field as the add/edit modes, entering search while mid-edit (or vice versa) corrupts the input state -- the user's half-typed todo text gets replaced by a search query, or the search query gets saved as a todo.
+**What goes wrong:** Phase 15 adds a `Body string` field to the `Todo` struct for markdown content. If the SQLite migration (Phase 14) has already replaced JSON, this isn't a JSON problem. But if Phase 14 and 15 are developed concurrently or Phase 14 is delayed, the new field in the struct changes JSON serialization. Existing `todos.json` files without a `body` field deserialize with `Body: ""` (correct), but if `omitempty` is NOT on the json tag, re-serialized JSON includes `"body": ""` for every todo, bloating the file. If `omitempty` IS used, round-trip works but is cosmetically different.
 
-**Why it happens:** The current model has a single `input textinput.Model` field shared across all modes. The mode enum prevents concurrent use in normal operation, but adding a new mode creates edge cases: what happens if the user presses the search key while in `editTextMode`? The `IsInputting()` check at the app level (line 122 of `app/model.go`) suppresses most keys during input, but search might be bound to a key not covered by `IsInputting()`.
+**Why it happens:** Phase ordering matters. Phase 15 depends on Phase 14 (the roadmap says so). But developers sometimes work on features in parallel or re-order phases. If `Body` is added to the struct while JSON persistence still exists, the JSON format changes.
 
 **How to avoid:**
-- **Option A (recommended):** Use a separate `searchInput textinput.Model` field for search, distinct from the existing `input` field. This eliminates any state sharing between search and add/edit.
-- **Option B:** Continue sharing `input` but make the mode transitions explicit. Search key is blocked when `IsInputting()` returns true. Exiting search clears the input and resets to `normalMode`.
-- Either way: ensure `IsInputting()` returns true for the search mode too, so that `q` (quit) and `tab` (switch pane) are suppressed during search input.
+- Enforce phase ordering strictly. Phase 14 (SQLite) MUST ship before Phase 15 (markdown bodies) begins. The SQLite schema can include the `body TEXT DEFAULT ''` column from the start, making the later addition seamless.
+- If phases DO overlap: add `Body string \`json:"body,omitempty"\`` with `omitempty` to maintain JSON backward compatibility during the transition window.
+- The SQLite schema should define the `body` column in Phase 14 even though Phase 15 populates it. This avoids a schema migration between phases.
 
 **Warning signs:**
-- Single `textinput.Model` field used for both search and add/edit
-- Search key works while user is mid-edit of a todo
-- `IsInputting()` does not cover the new search mode
-- App quits when user types `q` during search
+- `Body` field added to Todo struct while JSON store is still in use
+- No `omitempty` json tag on the Body field
+- SQLite schema created without a `body` column, requiring ALTER TABLE later
 
-**Recovery cost:** MEDIUM -- requires refactoring the input field ownership if discovered after both features are built.
+**Recovery cost:** LOW if caught during development. MEDIUM if users have already serialized todos with the broken format.
 
-**Phase to address:** Search/filter phase. Design input ownership before coding.
+**Phase to address:** Phase 14 design (include body column in schema) and Phase 15 implementation.
 
 ---
 
-### Pitfall 6: Full-Screen Search Overlay Message Routing Conflict
+## Integration Pitfalls
 
-**What goes wrong:** The app already has a full-screen overlay pattern (`showSettings`). Adding a full-screen search overlay creates a second overlay state. If both `showSettings` and `showSearch` can be true simultaneously, the app has two overlays competing for message routing and View rendering. Even if they are mutually exclusive, the routing logic in `app.Update()` becomes a growing chain of `if showSettings { ... } else if showSearch { ... }` that is easy to get wrong.
+### Integration Pitfall 1: Store.Save() Calls Embedded in Every Mutation Don't Map to SQLite
 
-**Why it happens:** The settings overlay was the first and only overlay, so it was implemented as a simple boolean flag with inline routing. Each new overlay adds another flag and another routing branch. The code in `app.Update()` lines 114-117 shows the pattern: `if m.showSettings { return m.updateSettings(msg) }`. Adding search duplicates this pattern.
+**What goes wrong:** The current store calls `s.Save()` (full JSON write) inside every mutation: `Add()`, `Toggle()`, `Delete()`, `Update()`, `SwapOrder()`. With SQLite, each mutation is an individual SQL statement (INSERT, UPDATE, DELETE). There's no equivalent of "write the whole file." If a developer naively wraps each SQL call in a transaction, every mutation is its own transaction -- correct but slow for batch operations. Conversely, if mutations are grouped in a transaction that gets interrupted (user hits Ctrl+C mid-batch), partial writes occur.
+
+**Why it happens:** The JSON store has a simple mental model: mutate in-memory, then flush to disk. SQLite has a different model: each SQL statement is immediately durable (with WAL). The `Save()` pattern has no equivalent.
 
 **How to avoid:**
-- **Recommended:** Generalize the overlay pattern to an enum or interface before adding the second overlay:
+- Remove the `Save()` method from the SQLite store. Each mutation method (Add, Toggle, Delete, Update, SwapOrder) directly executes its SQL statement and returns. There is no "flush" step.
+- For the migration insert (bulk operation), use an explicit transaction. For normal CRUD, individual statements are fine -- SQLite autocommit handles durability.
+- Do NOT carry over the `s.data.Todos` in-memory slice pattern. The SQLite store should query the database for every read, not maintain an in-memory cache. For a personal todo app (hundreds of todos at most), this eliminates cache-invalidation bugs with zero perceptible performance cost.
+
+**Warning signs:**
+- SQLite store maintains an in-memory `[]Todo` alongside the database
+- A `Save()` method exists on the SQLite store that writes the in-memory slice to SQLite
+- Reads come from memory instead of the database
+- Data inconsistencies between in-memory state and database
+
+**Recovery cost:** MEDIUM -- requires rethinking the store's read pattern if the in-memory cache is already integrated.
+
+**Phase to address:** Phase 14 (Database Backend). Design the store as query-on-read from the start.
+
+---
+
+### Integration Pitfall 2: EnsureSortOrder Migration Semantics in SQLite
+
+**What goes wrong:** The current JSON store has `EnsureSortOrder()` which runs at load time to backfill `SortOrder` for legacy todos. In a SQLite backend, this logic needs to be a one-time schema migration, not a per-startup operation. If `EnsureSortOrder()` runs on every startup against SQLite, it performs an unnecessary UPDATE on every todo every time the app launches.
+
+**Why it happens:** The current code calls `EnsureSortOrder()` in `NewStore()` (line 36 of `store.go`). It's harmless for JSON (cheap in-memory loop) but wasteful for SQLite (N UPDATE statements).
+
+**How to avoid:**
+- Perform the SortOrder backfill as part of the JSON-to-SQLite migration. During migration, if a todo has `SortOrder == 0`, assign `(row_index + 1) * 10` before inserting into SQLite.
+- Do NOT call `EnsureSortOrder()` on the SQLite store. Instead, make `SortOrder` NOT NULL DEFAULT in the schema with a reasonable value. New todos get `MAX(sort_order) + 10` via SQL, matching the current Go logic.
+- If you choose to keep `EnsureSortOrder()` for safety, gate it behind a version check: only run if the database is at schema version 1 (initial migration).
+
+**Warning signs:**
+- `EnsureSortOrder()` still called in the SQLite store constructor
+- EXPLAIN shows full table scans on every app startup
+- SortOrder column is nullable in the schema
+
+**Recovery cost:** LOW -- removing the call is trivial. But unnecessary database writes on startup are wasteful.
+
+**Phase to address:** Phase 14 (Database Backend).
+
+---
+
+### Integration Pitfall 3: Markdown Body Rendering Conflicts With Fixed-Width Pane Layout
+
+**What goes wrong:** The todo list pane has a calculated width: `todoInnerWidth := m.width - calendarInnerWidth - (frameH * 2)`. Rendering markdown in this space using a library like Glamour produces output that may exceed this width (long lines, wide code blocks, table rendering). If the rendered markdown is wider than the pane, lipgloss layout breaks -- text wraps awkwardly, columns misalign, or content overflows into the calendar pane.
+
+**Why it happens:** Glamour renders markdown to a specified width, but certain elements (code blocks, long URLs, pre-formatted text) may resist wrapping. The todo list pane is already the flexible-width pane (it absorbs whatever space the calendar doesn't use), but on narrow terminals (80 columns), the todo pane is only ~34 characters wide after the calendar takes its 38.
+
+**How to avoid:**
+- Pass the pane width to the markdown renderer: `glamour.RenderWithEnvironmentConfig(body, glamour.WithWordWrap(todoInnerWidth))`.
+- For Phase 15 (markdown templates), the initial display in the todo LIST can remain single-line (title only). Only show the full rendered markdown body in a detail/preview view or when editing. This sidesteps the rendering-in-narrow-pane problem entirely for the list view.
+- If a full markdown preview IS shown inline, truncate to a fixed number of lines (e.g., 3-line preview) with a "..." indicator.
+
+**Warning signs:**
+- Markdown rendered at full terminal width instead of pane width
+- Long markdown lines cause the todo pane to overflow
+- No width parameter passed to the markdown renderer
+- Narrow terminal (80 cols) test shows broken layout
+
+**Recovery cost:** LOW -- passing width to renderer is a one-parameter fix. But discovering it requires testing at various terminal sizes.
+
+**Phase to address:** Phase 15 (Markdown Templates). Decide the display strategy during planning.
+
+---
+
+### Integration Pitfall 4: External Editor Workflow Does Not Refresh Store State
+
+**What goes wrong:** The editor writes the modified markdown body to a temp file. After the editor exits, the app reads the temp file and calls `store.Update()`. But if the store is SQLite with query-on-read semantics, other parts of the app may have stale cached data. More subtly, if the todolist model has a `cursor` pointing at index 3 and the body update changes the todo's sort-relevant properties (it shouldn't, but might), the cursor points at the wrong item after refresh.
+
+**Why it happens:** The `editorFinishedMsg` handler reads the temp file and updates the store, but the todo list's `visibleItems()` re-queries the store on every `View()` call (assuming SQLite query-on-read), so it should be fine. The real danger is with in-memory cache designs (Integration Pitfall 1) where the cache is stale after a direct database update.
+
+**How to avoid:**
+- If using query-on-read (recommended), the `View()` cycle after `editorFinishedMsg` automatically shows fresh data. No explicit refresh needed.
+- Also call `m.calendar.RefreshIndicators()` after the editor update, as the existing pattern does for all store mutations (line 181 of `app/model.go`).
+- The `editorFinishedMsg` handler should: (1) read temp file, (2) call store.UpdateBody(), (3) remove temp file, (4) set `m.editing = false`, (5) return nil cmd. Keep this sequence simple and synchronous.
+
+**Warning signs:**
+- Calendar indicators not refreshing after editor save
+- Todo list showing old body content after editor save (cache not invalidated)
+- Temp file not cleaned up on editor error
+
+**Recovery cost:** LOW -- adding a refresh call is trivial. But stale data display is confusing to users.
+
+**Phase to address:** Phase 16 (External Editor).
+
+---
+
+### Integration Pitfall 5: $EDITOR Environment Variable Handling Edge Cases
+
+**What goes wrong:** The app reads `$EDITOR` to determine which editor to launch. But: (a) `$EDITOR` is empty on many systems (especially macOS default), (b) `$EDITOR` can contain arguments (e.g., `EDITOR="code --wait"`), (c) `$EDITOR` can point to a GUI editor that doesn't block the terminal (VS Code without `--wait`, Sublime Text). If the editor returns immediately (GUI editor without wait flag), the app reads the temp file before the user has finished editing -- saving empty or stale content.
+
+**Why it happens:** `exec.Command(os.Getenv("EDITOR"), tmpFile)` works only if `$EDITOR` is a single executable name with no arguments. If it's `"vim"`, fine. If it's `"code --wait"`, `exec.Command` treats the entire string as the executable name and fails. If `$EDITOR` is unset and the app defaults to `"vi"`, it fails on systems without `vi` installed.
+
+**How to avoid:**
+- Check `$EDITOR`, then `$VISUAL`, then fall back to a sensible default (`"vi"` on Unix).
+- Split `$EDITOR` on spaces to separate the command from arguments. Use the first token as the executable and append the rest as arguments before the filename:
   ```
-  type overlay int
-  const (
-      noOverlay overlay = iota
-      settingsOverlay
-      searchOverlay
-  )
+  parts := strings.Fields(os.Getenv("EDITOR"))
+  args := append(parts[1:], tmpFile)
+  cmd := exec.Command(parts[0], args...)
   ```
-  The `Update()` function routes based on `m.activeOverlay`, and only one overlay can be active at a time. This prevents the "two overlays open simultaneously" bug by design.
-- Ensure the search overlay key binding is suppressed when settings is open, and vice versa.
+- This handles `EDITOR="vim"`, `EDITOR="code --wait"`, and `EDITOR="nvim -u NONE"`.
+- For the non-blocking GUI editor case: document that `$EDITOR` should be a terminal editor or a GUI editor with a wait flag. This is a user configuration issue, not a bug to solve. The same limitation applies to `git commit`, `crontab -e`, and every other tool that uses `$EDITOR`.
 
 **Warning signs:**
-- Two separate boolean flags (`showSettings`, `showSearch`) instead of a single enum
-- Both overlays can be opened simultaneously
-- Copy-pasted routing logic for each overlay
+- `exec.Command(editor, file)` where `editor` is the raw `$EDITOR` string
+- No fallback when `$EDITOR` is empty
+- Editor launches but app reads the file back immediately (before user saves)
+- `$EDITOR` with spaces in the path (Windows-style paths) not handled
 
-**Recovery cost:** LOW -- refactoring booleans to an enum is straightforward. But the two-overlays-open bug can be confusing to debug if it manifests as garbled rendering.
+**Recovery cost:** LOW -- string splitting fix. But empty-$EDITOR crashes are bad first-run experience.
 
-**Phase to address:** Search/filter phase (or earlier if architecture is being cleaned up).
+**Phase to address:** Phase 16 (External Editor).
 
 ---
 
-### Pitfall 7: Overview Color Calculation Done in View() on Every Render
+## "Looks Done But Isn't" Patterns
 
-**What goes wrong:** The overview panel (`renderOverview()` in `calendar/model.go`) already calls `m.store.TodoCountsByMonth()` on every render. Adding color coding (red for overdue/incomplete, green for all-done) requires ADDITIONAL per-month computation: not just "how many todos" but "how many done vs incomplete." If this computation iterates all todos for every month on every render frame, it creates O(months x todos) work per frame. For a personal app this is unlikely to cause visible lag, but it sets a bad pattern.
+These are bugs that pass initial manual testing but fail under real-world conditions.
 
-**Why it happens:** The existing code already computes overview data fresh on every `View()` call (line 112: `months := m.store.TodoCountsByMonth()`). This was acceptable because it was a simple count. Adding completion-status color coding requires a second pass or a richer data structure, doubling the per-render cost.
+### Pattern 1: SQLite Database Path Not Created
+
+**What looks done:** SQLite store opens successfully in tests using `:memory:` or a path in the current directory.
+
+**What's actually wrong:** In production, the database path is in `~/.config/todo-calendar/todos.db`. If the directory doesn't exist (first-time user), `sql.Open()` with `modernc.org/sqlite` does NOT create intermediate directories -- it creates the file but only if the parent directory exists. The current JSON store has `os.MkdirAll(dir, 0755)` in `Save()` (line 63 of `store.go`). The SQLite equivalent must also ensure the directory exists before opening.
+
+**How to detect:** Test with a fresh user profile (empty `~/.config/`). The app should create `~/.config/todo-calendar/` and then `todos.db` inside it.
+
+**Phase to address:** Phase 14.
+
+---
+
+### Pattern 2: Migration Succeeds But IDs Don't Match
+
+**What looks done:** All todos appear in SQLite after migration. Counts match.
+
+**What's actually wrong:** SQLite autoincrement starts at 1. The JSON store has `NextID` which may be 47 (after 46 todos, some deleted). If the migration uses autoincrement, new SQLite IDs are 1-N, not the original IDs. Any external references to todo IDs (none currently, but future features like markdown links `[see todo #12]`) would break. More immediately, the `editingID` field in the todolist model (line 58) stores the todo ID during editing -- if editing starts before migration and finishes after, the ID is wrong.
+
+**How to detect:** After migration, verify that `SELECT id FROM todos` matches the original JSON IDs exactly. Verify that `Find(originalID)` returns the correct todo.
+
+**Phase to address:** Phase 14. Use explicit ID values in INSERT, not autoincrement.
+
+---
+
+### Pattern 3: Editor Returns Error But File Was Actually Saved
+
+**What looks done:** Error handling checks `editorFinishedMsg.err` and shows an error if non-nil.
+
+**What's actually wrong:** Some editors return non-zero exit codes for valid reasons (vim returns 1 if the user quit with `:cq`, which means "quit without saving" -- but neovim may return 1 for certain plugin errors even if the file was saved). If the error handler skips reading the file on ANY error, legitimate saves are lost. Conversely, if the error handler always reads the file regardless of error, a `:cq` quit (intentional discard) saves content the user wanted to discard.
+
+**How to detect:** Test with `:wq` (save and quit), `:q!` (quit without saving, but file was already written), and `:cq` (quit with error, file unchanged). The app should save the file content in all cases EXCEPT when the file content is unchanged (no user edits).
+
+**Recommended approach:** Compare file content before and after editor. If content changed, save it -- regardless of exit code. If content is identical to what was written, skip the save. This handles both "normal save" and "intentional discard" correctly.
+
+**Phase to address:** Phase 16.
+
+---
+
+### Pattern 4: Markdown Template Placeholders in User Content
+
+**What looks done:** Templates with `{{date}}` and `{{title}}` placeholders work correctly.
+
+**What's actually wrong:** If a user creates a todo with text containing `{{` or `}}` (literal curly braces), and that text is later processed through the template engine, Go's `text/template` attempts to parse it as a template action. This produces either parse errors or unexpected output. For example, a todo titled "Configure {{nginx}}" would fail template parsing.
+
+**How to detect:** Create a todo with `{{` in its title or body, then apply any template operation that processes the text.
+
+**How to avoid:** Template expansion should only happen at todo CREATION time (when filling in a template). Once a todo body is populated, it is plain markdown -- never re-processed through the template engine. Store the expanded result, not the template + data.
+
+**Phase to address:** Phase 15.
+
+---
+
+### Pattern 5: Concurrent TUI State During Editor Execution
+
+**What looks done:** Editor launches, user edits, editor closes, TUI resumes.
+
+**What's actually wrong:** While the editor is running, the Bubble Tea program is "paused" but the terminal can still receive signals. If the user resizes the terminal while the editor is open, the `WindowSizeMsg` is received when the TUI resumes. If the model's `editing` flag prevents normal `View()` rendering but NOT normal `Update()` processing, the window size message updates `m.width` and `m.height` correctly. This is actually fine. BUT: if the editing flag also prevents `Update()` from processing, the resize message is lost and the TUI renders at the wrong size after resuming.
+
+**How to detect:** Open editor, resize terminal while editor is open, close editor. The TUI should render at the new size.
+
+**How to avoid:** The `editing` flag should only affect `View()` (return empty string). Do NOT block `Update()` processing -- let `WindowSizeMsg` and other messages update the model state normally.
+
+**Phase to address:** Phase 16.
+
+---
+
+### Pattern 6: SQLite PRAGMA Settings Lost on Connection Reconnect
+
+**What looks done:** Pragmas set after `sql.Open()` work correctly during the session.
+
+**What's actually wrong:** Go's `database/sql` pool may close and reopen connections transparently. PRAGMAs like `journal_mode=WAL` are persistent (they survive reconnection) but `busy_timeout`, `foreign_keys`, and `synchronous` are per-connection settings. If the pool closes the idle connection and opens a new one, these pragmas revert to defaults. With `MaxOpenConns(1)` and `MaxIdleConns(1)` and `ConnMaxLifetime(0)`, the connection should stay alive forever -- but this depends on correct pool configuration.
+
+**How to detect:** Set a long `ConnMaxLifetime` (e.g., 1 hour), wait past it, then perform an operation. Check if `foreign_keys` is still ON.
 
 **How to avoid:**
-- Extend `TodoCountsByMonth()` to return completion data in the same pass: a struct with `{Total, Done, Incomplete int}` per month. One iteration, richer data.
-- Alternatively, cache the overview data and only recompute after store mutations (when `RefreshIndicators()` is called). The current `RefreshIndicators()` only refreshes the current month's day-level indicators -- extend it to also refresh the overview cache.
+- Use `db.Conn(ctx)` to get a dedicated connection and keep it for the app's lifetime. Or:
+- Use a connection-init hook (`sql.Register` a driver wrapper that runs PRAGMAs on new connections). For `modernc.org/sqlite`, you can append pragmas to the DSN: `file:path/todos.db?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(ON)`.
+- The DSN approach is the simplest and most reliable.
 
-**Warning signs:**
-- Two separate store methods called in `renderOverview()` (one for counts, one for completion status)
-- Noticeable delay when navigating months with many todos
-- `TodoCountsByMonth()` signature unchanged but new `CompletionByMonth()` method added alongside it
-
-**Recovery cost:** LOW -- refactoring the store method to return richer data is a minor change.
-
-**Phase to address:** Overview colors phase.
+**Phase to address:** Phase 14.
 
 ---
 
-## Technical Debt Patterns
+### Pattern 7: Body Field Displayed in Single-Line Todo List View
 
-| Shortcut | Immediate Benefit | Long-term Cost | Avoid? |
-|----------|-------------------|----------------|--------|
-| Hardcoded `calendarInnerWidth := 38` surviving into weekly view | No layout refactor needed | Breaks when weekly view needs different width | YES -- make it dynamic or verify both views fit in 38 |
-| Reusing single `textinput.Model` for search + add/edit | Fewer fields on model | State corruption when modes overlap | YES -- use separate textinput for search |
-| Separate boolean flags for each overlay | Quick to add | Combinatorial state explosion with each new overlay | YES -- use enum from the second overlay onward |
-| Storing display format in store (even "temporarily") | Simpler display logic | Data corruption if canonical format is lost | NEVER -- display format is View-only |
-| `strings.ToLower` on every keystroke during search | Correct filtering | Allocates new strings per keystroke per todo | OK for personal use -- premature optimization to avoid |
-| Free-text custom date format | Maximum flexibility | Users will create broken formats | YES -- use curated presets instead |
+**What looks done:** Todo body field exists and can be edited via external editor.
 
----
+**What's actually wrong:** The `renderTodo()` function in `todolist/model.go` (line 546) renders each todo as a single line: `[x] Todo text 2026-02-06`. After adding the `Body` field, if the body is naively included in this rendering, a multi-line markdown body explodes the single-line layout. Each todo could be 20+ lines, making the list unusable for navigation.
 
-## UX Pitfalls
+**How to detect:** Add a todo with a multi-line body. The todo list should remain navigable with single-line items.
 
-### UX Pitfall 1: View Toggle Has No Visual Indicator
+**How to avoid:** The todo list renders ONLY the `Text` (title) field, never the `Body`. The body is shown in a detail view, a preview pane, or only when editing in the external editor. The list view should show a body indicator (e.g., a small icon or `[...]` suffix) to signal that a body exists, without rendering the body itself.
 
-**What goes wrong:** User presses the toggle key and the calendar changes, but there is no label or indicator showing which view mode is active. Users forget which mode they are in, especially if weekly and monthly views look similar for weeks with few events.
-
-**How to avoid:** Add a mode indicator to the calendar header. The existing header line (`"February 2026"`) could become `"February 2026 [month]"` or `"Feb 3-9, 2026 [week]"`. This also solves the problem of knowing WHICH week is shown.
+**Phase to address:** Phase 15 design. Decide the body display strategy before implementation.
 
 ---
 
-### UX Pitfall 2: Search Clears on Mode Exit With No Way to Resume
+## Phase-Specific Pitfall Summary
 
-**What goes wrong:** User types a search query, reviews results, exits search to interact with a todo, then wants to resume searching -- but the query is gone. They have to retype it.
-
-**How to avoid:** Preserve the last search query. When re-entering search mode, pre-populate the textinput with the previous query. The existing `editTextMode` pattern already does this (line 265: `m.input.SetValue(todo.Text)`).
-
----
-
-### UX Pitfall 3: Overview Colors Invisible on Some Themes
-
-**What goes wrong:** Red/green color coding for completion status is invisible or unreadable on certain terminal themes. Red-on-dark-red is invisible. Green that is close to the terminal's normal text color provides no signal.
-
-**How to avoid:** Use the theme's semantic color roles, not hardcoded red/green. The theme already has 14 roles. Add two new roles (e.g., `OverviewDoneFg`, `OverviewPendingFg`) and define them per theme with sufficient contrast. Test all four themes (dark, light, nord, solarized).
-
----
-
-### UX Pitfall 4: Date Format Setting Not Previewed in Settings Overlay
-
-**What goes wrong:** User changes the date format setting but cannot see the effect until they close settings. They may cycle through formats without knowing which one produces `DD/MM/YYYY` vs `MM/DD/YYYY`.
-
-**How to avoid:** The settings overlay already supports live preview for themes (via `ThemeChangedMsg`). Apply the same pattern: show a sample date formatted with the currently selected format directly in the settings overlay. e.g., `"Date Format    < DD/MM/YYYY >  (today: 06/02/2026)"`.
-
----
-
-### UX Pitfall 5: Weekly Navigation Overloads Existing Keys
-
-**What goes wrong:** The calendar currently uses `left`/`h` for previous month and `right`/`l` for next month. If weekly view reuses these keys to mean "previous week" / "next week", there is no way to jump to the previous/next month while in weekly view. Users get trapped navigating week-by-week through a 12-month range.
-
-**How to avoid:** Define navigation semantics per view mode:
-- **Monthly view:** `left`/`right` = previous/next month (unchanged)
-- **Weekly view:** `left`/`right` = previous/next week; add `[`/`]` or `H`/`L` for previous/next month jump
-- OR keep `left`/`right` as month navigation in both modes, and add new keys for week navigation in weekly mode
-
-The key design must be decided before implementation. Update the help bar to reflect the current mode's key bindings.
-
----
-
-## "Looks Done But Isn't" Checklist
-
-- [ ] **Weekly view toggle:** Does the view mode persist across month navigation? (Switching to next month should stay in weekly view, not reset to monthly)
-- [ ] **Weekly view boundary:** What happens at month boundaries? Week of Jan 27 - Feb 2 spans two months. Which month's todos are shown? Does the overview highlight both months?
-- [ ] **Weekly view + monday start:** Does the weekly view respect the `mondayStart` config setting? The week must start on the configured day, not always Monday or always Sunday.
-- [ ] **Search across all months:** Does the full-screen search actually search ALL todos in the store, not just the current month? The `visibleItems()` method only returns current-month + floating todos. Search needs a different data source.
-- [ ] **Search results navigation:** After finding a todo via search, can the user navigate to it? Does selecting a search result switch the calendar to that todo's month?
-- [ ] **Search with special characters:** Does searching for `[` or `]` work? These characters appear in the calendar grid as todo indicators `[12]`. If search uses regex internally, special characters will cause panics or wrong results.
-- [ ] **Overview colors update after toggle:** When a todo is toggled complete/incomplete, does the overview color update immediately? The existing `RefreshIndicators()` call in app.Update() only refreshes day-level indicators. Overview colors need to refresh too.
-- [ ] **Date format in todo list:** Does the date format setting affect dates shown in the todo list (line 478 of `todolist/model.go`: `m.styles.Date.Render(t.Date)`)? Currently it renders the raw ISO date string. The format setting must be propagated to the todolist renderer.
-- [ ] **Date format in date input:** When the user enters a date for a new todo, the prompt says `"YYYY-MM-DD"`. This should always say `YYYY-MM-DD` regardless of the display format setting, because the input format is always ISO. Do NOT change the input format to match the display format -- that would require parsing ambiguous user input.
-- [ ] **Date format on config load:** What happens if the config file has an invalid `date_format` value? Ensure `FormatDate` falls back to ISO format, not panic.
-- [ ] **Theme color roles added:** Are the new overview color roles defined for ALL four themes (dark, light, nord, solarized)? Missing a theme causes zero-value colors (empty string = terminal default), which may be invisible against the background.
-- [ ] **Help bar updated:** Does the help bar show the correct keys for the current mode? Weekly view has different navigation keys. Search mode has its own keys. The `currentHelpKeys()` method in app.Model must account for these.
-
----
-
-## Pitfall-to-Phase Mapping
-
-| Phase | Pitfall | Prevention Strategy |
-|-------|---------|---------------------|
-| Weekly View | Grid width mismatch (#1) | Keep weekly grid at 34 chars wide; verify `calendarInnerWidth` still correct |
-| Weekly View | View mode not synced to todo list (#2) | Decide week-level todo filtering strategy upfront; recommended: month-level stays |
-| Weekly View | Navigation key overload (UX #5) | Design key bindings before coding; update help bar |
-| Weekly View | Month boundary weeks ("Looks Done" #2) | Test with Jan 27 - Feb 2 type weeks |
-| Weekly View | Monday start respected ("Looks Done" #3) | Pass `mondayStart` to weekly renderer |
-| Search/Filter | Input state machine conflict (#5) | Use separate `searchInput` textinput field |
-| Search/Filter | Overlay routing conflict (#6) | Convert boolean overlay flags to enum |
-| Search/Filter | Special characters in search ("Looks Done" #6) | Use `strings.Contains`, not regex |
-| Search/Filter | Cross-month search data source ("Looks Done" #4) | Query `store.Todos()` directly, not `visibleItems()` |
-| Overview Colors | Per-render computation cost (#7) | Extend `TodoCountsByMonth` to include completion data |
-| Overview Colors | Colors invisible on themes (UX #3) | Add semantic color roles; test all four themes |
-| Overview Colors | Colors not refreshing ("Looks Done" #7) | Extend `RefreshIndicators` or add separate refresh |
-| Date Format | Round-trip corruption (#3) | Store is ALWAYS ISO; format conversion in View only |
-| Date Format | Custom format injection (#4) | Use curated presets, not free-text |
-| Date Format | Format not applied in todo list ("Looks Done" #8) | Propagate format setting to todolist renderer |
-| Date Format | Input prompt unchanged ("Looks Done" #9) | Keep input prompt as YYYY-MM-DD always |
-| Date Format | Preview in settings (UX #4) | Show sample formatted date in settings overlay |
-
----
-
-## Recovery Strategies
-
-| Pitfall | Recovery Cost | What To Do |
-|---------|---------------|------------|
-| Grid width mismatch (#1) | LOW | Fix `calendarInnerWidth` to be dynamic or verify both views fit |
-| View mode sync (#2) | MEDIUM | Add `SetViewRange` API or accept month-level sync |
-| Date format corruption (#3) | HIGH | Manual data file repair; no automated recovery possible |
-| Custom format injection (#4) | LOW | Replace free-text with preset picker |
-| Input state conflict (#5) | MEDIUM | Add separate textinput field; refactor mode transitions |
-| Overlay routing (#6) | LOW | Convert booleans to enum |
-| Overview computation (#7) | LOW | Extend store method to return richer struct |
+| Phase | Pitfall | Severity | Prevention |
+|-------|---------|----------|------------|
+| 14: Database | Store interface extraction (#1) | MEDIUM | Extract interface first, then swap backend |
+| 14: Database | Migration data loss (#2) | HIGH | Transaction-wrap migration, keep JSON backup |
+| 14: Database | Connection pool misconfiguration (#3) | MEDIUM | `MaxOpenConns(1)`, WAL mode, busy_timeout |
+| 14: Database | Database path not created (Pattern 1) | LOW | `os.MkdirAll` before `sql.Open` |
+| 14: Database | ID mismatch after migration (Pattern 2) | MEDIUM | Use explicit IDs, not autoincrement |
+| 14: Database | Save() pattern doesn't map to SQL (Integration #1) | MEDIUM | Query-on-read, no in-memory cache |
+| 14: Database | EnsureSortOrder on every startup (Integration #2) | LOW | One-time migration, not per-startup |
+| 14: Database | Pragmas lost on reconnect (Pattern 6) | LOW | Set pragmas via DSN string |
+| 14: Database | Body column in schema (Pitfall #6) | LOW | Include `body TEXT DEFAULT ''` in initial schema |
+| 15: Templates | Template placeholders in user content (Pattern 4) | MEDIUM | Expand templates once at creation, store result |
+| 15: Templates | Markdown rendering width (Integration #3) | LOW | Pass pane width to renderer; title-only in list view |
+| 15: Templates | Body in list view (Pattern 7) | LOW | Render title only in list; body in detail/editor |
+| 15: Templates | JSON backward compat (#6) | LOW | Enforce phase ordering; SQLite before bodies |
+| 16: Editor | View content leak (#4) | MEDIUM | `editing` flag, return empty View |
+| 16: Editor | Wrong temp file extension (#5) | LOW | Use `.md` extension pattern |
+| 16: Editor | $EDITOR edge cases (Integration #5) | LOW | Split on spaces, check $VISUAL, fallback |
+| 16: Editor | Store refresh after edit (Integration #4) | LOW | RefreshIndicators() in editorFinishedMsg handler |
+| 16: Editor | Editor exit code ambiguity (Pattern 3) | LOW | Compare content before/after, ignore exit code |
+| 16: Editor | Terminal resize during edit (Pattern 5) | LOW | Only guard View(), not Update() |
 
 ---
 
 ## Sources
 
-- Codebase analysis: `internal/app/model.go`, `internal/calendar/model.go`, `internal/calendar/grid.go`, `internal/todolist/model.go`, `internal/store/store.go`, `internal/store/todo.go`, `internal/config/config.go`, `internal/theme/theme.go`, `internal/settings/model.go` (HIGH confidence -- primary source)
-- [Go time package documentation](https://pkg.go.dev/time) -- date format layout system (HIGH confidence)
-- [Go time.Format reference date explanation](https://yourbasic.org/golang/format-parse-string-time-date-example/) -- "regrettable historic error" of American date convention (MEDIUM confidence)
-- [Tips for building Bubble Tea programs - leg100](https://leg100.github.io/en/posts/building-bubbletea-programs/) -- state management patterns (MEDIUM confidence)
-- [Managing nested models with Bubble Tea - Roman Parykin](https://donderom.com/posts/managing-nested-models-with-bubble-tea/) -- overlay routing complexity (MEDIUM confidence)
-- [Overlay composition using Bubble Tea - Leon Mika](https://lmika.org/2022/09/24/overlay-composition-using.html) -- rendering challenges (MEDIUM confidence)
-- [ISO week date - Wikipedia](https://en.wikipedia.org/wiki/ISO_week_date) -- week boundary edge cases (HIGH confidence)
-- [Bubble Tea GitHub - charmbracelet/bubbletea](https://github.com/charmbracelet/bubbletea) -- framework reference (HIGH confidence)
-- [Lipgloss GitHub - charmbracelet/lipgloss](https://github.com/charmbracelet/lipgloss) -- color profile and adaptive colors (HIGH confidence)
-- [Case-insensitive string search in Go](https://programming-idioms.org/idiom/133/case-insensitive-string-contains/1723/go) -- search performance (MEDIUM confidence)
-- Prior v1.0 pitfalls research (`.planning/research/PITFALLS.md` dated 2026-02-05) -- foundational patterns already addressed (HIGH confidence)
+**Codebase analysis (HIGH confidence -- primary source):**
+- `internal/store/store.go` -- Save() pattern, mutation methods, EnsureSortOrder
+- `internal/store/todo.go` -- Todo struct, Data envelope, JSON tags
+- `internal/app/model.go` -- WithAltScreen usage, overlay pattern, message routing
+- `internal/todolist/model.go` -- input state machine, renderTodo, cursor management
+- `internal/config/config.go` -- XDG paths, atomic write pattern
+- `main.go` -- program initialization, tea.NewProgram options
+
+**Bubble Tea ExecProcess issues (HIGH confidence -- official repo):**
+- [tea.ExecProcess writes View output to stdout (Issue #431)](https://github.com/charmbracelet/bubbletea/issues/431)
+- [ExecProcess with WithAltScreen prints outside altscreen (Discussion #424)](https://github.com/charmbracelet/bubbletea/discussions/424)
+- [Official exec example](https://github.com/charmbracelet/bubbletea/blob/main/examples/exec/main.go)
+- [Bubble Tea pkg.go.dev - tea.Exec, tea.ExecProcess docs](https://pkg.go.dev/github.com/charmbracelet/bubbletea)
+
+**Go SQLite best practices (HIGH confidence -- verified with multiple sources):**
+- [Go + SQLite Best Practices (Jake Gold)](https://jacob.gold/posts/go-sqlite-best-practices/) -- connection pooling, WAL, pragmas
+- [Resolve "database is locked" (Ben Boyter)](https://boyter.org/posts/go-sqlite-database-is-locked/) -- MaxOpenConns(1) recommendation
+- [SQLite concurrent writes and "database is locked"](https://tenthousandmeters.com/blog/sqlite-concurrent-writes-and-database-is-locked-errors/) -- busy_timeout behavior, BEGIN IMMEDIATE
+- [SQLITE_BUSY despite timeout (Bert Hubert)](https://berthub.eu/articles/posts/a-brief-post-on-sqlite3-database-locked-despite-timeout/) -- transaction upgrade pitfall
+- [Go and SQLite: when database/sql chafes (David Crawshaw)](https://crawshaw.io/blog/go-and-sqlite) -- connection pool limitations
+
+**SQLite driver selection (MEDIUM confidence -- benchmarks may be outdated):**
+- [SQLite in Go, with and without cgo (multiprocess.io)](https://datastation.multiprocess.io/blog/2022-05-12-sqlite-in-go-with-and-without-cgo.html) -- modernc.org/sqlite vs mattn/go-sqlite3 performance
+- [go-sqlite-bench (GitHub)](https://github.com/cvilsmeier/go-sqlite-bench) -- comparative benchmarks
+- [modernc.org/sqlite with Go](https://theitsolutions.io/blog/modernc.org-sqlite-with-go) -- DSN pragma syntax
+
+**Glamour markdown rendering (MEDIUM confidence):**
+- [Glamour GitHub](https://github.com/charmbracelet/glamour) -- WordWrap option, width configuration
+
+**Vim/Neovim filetype detection (HIGH confidence -- official docs):**
+- [Neovim filetype detection docs](https://neovim.io/doc/user/filetype.html) -- extension-based detection for `.md`
 
 ---
 
-*Pitfalls research for: TUI Calendar v1.3 feature integration*
+*Pitfalls research for: TUI Calendar v1.4 Data & Editing*
 *Researched: 2026-02-06*
