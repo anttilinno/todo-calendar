@@ -24,10 +24,10 @@ Requirements for milestone v1.4 Data & Editing.
 
 ### External Editor
 
-- [ ] **EDITOR-01**: User can press a key to open the selected todo body in $EDITOR
-- [ ] **EDITOR-02**: App uses $VISUAL -> $EDITOR -> vi fallback chain
-- [ ] **EDITOR-03**: Temp file uses .md extension for editor syntax highlighting
-- [ ] **EDITOR-04**: Body is only saved if content actually changed
+- [x] **EDITOR-01**: User can press a key to open the selected todo body in $EDITOR
+- [x] **EDITOR-02**: App uses $VISUAL -> $EDITOR -> vi fallback chain
+- [x] **EDITOR-03**: Temp file uses .md extension for editor syntax highlighting
+- [x] **EDITOR-04**: Body is only saved if content actually changed
 
 ## Future Requirements
 
@@ -67,10 +67,10 @@ Deferred to later milestones.
 | MDTPL-02 | Phase 15 | Complete |
 | MDTPL-03 | Phase 15 | Complete |
 | MDTPL-04 | Phase 15 | Complete |
-| EDITOR-01 | Phase 16 | Pending |
-| EDITOR-02 | Phase 16 | Pending |
-| EDITOR-03 | Phase 16 | Pending |
-| EDITOR-04 | Phase 16 | Pending |
+| EDITOR-01 | Phase 16 | Complete |
+| EDITOR-02 | Phase 16 | Complete |
+| EDITOR-03 | Phase 16 | Complete |
+| EDITOR-04 | Phase 16 | Complete |
 
 **Coverage:**
 - v1.4 requirements: 13 total
