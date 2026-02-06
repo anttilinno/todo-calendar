@@ -65,7 +65,7 @@ Plans:
 
 </details>
 
-### 🚧 v1.2 Reorder & Settings (In Progress)
+### v1.2 Reorder & Settings (In Progress)
 
 **Milestone Goal:** Let users reorder todos, configure the app from an in-app settings page, and see todo count overview on the calendar.
 
@@ -108,14 +108,14 @@ Plans:
   1. Calendar panel displays todo count per month below the calendar grid (e.g., "January [7]")
   2. Overview shows count of undated (floating) todos (e.g., "Unknown [12]")
   3. Counts update live as todos are added, completed, or deleted
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 09-01: TBD
+- [ ] 09-01-PLAN.md -- Store aggregation methods, overview styles, and calendar overview rendering
 
 ## Progress
 
-**Execution Order:** 7 → 8 → 9
+**Execution Order:** 7 -> 8 -> 9
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -127,4 +127,4 @@ Plans:
 | 6. Color Themes | v1.1 | 2/2 | Complete | 2026-02-05 |
 | 7. Todo Reordering | v1.2 | 2/2 | Complete | 2026-02-06 |
 | 8. Settings Overlay | v1.2 | 2/2 | Complete | 2026-02-06 |
-| 9. Overview Panel | v1.2 | 0/TBD | Not started | - |
+| 9. Overview Panel | v1.2 | 0/1 | Not started | - |
