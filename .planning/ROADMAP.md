@@ -176,7 +176,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 16-01-PLAN.md -- Editor package, keybinding, and app lifecycle wiring
+- [x] 16-01-PLAN.md -- Editor package, keybinding, and app lifecycle wiring
 
 ## Progress
 
@@ -197,4 +197,4 @@ Plans:
 | 13. Search & Filter | v1.3 | 2/2 | Complete | 2026-02-06 |
 | 14. Database Backend | v1.4 | 2/2 | Complete | 2026-02-06 |
 | 15. Markdown Templates | v1.4 | 3/3 | Complete | 2026-02-06 |
-| 16. External Editor | v1.4 | 0/1 | Not started | - |
+| 16. External Editor | v1.4 | 1/1 | Complete | 2026-02-06 |
