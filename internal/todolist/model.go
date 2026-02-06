@@ -23,6 +23,7 @@ const (
 	dateInputMode      // typing date for a dated todo
 	editTextMode       // editing existing todo text
 	editDateMode       // editing existing todo date
+	filterMode         // inline filter narrowing visible todos
 )
 
 // itemKind classifies a visible row in the rendered list.
@@ -54,11 +55,12 @@ type Model struct {
 	viewMonth   time.Month
 	addingDated bool   // true if current add will produce a dated todo
 	pendingText string // text saved during dateInputMode
-	editingID      int    // ID of the todo being edited
-	dateLayout     string // Go time layout for date display/input
+	editingID       int    // ID of the todo being edited
+	filterQuery     string // current filter text (empty = no filter)
+	dateLayout      string // Go time layout for date display/input
 	datePlaceholder string // human-readable date placeholder
-	keys           KeyMap
-	styles         Styles
+	keys            KeyMap
+	styles          Styles
 }
 
 // New creates a new todo list model backed by the given store.
@@ -90,6 +92,12 @@ func (m *Model) SetFocused(f bool) {
 func (m *Model) SetViewMonth(year int, month time.Month) {
 	m.viewYear = year
 	m.viewMonth = month
+	m.filterQuery = ""
+	if m.mode == filterMode {
+		m.mode = normalMode
+		m.input.Blur()
+		m.input.SetValue("")
+	}
 }
 
 // IsInputting returns true when the todo list is in text entry mode.
@@ -103,7 +111,7 @@ func (m Model) HelpBindings() []key.Binding {
 	if m.mode != normalMode {
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	}
-	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.MoveUp, m.keys.MoveDown, m.keys.Add, m.keys.AddDated, m.keys.Edit, m.keys.EditDate, m.keys.Toggle, m.keys.Delete}
+	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.MoveUp, m.keys.MoveDown, m.keys.Add, m.keys.AddDated, m.keys.Edit, m.keys.EditDate, m.keys.Toggle, m.keys.Delete, m.keys.Filter}
 }
 
 // visibleItems builds the combined display list of headers, todos, and empty placeholders.
@@ -135,6 +143,36 @@ func (m Model) visibleItems() []visibleItem {
 		for i := range floating {
 			items = append(items, visibleItem{kind: todoItem, todo: &floating[i]})
 		}
+	}
+
+	// Apply inline filter when active
+	if m.filterQuery != "" {
+		query := strings.ToLower(m.filterQuery)
+		var filtered []visibleItem
+		for _, item := range items {
+			switch item.kind {
+			case headerItem:
+				filtered = append(filtered, item)
+			case todoItem:
+				if strings.Contains(strings.ToLower(item.todo.Text), query) {
+					filtered = append(filtered, item)
+				}
+			// Skip emptyItem entries -- they are misleading when filtered
+			}
+		}
+		// Post-process: add "(no matches)" after headers with no following todos
+		var result []visibleItem
+		for i, item := range filtered {
+			result = append(result, item)
+			if item.kind == headerItem {
+				// Check if next item is a todoItem or another header/end
+				nextIsTodo := i+1 < len(filtered) && filtered[i+1].kind == todoItem
+				if !nextIsTodo {
+					result = append(result, visibleItem{kind: emptyItem, label: "(no matches)"})
+				}
+			}
+		}
+		return result
 	}
 
 	return items
@@ -173,6 +211,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m.updateEditTextMode(msg)
 		case editDateMode:
 			return m.updateEditDateMode(msg)
+		case filterMode:
+			return m.updateFilterMode(msg)
 		default:
 			return m.updateNormalMode(msg)
 		}
@@ -283,9 +323,45 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.input.CursorEnd()
 			return m, m.input.Focus()
 		}
+
+	case key.Matches(msg, m.keys.Filter):
+		m.mode = filterMode
+		m.filterQuery = ""
+		m.input.Placeholder = "Filter todos..."
+		m.input.Prompt = "/ "
+		m.input.SetValue("")
+		return m, m.input.Focus()
 	}
 
 	return m, nil
+}
+
+// updateFilterMode handles key events in filter mode.
+func (m Model) updateFilterMode(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.Cancel):
+		// Esc clears filter and returns to normal mode
+		m.mode = normalMode
+		m.filterQuery = ""
+		m.input.Blur()
+		m.input.SetValue("")
+		// Clamp cursor after filter removal restores all items
+		selectable := selectableIndices(m.visibleItems())
+		if m.cursor >= len(selectable) {
+			m.cursor = max(0, len(selectable)-1)
+		}
+		return m, nil
+	}
+	// Forward all other keys to the text input
+	var cmd tea.Cmd
+	m.input, cmd = m.input.Update(msg)
+	m.filterQuery = m.input.Value()
+	// Clamp cursor after filter narrows visible items
+	selectable := selectableIndices(m.visibleItems())
+	if m.cursor >= len(selectable) {
+		m.cursor = max(0, len(selectable)-1)
+	}
+	return m, cmd
 }
 
 // updateInputMode handles key events while typing todo text.
