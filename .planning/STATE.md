@@ -9,19 +9,19 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 ## Current Position
 
-Phase: 7 of 9 (Todo Reordering) -- COMPLETE
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-06 -- Completed 07-02-PLAN.md
+Phase: 8 of 9 (Settings Overlay)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-06 -- Completed 08-01-PLAN.md
 
-Progress: [████████████████░░░░░] 78% (phases 1-7 complete, phase 8 next)
+Progress: [█████████████████░░░░] 83% (phases 1-7 complete, phase 8 plan 1 of 2)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
+- Total plans completed: 15
 - Average duration: 2 min
-- Total execution time: 0.50 hours
+- Total execution time: 0.53 hours
 
 **By Phase:**
 
@@ -34,6 +34,7 @@ Progress: [████████████████░░░░░] 78% 
 | 5 | 2 | 3 min | 1.5 min |
 | 6 | 2 | 4 min | 2 min |
 | 7 | 2 | 3 min | 1.5 min |
+| 8 | 1/2 | 2 min | 2 min |
 
 ## Accumulated Context
 
@@ -42,12 +43,11 @@ Progress: [████████████████░░░░░] 78% 
 See PROJECT.md Key Decisions table for complete log.
 
 Recent decisions affecting current work:
-- Settings as full-screen overlay with live preview (pending implementation)
+- Settings model uses cycling options (not free-text) for all 3 fields (Phase 8)
+- countryLabels uses hardcoded 11-entry map, no ISO library (Phase 8)
+- SetTheme pointer receivers modify in place without model recreation (Phase 8)
+- Settings as full-screen overlay with live preview (pending wiring in 08-02)
 - Styles struct + constructor DI enables runtime theme switching (Phase 6)
-- SortOrder field with omitempty for backwards-compatible legacy JSON (Phase 7)
-- SwapOrder is silent no-op on missing IDs, consistent with Toggle/Delete pattern (Phase 7)
-- MoveUp/MoveDown placed after Down in KeyMap, navigation-then-action ordering (Phase 7)
-- Section boundary uses HasDate equality check for move operations (Phase 7)
 
 ### Pending Todos
 
@@ -59,6 +59,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-06T07:48:02Z
-Stopped at: Completed 07-02-PLAN.md (Phase 7 complete)
+Last session: 2026-02-06T08:21:25Z
+Stopped at: Completed 08-01-PLAN.md
 Resume file: None
