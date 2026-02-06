@@ -81,8 +81,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md -- Add SortOrder field, migration, SwapOrder method, updated sort logic
-- [ ] 07-02-PLAN.md -- Wire MoveUp/MoveDown keybindings and help bar integration
+- [x] 07-01: Add SortOrder field, migration, SwapOrder method, updated sort logic
+- [x] 07-02: Wire MoveUp/MoveDown keybindings and help bar integration
 
 #### Phase 8: Settings Overlay
 **Goal**: Users can configure theme, holiday country, and first day of week from inside the app with live preview
@@ -125,6 +125,6 @@ Plans:
 | 4. Date Indicators & Editing | v1.1 | 2/2 | Complete | 2026-02-05 |
 | 5. First Day of Week | v1.1 | 2/2 | Complete | 2026-02-05 |
 | 6. Color Themes | v1.1 | 2/2 | Complete | 2026-02-05 |
-| 7. Todo Reordering | v1.2 | 0/2 | Planning | - |
+| 7. Todo Reordering | v1.2 | 2/2 | Complete | 2026-02-06 |
 | 8. Settings Overlay | v1.2 | 0/TBD | Not started | - |
 | 9. Overview Panel | v1.2 | 0/TBD | Not started | - |

@@ -9,9 +9,9 @@ Requirements for milestone v1.2 Reorder & Settings.
 
 ### Todo Reordering
 
-- [ ] **REORD-01**: User can move a selected todo up in the list
-- [ ] **REORD-02**: User can move a selected todo down in the list
-- [ ] **REORD-03**: Custom order persists across app restarts
+- [x] **REORD-01**: User can move a selected todo up in the list
+- [x] **REORD-02**: User can move a selected todo down in the list
+- [x] **REORD-03**: Custom order persists across app restarts
 
 ### Settings Page
 
@@ -46,9 +46,9 @@ Requirements for milestone v1.2 Reorder & Settings.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REORD-01 | Phase 7 | Pending |
-| REORD-02 | Phase 7 | Pending |
-| REORD-03 | Phase 7 | Pending |
+| REORD-01 | Phase 7 | Complete |
+| REORD-02 | Phase 7 | Complete |
+| REORD-03 | Phase 7 | Complete |
 | SETT-01 | Phase 8 | Pending |
 | SETT-02 | Phase 8 | Pending |
 | SETT-03 | Phase 8 | Pending |
@@ -65,4 +65,4 @@ Requirements for milestone v1.2 Reorder & Settings.
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 after roadmap creation*
+*Last updated: 2026-02-06 after Phase 7 complete*
