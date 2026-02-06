@@ -60,26 +60,26 @@ Deferred to later milestones.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| OVCLR-01 | Pending | Pending |
-| OVCLR-02 | Pending | Pending |
-| DTFMT-01 | Pending | Pending |
-| DTFMT-02 | Pending | Pending |
-| DTFMT-03 | Pending | Pending |
-| WKVIEW-01 | Pending | Pending |
-| WKVIEW-02 | Pending | Pending |
-| WKVIEW-03 | Pending | Pending |
-| WKVIEW-04 | Pending | Pending |
-| SRCH-01 | Pending | Pending |
-| SRCH-02 | Pending | Pending |
-| SRCH-03 | Pending | Pending |
-| SRCH-04 | Pending | Pending |
-| SRCH-05 | Pending | Pending |
+| OVCLR-01 | Phase 10 | Pending |
+| OVCLR-02 | Phase 10 | Pending |
+| DTFMT-01 | Phase 11 | Pending |
+| DTFMT-02 | Phase 11 | Pending |
+| DTFMT-03 | Phase 11 | Pending |
+| WKVIEW-01 | Phase 12 | Pending |
+| WKVIEW-02 | Phase 12 | Pending |
+| WKVIEW-03 | Phase 12 | Pending |
+| WKVIEW-04 | Phase 12 | Pending |
+| SRCH-01 | Phase 13 | Pending |
+| SRCH-02 | Phase 13 | Pending |
+| SRCH-03 | Phase 13 | Pending |
+| SRCH-04 | Phase 13 | Pending |
+| SRCH-05 | Phase 13 | Pending |
 
 **Coverage:**
 - v1.3 requirements: 14 total
-- Mapped to phases: 0
-- Unmapped: 14
+- Mapped to phases: 14
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 after initial definition*
+*Last updated: 2026-02-06 after roadmap creation*
