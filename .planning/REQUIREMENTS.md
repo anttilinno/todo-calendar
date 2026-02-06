@@ -15,12 +15,12 @@ Requirements for milestone v1.2 Reorder & Settings.
 
 ### Settings Page
 
-- [ ] **SETT-01**: User can open a full-screen settings overlay via keybinding
-- [ ] **SETT-02**: User can change the color theme with live preview (app redraws immediately)
-- [ ] **SETT-03**: User can change the holiday country
-- [ ] **SETT-04**: User can change the first day of week
-- [ ] **SETT-05**: User can save settings to config.toml and dismiss the overlay
-- [ ] **SETT-06**: User can dismiss settings without saving (cancel)
+- [x] **SETT-01**: User can open a full-screen settings overlay via keybinding
+- [x] **SETT-02**: User can change the color theme with live preview (app redraws immediately)
+- [x] **SETT-03**: User can change the holiday country
+- [x] **SETT-04**: User can change the first day of week
+- [x] **SETT-05**: User can save settings to config.toml and dismiss the overlay
+- [x] **SETT-06**: User can dismiss settings without saving (cancel)
 
 ### Overview Panel
 
@@ -49,12 +49,12 @@ Requirements for milestone v1.2 Reorder & Settings.
 | REORD-01 | Phase 7 | Complete |
 | REORD-02 | Phase 7 | Complete |
 | REORD-03 | Phase 7 | Complete |
-| SETT-01 | Phase 8 | Pending |
-| SETT-02 | Phase 8 | Pending |
-| SETT-03 | Phase 8 | Pending |
-| SETT-04 | Phase 8 | Pending |
-| SETT-05 | Phase 8 | Pending |
-| SETT-06 | Phase 8 | Pending |
+| SETT-01 | Phase 8 | Complete |
+| SETT-02 | Phase 8 | Complete |
+| SETT-03 | Phase 8 | Complete |
+| SETT-04 | Phase 8 | Complete |
+| SETT-05 | Phase 8 | Complete |
+| SETT-06 | Phase 8 | Complete |
 | OVRVW-01 | Phase 9 | Pending |
 | OVRVW-02 | Phase 9 | Pending |
 
@@ -65,4 +65,4 @@ Requirements for milestone v1.2 Reorder & Settings.
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 after Phase 7 complete*
+*Last updated: 2026-02-06 after Phase 8 complete*

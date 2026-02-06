@@ -97,8 +97,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md -- Config.Save, theme.Names, settings model, SetTheme methods
-- [ ] 08-02-PLAN.md -- Wire settings overlay into app with live preview and save/cancel
+- [x] 08-01: Config.Save, theme.Names, settings model, SetTheme methods
+- [x] 08-02: Wire settings overlay into app with live preview and save/cancel
 
 #### Phase 9: Overview Panel
 **Goal**: Calendar panel shows at-a-glance todo counts so users know where work is concentrated
@@ -126,5 +126,5 @@ Plans:
 | 5. First Day of Week | v1.1 | 2/2 | Complete | 2026-02-05 |
 | 6. Color Themes | v1.1 | 2/2 | Complete | 2026-02-05 |
 | 7. Todo Reordering | v1.2 | 2/2 | Complete | 2026-02-06 |
-| 8. Settings Overlay | v1.2 | 0/2 | Not started | - |
+| 8. Settings Overlay | v1.2 | 2/2 | Complete | 2026-02-06 |
 | 9. Overview Panel | v1.2 | 0/TBD | Not started | - |
