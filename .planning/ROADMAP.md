@@ -157,7 +157,12 @@ Plans:
   2. User can create named templates containing markdown with placeholder variables
   3. When creating a todo from a template, user is prompted for each placeholder value and the body is filled in
   4. Todo body renders as styled terminal markdown (headings, lists, code blocks) in a preview pane
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 15-01-PLAN.md -- Store foundation: Body field, templates table, template utilities
+- [ ] 15-02-PLAN.md -- Preview overlay with glamour rendering and body indicator
+- [ ] 15-03-PLAN.md -- Template creation and usage flow with placeholder prompting
 
 #### Phase 16: External Editor
 **Goal**: Users can edit todo bodies in their preferred terminal editor
@@ -188,5 +193,5 @@ Plans:
 | 12. Weekly Calendar View | v1.3 | 1/1 | Complete | 2026-02-06 |
 | 13. Search & Filter | v1.3 | 2/2 | Complete | 2026-02-06 |
 | 14. Database Backend | v1.4 | 2/2 | Complete | 2026-02-06 |
-| 15. Markdown Templates | v1.4 | 0/? | Not started | - |
+| 15. Markdown Templates | v1.4 | 0/3 | Planned | - |
 | 16. External Editor | v1.4 | 0/? | Not started | - |
