@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** v1.4 Data & Editing -- Phase 16 External Editor
+**Current focus:** v1.4 Data & Editing -- Phase 16 External Editor (COMPLETE)
 
 ## Current Position
 
 Phase: 16 of 16 (External Editor)
-Plan: --
-Status: Ready to plan
-Last activity: 2026-02-06 -- Phase 15 verified and complete
+Plan: 1 of 1
+Status: Phase complete (v1.4 milestone complete)
+Last activity: 2026-02-06 -- Completed 16-01-PLAN.md
 
-Progress: █████████████████████████████░ 97% (27/28 plans estimated through v1.4)
+Progress: ██████████████████████████████ 100% (28/28 plans through v1.4)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 27 (through 15-03)
+- Total plans completed: 28 (through 16-01)
 - Average duration: 2 min
-- Total execution time: ~1.1 hours
+- Total execution time: ~1.2 hours
 
 ## Accumulated Context
 
@@ -44,6 +44,9 @@ Recent decisions affecting current work:
 - 15-02: Preview overlay follows search/settings pattern (showPreview + CloseMsg)
 - 15-03: Template selection uses cursor-based navigation, textarea for multi-line content
 - 15-03: fromTemplate + pendingBody deferred body attachment after todo creation
+- 16-01: POSIX vi fallback for $VISUAL/$EDITOR chain
+- 16-01: editing bool flag in app model prevents View() scrollback leak
+- 16-01: Temp file cleanup after ReadResult (read before delete)
 
 ### Pending Todos
 
@@ -56,5 +59,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 15-03-PLAN.md (Phase 15 complete)
+Stopped at: Completed 16-01-PLAN.md (Phase 16 complete, v1.4 milestone complete)
 Resume file: None
