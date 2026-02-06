@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A terminal-based (TUI) application that combines a monthly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, date indicators for pending work, and an overview of todo counts per month. The right panel displays todos for the visible month alongside undated (floating) items. Supports editing and reordering todos, configurable first day of week, 4 color themes, and an in-app settings overlay with live preview. Built with Go and Bubble Tea for personal use.
+A terminal-based (TUI) application that combines a monthly/weekly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, date indicators for pending work, color-coded overview counts, and weekly view toggle. The right panel displays todos for the visible month alongside undated (floating) items with inline filter support. Includes full-screen cross-month search, editing and reordering todos, configurable date format and first day of week, 4 color themes, and an in-app settings overlay with live preview. Built with Go and Bubble Tea for personal use.
 
 ## Core Value
 
@@ -35,15 +35,19 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - In-app settings overlay (full-screen, live theme preview, save/cancel) — v1.2
 - Settings: change theme, country, first day of week with immediate feedback — v1.2
 - Overview panel below calendar showing todo counts per month + undated count — v1.2
+- Overview color coding: pending (themed red) and completed (themed green) counts — v1.3
+- Date format setting: 3 presets (ISO/EU/US) configurable in settings with format-aware input — v1.3
+- Weekly calendar view with `w` toggle, week navigation, and auto-select current week — v1.3
+- Inline todo filter (`/`) with real-time case-insensitive narrowing — v1.3
+- Full-screen search overlay (Ctrl+F) for cross-month todo discovery with jump-to-month — v1.3
 
 ### Active
 
-Current milestone: v1.3 Views & Usability
+Current milestone: v1.4 Data & Editing
 
-- Weekly calendar view with toggle between monthly/weekly — v1.3
-- Search/filter todos: inline filter in todo panel + full-screen search overlay across all months — v1.3
-- Overview color coding: uncompleted todos red, completed green, themed — v1.3
-- Date format setting: 3 presets (YYYY-MM-DD, DD.MM.YYYY, MM/DD/YYYY) + custom, in settings — v1.3
+- SQLite database backend replacing JSON storage — v1.4
+- Markdown todo bodies with template support — v1.4
+- External editor integration ($EDITOR) — v1.4
 
 ### v2 Candidates
 
@@ -65,7 +69,7 @@ Current milestone: v1.3 Views & Usability
 - **Holidays:** rickar/cal/v2 with 11-country registry (de, dk, ee, es, fi, fr, gb, it, no, se, us)
 - **Config:** TOML at ~/.config/todo-calendar/config.toml (BurntSushi/toml v1.6.0)
 - **Storage:** JSON at ~/.config/todo-calendar/todos.json with atomic writes
-- **Codebase:** 2,492 lines of Go across 20 source files
+- **Codebase:** 3,263 lines of Go across 23 source files
 - **Architecture:** Elm Architecture (Bubble Tea), pure rendering functions, constructor DI
 
 ## Constraints
@@ -94,10 +98,16 @@ Current milestone: v1.3 Views & Usability
 | Settings as full-screen overlay with live preview | User wants to see changes immediately; overlay avoids cramming into split pane | ✓ Good — clean UX with save/cancel |
 | SortOrder field with gap-10 spacing | Efficient reordering without renumbering all items | ✓ Good — simple swap-based reorder |
 | No caching of overview data; fresh from store | Tiny dataset, no cache invalidation complexity | ✓ Good — always correct |
+| Dedicated PendingFg/CompletedCountFg theme roles | Avoid coupling unrelated UI elements by reusing colors | ✓ Good — clean separation |
+| FormatDate/ParseUserDate in config package | Co-located with DateLayout/DatePlaceholder, single bridge between ISO storage and display | ✓ Good — clean abstraction |
+| ViewMode enum with weekStart tracking | year/month auto-sync from weekStart enables seamless todolist integration | ✓ Good — zero changes to todolist |
+| Keys() returns mode-aware copies | Avoids mutating stored key bindings; clean contextual help | ✓ Good — no side effects |
+| Search overlay creates fresh model on Ctrl+F | No stale state; simple initialization | ✓ Good — clean lifecycle |
+| Inline filter preserves section headers | Headers always visible with "(no matches)" placeholder for empty sections | ✓ Good — clear UX |
 
 ## Known Tech Debt
 
 - Store.Save() errors ignored in CRUD methods (silent persistence failures on disk errors)
 
 ---
-*Last updated: 2026-02-06 after v1.3 milestone started*
+*Last updated: 2026-02-06 after v1.3 milestone*
