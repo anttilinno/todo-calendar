@@ -24,8 +24,8 @@ Requirements for milestone v1.2 Reorder & Settings.
 
 ### Overview Panel
 
-- [ ] **OVRVW-01**: Calendar panel shows todo counts per month below the calendar grid (e.g., `January [7]`)
-- [ ] **OVRVW-02**: Overview shows count of undated (floating) todos (e.g., `Unknown [12]`)
+- [x] **OVRVW-01**: Calendar panel shows todo counts per month below the calendar grid (e.g., `January [7]`)
+- [x] **OVRVW-02**: Overview shows count of undated (floating) todos (e.g., `Unknown [12]`)
 
 ## Future Requirements
 
@@ -55,8 +55,8 @@ Requirements for milestone v1.2 Reorder & Settings.
 | SETT-04 | Phase 8 | Complete |
 | SETT-05 | Phase 8 | Complete |
 | SETT-06 | Phase 8 | Complete |
-| OVRVW-01 | Phase 9 | Pending |
-| OVRVW-02 | Phase 9 | Pending |
+| OVRVW-01 | Phase 9 | Complete |
+| OVRVW-02 | Phase 9 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 11 total
@@ -65,4 +65,4 @@ Requirements for milestone v1.2 Reorder & Settings.
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 after Phase 8 complete*
+*Last updated: 2026-02-06 after Phase 9 complete*
