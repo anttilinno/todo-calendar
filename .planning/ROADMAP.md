@@ -6,6 +6,7 @@
 - ✅ **v1.1 Polish & Personalization** - Phases 4-6 (shipped 2026-02-05)
 - ✅ **v1.2 Reorder & Settings** - Phases 7-9 (shipped 2026-02-06)
 - 🚧 **v1.3 Views & Usability** - Phases 10-13 (in progress)
+- 📋 **v1.4 Data & Editing** - Phases 14-16 (planned)
 
 ## Phases
 
@@ -136,7 +137,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 12-01: Weekly view mode with toggle, grid rendering, and week navigation
+- [x] 12-01: Weekly view mode with toggle, grid rendering, and week navigation
 
 #### Phase 13: Search & Filter
 **Goal**: Users can find any todo regardless of which month it lives in
@@ -154,6 +155,40 @@ Plans:
 - [ ] 13-01: Inline todo filter with `/` activation and Esc clear
 - [ ] 13-02: Full-screen search overlay with cross-month results and navigation
 
+### 📋 v1.4 Data & Editing (Planned)
+
+**Milestone Goal:** Persistent database storage, rich markdown todo bodies, and external editor integration for power-user workflows.
+
+#### Phase 14: Database Backend
+**Goal**: Migrate todo persistence from JSON to SQLite for reliability and query capability
+**Depends on**: Nothing (replaces existing JSON store)
+**Requirements**: DB-01, DB-02, DB-03
+**Success Criteria** (what must be TRUE):
+  1. Todos are stored in a SQLite database instead of JSON files
+  2. Existing JSON data is migrated automatically on first launch
+  3. All existing CRUD operations work identically with the new backend
+**Plans**: TBD
+
+#### Phase 15: Markdown Templates
+**Goal**: Todo bodies use markdown templates with placeholders so users can define reusable todo structures
+**Depends on**: Phase 14 (database supports richer todo body storage)
+**Requirements**: MDTPL-01, MDTPL-02, MDTPL-03
+**Success Criteria** (what must be TRUE):
+  1. Todos have a markdown body field beyond the single-line title
+  2. User can create markdown templates with placeholder variables
+  3. Creating a todo from a template fills in placeholders interactively
+**Plans**: TBD
+
+#### Phase 16: External Editor Integration
+**Goal**: Users can open and edit todo content in their preferred $EDITOR (neovim, vim, etc.)
+**Depends on**: Phase 15 (markdown body exists to edit)
+**Requirements**: EDITOR-01, EDITOR-02, EDITOR-03
+**Success Criteria** (what must be TRUE):
+  1. User can press a key to open the selected todo in $EDITOR
+  2. App suspends TUI, launches editor, and resumes cleanly after editor exits
+  3. Edits made in the external editor are saved back to the todo
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -169,5 +204,8 @@ Plans:
 | 9. Overview Panel | v1.2 | 1/1 | Complete | 2026-02-06 |
 | 10. Overview Color Coding | v1.3 | 1/1 | Complete | 2026-02-06 |
 | 11. Date Format Setting | v1.3 | 1/1 | Complete | 2026-02-06 |
-| 12. Weekly Calendar View | v1.3 | 0/1 | Not started | - |
+| 12. Weekly Calendar View | v1.3 | 1/1 | Complete | 2026-02-06 |
 | 13. Search & Filter | v1.3 | 0/2 | Not started | - |
+| 14. Database Backend | v1.4 | 0/? | Not started | - |
+| 15. Markdown Templates | v1.4 | 0/? | Not started | - |
+| 16. External Editor | v1.4 | 0/? | Not started | - |
