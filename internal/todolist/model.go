@@ -486,6 +486,12 @@ func (m Model) renderTodo(b *strings.Builder, t *store.Todo, selected bool) {
 	b.WriteString("\n")
 }
 
+// SetTheme replaces the todolist styles with ones built from the given theme.
+// This preserves all model state (cursor, mode, input).
+func (m *Model) SetTheme(t theme.Theme) {
+	m.styles = NewStyles(t)
+}
+
 func max(a, b int) int {
 	if a > b {
 		return a
