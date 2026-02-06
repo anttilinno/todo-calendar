@@ -4,6 +4,7 @@ import (
 	"github.com/antti/todo-calendar/internal/calendar"
 	"github.com/antti/todo-calendar/internal/config"
 	"github.com/antti/todo-calendar/internal/holidays"
+	"github.com/antti/todo-calendar/internal/preview"
 	"github.com/antti/todo-calendar/internal/search"
 	"github.com/antti/todo-calendar/internal/settings"
 	"github.com/antti/todo-calendar/internal/store"
@@ -46,6 +47,8 @@ type Model struct {
 	settings     settings.Model
 	showSearch   bool
 	search       search.Model
+	showPreview  bool
+	preview      preview.Model
 	store        store.TodoStore
 	cfg          config.Config
 	savedConfig  config.Config
@@ -127,11 +130,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case search.CloseMsg:
 		m.showSearch = false
 		return m, nil
+
+	case preview.CloseMsg:
+		m.showPreview = false
+		return m, nil
+
+	case todolist.PreviewMsg:
+		m.preview = preview.New(msg.Todo.Text, msg.Todo.Body, m.cfg.Theme, theme.ForName(m.cfg.Theme), m.width, m.height)
+		m.showPreview = true
+		return m, nil
 	}
 
 	// When settings overlay is open, route most messages there.
 	if m.showSettings {
 		return m.updateSettings(msg)
+	}
+
+	// When preview overlay is open, route most messages there.
+	if m.showPreview {
+		return m.updatePreview(msg)
 	}
 
 	// When search overlay is open, route most messages there.
@@ -249,6 +266,29 @@ func (m Model) updateSearch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// updatePreview routes messages to the preview model when the overlay is open.
+func (m Model) updatePreview(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Also propagate window resize to all children so the app resizes correctly.
+	if wsm, ok := msg.(tea.WindowSizeMsg); ok {
+		m.width = wsm.Width
+		m.height = wsm.Height
+		m.ready = true
+		m.help.Width = wsm.Width
+
+		var calCmd, todoCmd tea.Cmd
+		m.calendar, calCmd = m.calendar.Update(msg)
+		m.todoList, todoCmd = m.todoList.Update(msg)
+
+		var prevCmd tea.Cmd
+		m.preview, prevCmd = m.preview.Update(msg)
+		return m, tea.Batch(calCmd, todoCmd, prevCmd)
+	}
+
+	var cmd tea.Cmd
+	m.preview, cmd = m.preview.Update(msg)
+	return m, cmd
+}
+
 // applyTheme updates all component styles with the given theme.
 func (m *Model) applyTheme(t theme.Theme) {
 	m.styles = NewStyles(t)
@@ -256,6 +296,7 @@ func (m *Model) applyTheme(t theme.Theme) {
 	m.todoList.SetTheme(t)
 	m.settings.SetTheme(t)
 	m.search.SetTheme(t)
+	m.preview.SetTheme(t)
 	m.help.Styles.ShortKey = lipgloss.NewStyle().Foreground(t.AccentFg)
 	m.help.Styles.ShortDesc = lipgloss.NewStyle().Foreground(t.MutedFg)
 	m.help.Styles.ShortSeparator = lipgloss.NewStyle().Foreground(t.MutedFg)
@@ -263,6 +304,9 @@ func (m *Model) applyTheme(t theme.Theme) {
 
 // currentHelpKeys returns an aggregated help KeyMap based on the active pane.
 func (m Model) currentHelpKeys() helpKeyMap {
+	if m.showPreview {
+		return helpKeyMap{bindings: m.preview.HelpBindings()}
+	}
 	if m.showSearch {
 		return helpKeyMap{bindings: m.search.HelpBindings()}
 	}
@@ -294,6 +338,12 @@ func (m Model) View() string {
 		m.help.Width = m.width
 		helpBar := m.help.View(m.currentHelpKeys())
 		return lipgloss.JoinVertical(lipgloss.Left, m.settings.View(), helpBar)
+	}
+
+	if m.showPreview {
+		m.help.Width = m.width
+		helpBar := m.help.View(m.currentHelpKeys())
+		return lipgloss.JoinVertical(lipgloss.Left, m.preview.View(), helpBar)
 	}
 
 	if m.showSearch {
