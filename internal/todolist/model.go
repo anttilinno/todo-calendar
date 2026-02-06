@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -23,12 +24,16 @@ type PreviewMsg struct {
 type mode int
 
 const (
-	normalMode    mode = iota
-	inputMode          // typing todo text
-	dateInputMode      // typing date for a dated todo
-	editTextMode       // editing existing todo text
-	editDateMode       // editing existing todo date
-	filterMode         // inline filter narrowing visible todos
+	normalMode          mode = iota
+	inputMode                // typing todo text
+	dateInputMode            // typing date for a dated todo
+	editTextMode             // editing existing todo text
+	editDateMode             // editing existing todo date
+	filterMode               // inline filter narrowing visible todos
+	templateSelectMode       // browsing/selecting a template
+	placeholderInputMode     // filling in placeholder values one at a time
+	templateNameMode         // entering a name for a new template
+	templateContentMode      // entering content for a new template (multi-line)
 )
 
 // itemKind classifies a visible row in the rendered list.
@@ -66,6 +71,18 @@ type Model struct {
 	datePlaceholder string // human-readable date placeholder
 	keys            KeyMap
 	styles          Styles
+
+	// Template workflow fields
+	templates        []store.Template   // cached template list for selection
+	templateCursor   int                // selection cursor in template list
+	pendingTemplate  *store.Template    // selected template during placeholder flow
+	placeholderNames []string           // extracted placeholder names from template
+	placeholderIndex int                // which placeholder we're currently prompting for
+	placeholderValues map[string]string  // collected values so far
+	pendingTemplateName string           // name for template being created
+	templateTextarea textarea.Model      // multi-line textarea for template content entry
+	pendingBody      string             // template body to attach after todo creation
+	fromTemplate     bool               // true when creating a todo from a template
 }
 
 // New creates a new todo list model backed by the given store.
@@ -75,16 +92,21 @@ func New(s store.TodoStore, t theme.Theme) Model {
 	ti.CharLimit = 120
 	ti.Prompt = "> "
 
+	ta := textarea.New()
+	ta.Placeholder = "Template content (use {{.VarName}} for placeholders)"
+	ta.ShowLineNumbers = false
+
 	now := time.Now()
 	return Model{
-		store:           s,
-		input:           ti,
-		viewYear:        now.Year(),
-		viewMonth:       now.Month(),
-		dateLayout:      "2006-01-02",
-		datePlaceholder: "YYYY-MM-DD",
-		keys:            DefaultKeyMap(),
-		styles:          NewStyles(t),
+		store:            s,
+		input:            ti,
+		templateTextarea: ta,
+		viewYear:         now.Year(),
+		viewMonth:        now.Month(),
+		dateLayout:       "2006-01-02",
+		datePlaceholder:  "YYYY-MM-DD",
+		keys:             DefaultKeyMap(),
+		styles:           NewStyles(t),
 	}
 }
 
@@ -116,7 +138,7 @@ func (m Model) HelpBindings() []key.Binding {
 	if m.mode != normalMode {
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	}
-	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.MoveUp, m.keys.MoveDown, m.keys.Add, m.keys.AddDated, m.keys.Edit, m.keys.EditDate, m.keys.Toggle, m.keys.Delete, m.keys.Filter, m.keys.Preview}
+	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.MoveUp, m.keys.MoveDown, m.keys.Add, m.keys.AddDated, m.keys.Edit, m.keys.EditDate, m.keys.Toggle, m.keys.Delete, m.keys.Filter, m.keys.Preview, m.keys.TemplateUse, m.keys.TemplateCreate}
 }
 
 // visibleItems builds the combined display list of headers, todos, and empty placeholders.
