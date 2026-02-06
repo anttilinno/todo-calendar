@@ -46,13 +46,13 @@ type Model struct {
 	settings     settings.Model
 	showSearch   bool
 	search       search.Model
-	store        *store.Store
+	store        store.TodoStore
 	cfg          config.Config
 	savedConfig  config.Config
 }
 
 // New creates a new root application model with the given dependencies.
-func New(provider *holidays.Provider, mondayStart bool, s *store.Store, t theme.Theme, cfg config.Config) Model {
+func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t theme.Theme, cfg config.Config) Model {
 	cal := calendar.New(provider, mondayStart, s, t)
 	cal.SetFocused(true)
 

@@ -45,7 +45,7 @@ type Model struct {
 	holidays    map[int]bool
 	indicators  map[int]int
 	provider    *holidays.Provider
-	store       *store.Store
+	store       store.TodoStore
 	keys        KeyMap
 	mondayStart bool
 	styles      Styles
@@ -55,7 +55,7 @@ type Model struct {
 
 // New creates a new calendar model with the given holiday provider,
 // week-start preference, and store for indicator data.
-func New(provider *holidays.Provider, mondayStart bool, s *store.Store, t theme.Theme) Model {
+func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t theme.Theme) Model {
 	now := time.Now()
 	y, m, _ := now.Date()
 

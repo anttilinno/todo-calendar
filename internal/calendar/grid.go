@@ -117,7 +117,7 @@ func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mo
 //   - mondayStart: if true, weeks start on Monday; otherwise Sunday
 //   - st: store for incomplete todo indicator lookup
 //   - s: calendar styles
-func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider, mondayStart bool, st *store.Store, s Styles) string {
+func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider, mondayStart bool, st store.TodoStore, s Styles) string {
 	var b strings.Builder
 
 	weekEnd := weekStart.AddDate(0, 0, 6)
