@@ -1,6 +1,8 @@
 package calendar
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -85,7 +87,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, nil
 }
 
-// View renders the calendar pane content.
+// View renders the calendar pane content including the overview section.
 func (m Model) View() string {
 	todayDay := 0
 	now := time.Now()
@@ -93,7 +95,41 @@ func (m Model) View() string {
 		todayDay = now.Day()
 	}
 
-	return RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.styles)
+	grid := RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.styles)
+	return grid + m.renderOverview()
+}
+
+// renderOverview builds the overview section showing per-month todo counts
+// and the floating (undated) todo count. It is computed fresh from the store
+// on every render to guarantee live updates without cache invalidation.
+func (m Model) renderOverview() string {
+	var b strings.Builder
+
+	b.WriteString("\n")
+	b.WriteString(m.styles.OverviewHeader.Render("Overview"))
+	b.WriteString("\n")
+
+	months := m.store.TodoCountsByMonth()
+	for _, mc := range months {
+		label := mc.Month.String()
+		if mc.Year != m.year {
+			label = fmt.Sprintf("%s %d", mc.Month.String(), mc.Year)
+		}
+		line := fmt.Sprintf(" %-16s[%d]", label, mc.Count)
+		if mc.Year == m.year && mc.Month == m.month {
+			b.WriteString(m.styles.OverviewActive.Render(line))
+		} else {
+			b.WriteString(m.styles.OverviewCount.Render(line))
+		}
+		b.WriteString("\n")
+	}
+
+	floatingCount := m.store.FloatingTodoCount()
+	floatingLine := fmt.Sprintf(" %-16s[%d]", "Unknown", floatingCount)
+	b.WriteString(m.styles.OverviewCount.Render(floatingLine))
+	b.WriteString("\n")
+
+	return b.String()
 }
 
 // RefreshIndicators recomputes the indicator data for the current month.
