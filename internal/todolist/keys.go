@@ -6,6 +6,8 @@ import "github.com/charmbracelet/bubbles/key"
 type KeyMap struct {
 	Up       key.Binding
 	Down     key.Binding
+	MoveUp   key.Binding
+	MoveDown key.Binding
 	Add      key.Binding
 	AddDated key.Binding
 	Toggle   key.Binding
@@ -18,13 +20,13 @@ type KeyMap struct {
 
 // ShortHelp returns key bindings for the short help view.
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.EditDate}
+	return []key.Binding{k.Up, k.Down, k.MoveUp, k.MoveDown, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.EditDate}
 }
 
 // FullHelp returns key bindings for the full help view.
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Up, k.Down, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.EditDate},
+		{k.Up, k.Down, k.MoveUp, k.MoveDown, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.EditDate},
 	}
 }
 
@@ -38,6 +40,14 @@ func DefaultKeyMap() KeyMap {
 		Down: key.NewBinding(
 			key.WithKeys("j", "down"),
 			key.WithHelp("j", "down"),
+		),
+		MoveUp: key.NewBinding(
+			key.WithKeys("K"),
+			key.WithHelp("K", "move up"),
+		),
+		MoveDown: key.NewBinding(
+			key.WithKeys("J"),
+			key.WithHelp("J", "move down"),
 		),
 		Add: key.NewBinding(
 			key.WithKeys("a"),
