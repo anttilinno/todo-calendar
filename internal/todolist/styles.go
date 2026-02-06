@@ -12,6 +12,7 @@ type Styles struct {
 	Cursor        lipgloss.Style
 	Date          lipgloss.Style
 	Empty         lipgloss.Style
+	BodyIndicator lipgloss.Style
 }
 
 // NewStyles builds todo list styles from the given theme.
@@ -22,5 +23,6 @@ func NewStyles(t theme.Theme) Styles {
 		Cursor:        lipgloss.NewStyle().Foreground(t.AccentFg),
 		Date:          lipgloss.NewStyle().Foreground(t.MutedFg),
 		Empty:         lipgloss.NewStyle().Foreground(t.EmptyFg),
+		BodyIndicator: lipgloss.NewStyle().Foreground(t.MutedFg),
 	}
 }

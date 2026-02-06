@@ -14,6 +14,11 @@ import (
 	"github.com/antti/todo-calendar/internal/theme"
 )
 
+// PreviewMsg is emitted when the user wants to preview a todo's body.
+type PreviewMsg struct {
+	Todo store.Todo
+}
+
 // mode represents the current input state of the todo list.
 type mode int
 
@@ -111,7 +116,7 @@ func (m Model) HelpBindings() []key.Binding {
 	if m.mode != normalMode {
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	}
-	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.MoveUp, m.keys.MoveDown, m.keys.Add, m.keys.AddDated, m.keys.Edit, m.keys.EditDate, m.keys.Toggle, m.keys.Delete, m.keys.Filter}
+	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.MoveUp, m.keys.MoveDown, m.keys.Add, m.keys.AddDated, m.keys.Edit, m.keys.EditDate, m.keys.Toggle, m.keys.Delete, m.keys.Filter, m.keys.Preview}
 }
 
 // visibleItems builds the combined display list of headers, todos, and empty placeholders.
@@ -331,6 +336,15 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.input.Prompt = "/ "
 		m.input.SetValue("")
 		return m, m.input.Focus()
+
+	case key.Matches(msg, m.keys.Preview):
+		if len(selectable) > 0 && m.cursor < len(selectable) {
+			todo := items[selectable[m.cursor]].todo
+			if todo != nil && todo.HasBody() {
+				t := *todo
+				return m, func() tea.Msg { return PreviewMsg{Todo: t} }
+			}
+		}
 	}
 
 	return m, nil
@@ -557,8 +571,11 @@ func (m Model) renderTodo(b *strings.Builder, t *store.Todo, selected bool) {
 		check = "[x] "
 	}
 
-	// Text with optional date (display in user's configured format)
+	// Text with optional body indicator and date (display in user's configured format)
 	text := t.Text
+	if t.HasBody() {
+		text += " " + m.styles.BodyIndicator.Render("[+]")
+	}
 	if t.HasDate() {
 		text += " " + m.styles.Date.Render(config.FormatDate(t.Date, m.dateLayout))
 	}
