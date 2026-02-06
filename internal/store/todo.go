@@ -14,6 +14,7 @@ type Todo struct {
 	Date      string `json:"date,omitempty"`
 	Done      bool   `json:"done"`
 	CreatedAt string `json:"created_at"`
+	SortOrder int    `json:"sort_order,omitempty"`
 }
 
 // Data is the top-level JSON envelope persisted to disk.

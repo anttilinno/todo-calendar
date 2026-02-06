@@ -31,6 +31,7 @@ func NewStore(path string) (*Store, error) {
 	if err := s.load(); err != nil {
 		return nil, err
 	}
+	s.EnsureSortOrder()
 	return s, nil
 }
 
@@ -89,12 +90,19 @@ func (s *Store) Save() error {
 // Add creates a new todo with the given text and optional date (YYYY-MM-DD or "").
 // It persists the change and returns the newly created todo.
 func (s *Store) Add(text string, date string) Todo {
+	maxOrder := 0
+	for _, t := range s.data.Todos {
+		if t.SortOrder > maxOrder {
+			maxOrder = t.SortOrder
+		}
+	}
 	t := Todo{
 		ID:        s.data.NextID,
 		Text:      text,
 		Date:      date,
 		Done:      false,
 		CreatedAt: time.Now().Format(dateFormat),
+		SortOrder: maxOrder + 10,
 	}
 	s.data.NextID++
 	s.data.Todos = append(s.data.Todos, t)
@@ -154,7 +162,7 @@ func (s *Store) Todos() []Todo {
 }
 
 // TodosForMonth returns todos whose date falls in the given year and month,
-// sorted by date ascending then by ID for same-date stability.
+// sorted by SortOrder ascending, then date, then ID for stability.
 func (s *Store) TodosForMonth(year int, month time.Month) []Todo {
 	var result []Todo
 	for _, t := range s.data.Todos {
@@ -163,6 +171,9 @@ func (s *Store) TodosForMonth(year int, month time.Month) []Todo {
 		}
 	}
 	sort.Slice(result, func(i, j int) bool {
+		if result[i].SortOrder != result[j].SortOrder {
+			return result[i].SortOrder < result[j].SortOrder
+		}
 		if result[i].Date != result[j].Date {
 			return result[i].Date < result[j].Date
 		}
@@ -189,7 +200,7 @@ func (s *Store) IncompleteTodosPerDay(year int, month time.Month) map[int]int {
 	return counts
 }
 
-// FloatingTodos returns todos with no date assigned, sorted by ID ascending.
+// FloatingTodos returns todos with no date assigned, sorted by SortOrder then ID.
 func (s *Store) FloatingTodos() []Todo {
 	var result []Todo
 	for _, t := range s.data.Todos {
@@ -198,7 +209,43 @@ func (s *Store) FloatingTodos() []Todo {
 		}
 	}
 	sort.Slice(result, func(i, j int) bool {
+		if result[i].SortOrder != result[j].SortOrder {
+			return result[i].SortOrder < result[j].SortOrder
+		}
 		return result[i].ID < result[j].ID
 	})
 	return result
+}
+
+// EnsureSortOrder assigns unique SortOrder values to any todos that
+// have the zero value (legacy data). Called once at load time.
+func (s *Store) EnsureSortOrder() {
+	needsSave := false
+	for i := range s.data.Todos {
+		if s.data.Todos[i].SortOrder == 0 {
+			s.data.Todos[i].SortOrder = (i + 1) * 10
+			needsSave = true
+		}
+	}
+	if needsSave {
+		s.Save()
+	}
+}
+
+// SwapOrder swaps the SortOrder values of two todos identified by ID
+// and persists the change. If either ID is not found, does nothing.
+func (s *Store) SwapOrder(id1, id2 int) {
+	var t1, t2 *Todo
+	for i := range s.data.Todos {
+		switch s.data.Todos[i].ID {
+		case id1:
+			t1 = &s.data.Todos[i]
+		case id2:
+			t2 = &s.data.Todos[i]
+		}
+	}
+	if t1 != nil && t2 != nil {
+		t1.SortOrder, t2.SortOrder = t2.SortOrder, t1.SortOrder
+		s.Save()
+	}
 }
