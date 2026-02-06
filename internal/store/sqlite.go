@@ -88,15 +88,14 @@ func (s *SQLiteStore) Close() error {
 }
 
 // todoColumns is the column list used in SELECT statements.
-// Body is excluded because Todo struct has no Body field yet.
-const todoColumns = "id, text, date, done, created_at, sort_order"
+const todoColumns = "id, text, body, date, done, created_at, sort_order"
 
 // scanTodo scans a single todo row from the given scanner.
 func scanTodo(scanner interface{ Scan(...any) error }) (Todo, error) {
 	var t Todo
 	var date sql.NullString
 	var done int
-	err := scanner.Scan(&t.ID, &t.Text, &date, &done, &t.CreatedAt, &t.SortOrder)
+	err := scanner.Scan(&t.ID, &t.Text, &t.Body, &date, &done, &t.CreatedAt, &t.SortOrder)
 	if err != nil {
 		return Todo{}, err
 	}
@@ -135,7 +134,7 @@ func (s *SQLiteStore) Add(text string, date string) Todo {
 	}
 
 	result, err := s.db.Exec(
-		"INSERT INTO todos (text, date, done, created_at, sort_order) VALUES (?, ?, 0, ?, ?)",
+		"INSERT INTO todos (text, body, date, done, created_at, sort_order) VALUES (?, '', ?, 0, ?, ?)",
 		text, dateVal, createdAt, sortOrder,
 	)
 	if err != nil {
@@ -181,6 +180,11 @@ func (s *SQLiteStore) Update(id int, text string, date string) {
 		dateVal = date
 	}
 	s.db.Exec("UPDATE todos SET text = ?, date = ? WHERE id = ?", text, dateVal, id)
+}
+
+// UpdateBody sets the markdown body of the todo with the given ID.
+func (s *SQLiteStore) UpdateBody(id int, body string) {
+	s.db.Exec("UPDATE todos SET body = ? WHERE id = ?", body, id)
 }
 
 // Todos returns all todos ordered by sort_order, then id.

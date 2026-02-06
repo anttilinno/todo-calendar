@@ -23,6 +23,7 @@ type TodoStore interface {
 	IncompleteTodosPerDay(year int, month time.Month) map[int]int
 	TodoCountsByMonth() []MonthCount
 	FloatingTodoCounts() FloatingCount
+	UpdateBody(id int, body string)
 	SwapOrder(id1, id2 int)
 	SearchTodos(query string) []Todo
 	EnsureSortOrder()
@@ -174,6 +175,17 @@ func (s *Store) Update(id int, text string, date string) {
 		if s.data.Todos[i].ID == id {
 			s.data.Todos[i].Text = text
 			s.data.Todos[i].Date = date
+			s.Save()
+			return
+		}
+	}
+}
+
+// UpdateBody sets the markdown body of the todo with the given ID and persists.
+func (s *Store) UpdateBody(id int, body string) {
+	for i := range s.data.Todos {
+		if s.data.Todos[i].ID == id {
+			s.data.Todos[i].Body = body
 			s.Save()
 			return
 		}
