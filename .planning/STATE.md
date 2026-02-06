@@ -5,14 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** v1.2 Reorder & Settings
+**Current focus:** v1.2 Reorder & Settings -- Phase 7 (Todo Reordering)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-06 — Milestone v1.2 started
+Phase: 7 of 9 (Todo Reordering)
+Plan: 0 of TBD in current phase
+Status: Ready to plan
+Last activity: 2026-02-06 -- Roadmap created for v1.2
+
+Progress: [██████████████░░░░░░░] 67% (phases 1-6 complete, 7-9 remaining)
 
 ## Performance Metrics
 
@@ -38,6 +40,10 @@ Last activity: 2026-02-06 — Milestone v1.2 started
 
 See PROJECT.md Key Decisions table for complete log.
 
+Recent decisions affecting current work:
+- Settings as full-screen overlay with live preview (pending implementation)
+- Styles struct + constructor DI enables runtime theme switching (Phase 6)
+
 ### Pending Todos
 
 None.
@@ -49,5 +55,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Defining v1.2 milestone
+Stopped at: Roadmap created for v1.2 milestone
 Resume file: None

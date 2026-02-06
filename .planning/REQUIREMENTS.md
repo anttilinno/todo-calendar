@@ -46,23 +46,23 @@ Requirements for milestone v1.2 Reorder & Settings.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REORD-01 | — | Pending |
-| REORD-02 | — | Pending |
-| REORD-03 | — | Pending |
-| SETT-01 | — | Pending |
-| SETT-02 | — | Pending |
-| SETT-03 | — | Pending |
-| SETT-04 | — | Pending |
-| SETT-05 | — | Pending |
-| SETT-06 | — | Pending |
-| OVRVW-01 | — | Pending |
-| OVRVW-02 | — | Pending |
+| REORD-01 | Phase 7 | Pending |
+| REORD-02 | Phase 7 | Pending |
+| REORD-03 | Phase 7 | Pending |
+| SETT-01 | Phase 8 | Pending |
+| SETT-02 | Phase 8 | Pending |
+| SETT-03 | Phase 8 | Pending |
+| SETT-04 | Phase 8 | Pending |
+| SETT-05 | Phase 8 | Pending |
+| SETT-06 | Phase 8 | Pending |
+| OVRVW-01 | Phase 9 | Pending |
+| OVRVW-02 | Phase 9 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 11 total
-- Mapped to phases: 0
-- Unmapped: 11 ⚠️
+- Mapped to phases: 11
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 after initial definition*
+*Last updated: 2026-02-06 after roadmap creation*
