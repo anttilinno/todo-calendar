@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -316,4 +317,31 @@ func (s *Store) SwapOrder(id1, id2 int) {
 		t1.SortOrder, t2.SortOrder = t2.SortOrder, t1.SortOrder
 		s.Save()
 	}
+}
+
+// SearchTodos returns all todos whose text contains the query (case-insensitive).
+// Results are sorted: dated todos first by date ascending, then floating by ID.
+func (s *Store) SearchTodos(query string) []Todo {
+	if query == "" {
+		return nil
+	}
+	q := strings.ToLower(query)
+	var results []Todo
+	for _, t := range s.data.Todos {
+		if strings.Contains(strings.ToLower(t.Text), q) {
+			results = append(results, t)
+		}
+	}
+	sort.Slice(results, func(i, j int) bool {
+		// Dated before floating
+		if results[i].HasDate() != results[j].HasDate() {
+			return results[i].HasDate()
+		}
+		// By date ascending for dated, by ID for floating
+		if results[i].Date != results[j].Date {
+			return results[i].Date < results[j].Date
+		}
+		return results[i].ID < results[j].ID
+	})
+	return results
 }

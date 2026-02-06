@@ -245,3 +245,12 @@ func (m Model) Keys() KeyMap {
 
 // GetViewMode returns the current view mode (MonthView or WeekView).
 func (m Model) GetViewMode() ViewMode { return m.viewMode }
+
+// SetYearMonth navigates directly to the specified year and month,
+// refreshing holidays and indicators.
+func (m *Model) SetYearMonth(year int, month time.Month) {
+	m.year = year
+	m.month = month
+	m.holidays = m.provider.HolidaysInMonth(year, month)
+	m.indicators = m.store.IncompleteTodosPerDay(year, month)
+}
