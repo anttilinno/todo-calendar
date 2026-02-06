@@ -142,7 +142,11 @@ Plans:
   2. Store consumers (todolist, search, calendar, overview) work through a TodoStore interface without knowing the backend
   3. Database schema is version-managed and migrations apply automatically on startup
   4. All existing operations (add, complete, delete, edit, reorder, search, filter) behave identically to the JSON backend
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 14-01-PLAN.md -- Extract TodoStore interface from concrete Store struct
+- [ ] 14-02-PLAN.md -- Implement SQLite backend and wire into main.go
 
 #### Phase 15: Markdown Templates
 **Goal**: Todos support rich markdown bodies created from reusable templates
