@@ -11,10 +11,24 @@ const dateFormat = "2006-01-02"
 type Todo struct {
 	ID        int    `json:"id"`
 	Text      string `json:"text"`
+	Body      string `json:"body,omitempty"`
 	Date      string `json:"date,omitempty"`
 	Done      bool   `json:"done"`
 	CreatedAt string `json:"created_at"`
 	SortOrder int    `json:"sort_order,omitempty"`
+}
+
+// HasBody reports whether the todo has a non-empty markdown body.
+func (t Todo) HasBody() bool {
+	return t.Body != ""
+}
+
+// Template represents a reusable markdown template with placeholders.
+type Template struct {
+	ID        int
+	Name      string
+	Content   string
+	CreatedAt string
 }
 
 // Data is the top-level JSON envelope persisted to disk.
