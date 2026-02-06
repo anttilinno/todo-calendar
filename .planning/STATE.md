@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** v1.2 Reorder & Settings -- Phase 8 (Settings Overlay)
+**Current focus:** v1.2 Reorder & Settings -- Phase 9 (Overview Panel) -- COMPLETE
 
 ## Current Position
 
-Phase: 8 of 9 (Settings Overlay) -- COMPLETE
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-06 -- Completed 08-02-PLAN.md
+Phase: 9 of 9 (Overview Panel) -- COMPLETE
+Plan: 1 of 1 in current phase
+Status: All phases complete
+Last activity: 2026-02-06 -- Completed 09-01-PLAN.md
 
-Progress: [██████████████████░░░] 89% (phases 1-8 complete, phase 9 next)
+Progress: [█████████████████████] 100% (all 9 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16
+- Total plans completed: 17
 - Average duration: 2 min
-- Total execution time: 0.58 hours
+- Total execution time: 0.60 hours
 
 **By Phase:**
 
@@ -35,6 +35,7 @@ Progress: [██████████████████░░░] 89% 
 | 6 | 2 | 4 min | 2 min |
 | 7 | 2 | 3 min | 1.5 min |
 | 8 | 2 | 5 min | 2.5 min |
+| 9 | 1 | 1 min | 1 min |
 
 ## Accumulated Context
 
@@ -43,6 +44,11 @@ Progress: [██████████████████░░░] 89% 
 See PROJECT.md Key Decisions table for complete log.
 
 Recent decisions affecting current work:
+- No caching of overview data; computed fresh every View() call (Phase 9)
+- MonthCount exported type for clean API boundary (Phase 9)
+- Local ym struct key for map grouping avoids fmt import in store (Phase 9)
+- Floating todos labeled "Unknown" matching existing UI terminology (Phase 9)
+- Cross-year months show year suffix for disambiguation (Phase 9)
 - Settings model uses cycling options (not free-text) for all 3 fields (Phase 8)
 - countryLabels uses hardcoded 11-entry map, no ISO library (Phase 8)
 - SetTheme pointer receivers modify in place without model recreation (Phase 8)
@@ -61,6 +67,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-06T08:30:00Z
-Stopped at: Completed 08-02-PLAN.md (Phase 8 complete)
+Last session: 2026-02-06T09:08:21Z
+Stopped at: Completed 09-01-PLAN.md (Phase 9 complete, all phases done)
 Resume file: None
