@@ -145,8 +145,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 14-01-PLAN.md -- Extract TodoStore interface from concrete Store struct
-- [ ] 14-02-PLAN.md -- Implement SQLite backend and wire into main.go
+- [x] 14-01-PLAN.md -- Extract TodoStore interface from concrete Store struct
+- [x] 14-02-PLAN.md -- Implement SQLite backend and wire into main.go
 
 #### Phase 15: Markdown Templates
 **Goal**: Todos support rich markdown bodies created from reusable templates
@@ -187,6 +187,6 @@ Plans:
 | 11. Date Format Setting | v1.3 | 1/1 | Complete | 2026-02-06 |
 | 12. Weekly Calendar View | v1.3 | 1/1 | Complete | 2026-02-06 |
 | 13. Search & Filter | v1.3 | 2/2 | Complete | 2026-02-06 |
-| 14. Database Backend | v1.4 | 0/? | Not started | - |
+| 14. Database Backend | v1.4 | 2/2 | Complete | 2026-02-06 |
 | 15. Markdown Templates | v1.4 | 0/? | Not started | - |
 | 16. External Editor | v1.4 | 0/? | Not started | - |
