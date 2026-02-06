@@ -232,6 +232,56 @@ func (s *Store) EnsureSortOrder() {
 	}
 }
 
+// MonthCount holds the total number of todos for a given year and month.
+type MonthCount struct {
+	Year  int
+	Month time.Month
+	Count int
+}
+
+// TodoCountsByMonth returns the number of todos per month across all dated
+// todos, sorted chronologically (year ascending, then month ascending).
+// Undated (floating) todos are excluded.
+func (s *Store) TodoCountsByMonth() []MonthCount {
+	type ym struct {
+		y int
+		m time.Month
+	}
+	counts := make(map[ym]int)
+	for _, t := range s.data.Todos {
+		if t.Date == "" {
+			continue
+		}
+		d, err := time.Parse(dateFormat, t.Date)
+		if err != nil {
+			continue
+		}
+		counts[ym{d.Year(), d.Month()}]++
+	}
+	result := make([]MonthCount, 0, len(counts))
+	for k, c := range counts {
+		result = append(result, MonthCount{Year: k.y, Month: k.m, Count: c})
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Year != result[j].Year {
+			return result[i].Year < result[j].Year
+		}
+		return result[i].Month < result[j].Month
+	})
+	return result
+}
+
+// FloatingTodoCount returns the number of todos with no date assigned.
+func (s *Store) FloatingTodoCount() int {
+	count := 0
+	for _, t := range s.data.Todos {
+		if !t.HasDate() {
+			count++
+		}
+	}
+	return count
+}
+
 // SwapOrder swaps the SortOrder values of two todos identified by ID
 // and persists the change. If either ID is not found, does nothing.
 func (s *Store) SwapOrder(id1, id2 int) {
