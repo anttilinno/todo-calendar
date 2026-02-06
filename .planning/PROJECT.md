@@ -75,7 +75,7 @@ Current milestone: v1.4 Data & Editing
 ## Constraints
 
 - **Stack**: Go + Bubble Tea — chosen for ergonomic component model and ecosystem
-- **Storage**: Local file only — no database, no network dependencies
+- **Storage**: Local only — no network dependencies, no cloud sync
 - **Holidays**: Must work offline using bundled Go library, not an external API
 
 ## Key Decisions
@@ -84,7 +84,7 @@ Current milestone: v1.4 Data & Editing
 |----------|-----------|---------|
 | Go + Bubble Tea over Rust + Ratatui | Better component model for split-pane layout, gentler learning curve | ✓ Good — clean architecture, fast development |
 | Month-level navigation, no day selection | User doesn't have many items — showing all month todos is simpler | ✓ Good — keeps UI simple |
-| Local JSON file over SQLite | Simpler, more portable, sufficient for personal use | ✓ Good — atomic writes keep data safe |
+| Local JSON file over SQLite | Simpler, more portable, sufficient for personal use | ⚠️ Revisit — migrating to SQLite in v1.4 |
 | Configurable country holidays via Go library | Offline, no API dependency, flexible | ✓ Good — 11 countries supported |
 | String dates (YYYY-MM-DD) over time.Time | Prevents timezone corruption during JSON round-trips | ✓ Good — research-informed decision |
 | Atomic file writes (CreateTemp+Sync+Rename) | Data safety from day one | ✓ Good — prevents corruption |
@@ -110,4 +110,4 @@ Current milestone: v1.4 Data & Editing
 - Store.Save() errors ignored in CRUD methods (silent persistence failures on disk errors)
 
 ---
-*Last updated: 2026-02-06 after v1.3 milestone*
+*Last updated: 2026-02-06 after v1.4 milestone started*
