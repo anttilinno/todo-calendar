@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 ## Current Position
 
 Phase: 15 of 16 (Markdown Templates)
-Plan: --
-Status: Ready to plan
-Last activity: 2026-02-06 -- Phase 14 verified and complete
+Plan: 01 of 03
+Status: In progress
+Last activity: 2026-02-06 -- Completed 15-01-PLAN.md
 
-Progress: ████████████████████████████░░ 96% (24/25 plans estimated through v1.4)
+Progress: █████████████████████████████░ 97% (25/26 plans estimated through v1.4)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 24 (through 14-02)
+- Total plans completed: 25 (through 15-01)
 - Average duration: 2 min
-- Total execution time: ~0.9 hours
+- Total execution time: ~0.95 hours
 
 ## Accumulated Context
 
@@ -37,6 +37,9 @@ Recent decisions affecting current work:
 - 14-02: Hand-written SQL with scan helpers instead of sqlc (single table, simple CRUD)
 - 14-02: PRAGMA user_version for schema versioning instead of dbmate (lightweight desktop app)
 - 14-02: WAL journal mode, MaxOpenConns(1), body column in schema but excluded from SELECTs
+- 15-01: Body empty on Add(); template flow uses UpdateBody() separately
+- 15-01: JSON Store gets stub template methods (not supported); SQLite is primary
+- 15-01: ExtractPlaceholders uses text/template/parse AST walk, not regex
 
 ### Pending Todos
 
@@ -49,5 +52,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 14-02-PLAN.md
+Stopped at: Completed 15-01-PLAN.md
 Resume file: None
