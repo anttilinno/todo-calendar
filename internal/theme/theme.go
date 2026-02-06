@@ -114,6 +114,12 @@ func Solarized() Theme {
 	}
 }
 
+// Names returns the list of available theme names.
+// This is the single source of truth for theme enumeration.
+func Names() []string {
+	return []string{"dark", "light", "nord", "solarized"}
+}
+
 // ForName returns the theme matching the given name.
 // Unknown or empty names default to Dark.
 func ForName(name string) Theme {
