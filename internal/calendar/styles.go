@@ -13,9 +13,11 @@ type Styles struct {
 	Today          lipgloss.Style
 	Holiday        lipgloss.Style
 	Indicator      lipgloss.Style
-	OverviewHeader lipgloss.Style
-	OverviewCount  lipgloss.Style
-	OverviewActive lipgloss.Style
+	OverviewHeader    lipgloss.Style
+	OverviewCount     lipgloss.Style
+	OverviewActive    lipgloss.Style
+	OverviewPending   lipgloss.Style
+	OverviewCompleted lipgloss.Style
 }
 
 // NewStyles builds calendar styles from the given theme.
@@ -27,8 +29,10 @@ func NewStyles(t theme.Theme) Styles {
 		Today:          lipgloss.NewStyle().Bold(true).Foreground(t.TodayFg).Background(t.TodayBg),
 		Holiday:        lipgloss.NewStyle().Foreground(t.HolidayFg),
 		Indicator:      lipgloss.NewStyle().Bold(true).Foreground(t.IndicatorFg),
-		OverviewHeader: lipgloss.NewStyle().Bold(true).Foreground(t.AccentFg),
-		OverviewCount:  lipgloss.NewStyle().Foreground(t.MutedFg),
-		OverviewActive: lipgloss.NewStyle().Bold(true).Foreground(t.NormalFg),
+		OverviewHeader:    lipgloss.NewStyle().Bold(true).Foreground(t.AccentFg),
+		OverviewCount:     lipgloss.NewStyle().Foreground(t.MutedFg),
+		OverviewActive:    lipgloss.NewStyle().Bold(true).Foreground(t.NormalFg),
+		OverviewPending:   lipgloss.NewStyle().Foreground(t.PendingFg),
+		OverviewCompleted: lipgloss.NewStyle().Foreground(t.CompletedCountFg),
 	}
 }
