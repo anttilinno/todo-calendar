@@ -5,15 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** v1.2 shipped. No active milestone.
+**Current focus:** v1.3 Views & Usability -- defining requirements
 
 ## Current Position
 
-Milestone: v1.2 Reorder & Settings -- SHIPPED 2026-02-06
-Status: Between milestones
-Last activity: 2026-02-06 -- Completed milestone v1.2
-
-Progress: [█████████████████████] 100% (v1.2 shipped)
+Phase: Not started (defining requirements)
+Plan: --
+Status: Defining requirements
+Last activity: 2026-02-06 -- Milestone v1.3 started
 
 ## Performance Metrics
 
@@ -53,5 +52,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Milestone v1.2 archived and shipped
+Stopped at: Starting milestone v1.3 -- defining requirements
 Resume file: None
