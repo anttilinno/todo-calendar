@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 MVP** - Phases 1-3 (shipped 2026-02-05)
 - ✅ **v1.1 Polish & Personalization** - Phases 4-6 (shipped 2026-02-05)
-- 🚧 **v1.2 Reorder & Settings** - Phases 7-9 (in progress)
+- ✅ **v1.2 Reorder & Settings** - Phases 7-9 (shipped 2026-02-06)
 
 ## Phases
 
@@ -111,7 +111,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 09-01-PLAN.md -- Store aggregation methods, overview styles, and calendar overview rendering
+- [x] 09-01: Store aggregation methods, overview styles, and calendar overview rendering
 
 ## Progress
 
@@ -127,4 +127,4 @@ Plans:
 | 6. Color Themes | v1.1 | 2/2 | Complete | 2026-02-05 |
 | 7. Todo Reordering | v1.2 | 2/2 | Complete | 2026-02-06 |
 | 8. Settings Overlay | v1.2 | 2/2 | Complete | 2026-02-06 |
-| 9. Overview Panel | v1.2 | 0/1 | Not started | - |
+| 9. Overview Panel | v1.2 | 1/1 | Complete | 2026-02-06 |
