@@ -109,7 +109,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 10-01: Split overview counts with theme-aware color roles
+- [x] 10-01: Split overview counts with theme-aware color roles
 
 #### Phase 11: Date Format Setting
 **Goal**: Users see dates in their preferred regional format
@@ -167,7 +167,7 @@ Plans:
 | 7. Todo Reordering | v1.2 | 2/2 | Complete | 2026-02-06 |
 | 8. Settings Overlay | v1.2 | 2/2 | Complete | 2026-02-06 |
 | 9. Overview Panel | v1.2 | 1/1 | Complete | 2026-02-06 |
-| 10. Overview Color Coding | v1.3 | 0/1 | Not started | - |
+| 10. Overview Color Coding | v1.3 | 1/1 | Complete | 2026-02-06 |
 | 11. Date Format Setting | v1.3 | 0/1 | Not started | - |
 | 12. Weekly Calendar View | v1.3 | 0/1 | Not started | - |
 | 13. Search & Filter | v1.3 | 0/2 | Not started | - |
