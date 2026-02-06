@@ -25,17 +25,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	todosPath, err := store.TodosPath()
+	dbPath, err := config.DBPath()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Todos path error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Database path error: %v\n", err)
 		os.Exit(1)
 	}
 
-	s, err := store.NewStore(todosPath)
+	s, err := store.NewSQLiteStore(dbPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Store error: %v\n", err)
 		os.Exit(1)
 	}
+	defer s.Close()
 
 	t := theme.ForName(cfg.Theme)
 	model := app.New(provider, cfg.MondayStart(), s, t, cfg)
