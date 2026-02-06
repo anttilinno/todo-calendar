@@ -14,3 +14,13 @@ func Path() (string, error) {
 	}
 	return filepath.Join(dir, "todo-calendar", "config.toml"), nil
 }
+
+// DBPath returns the path to the todo-calendar SQLite database,
+// using the XDG config directory (os.UserConfigDir).
+func DBPath() (string, error) {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "todo-calendar", "todos.db"), nil
+}

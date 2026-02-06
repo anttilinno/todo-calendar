@@ -11,8 +11,8 @@ Requirements for milestone v1.4 Data & Editing.
 
 - [ ] **DB-01**: Todos are stored in a SQLite database instead of JSON files
 - [ ] **DB-02**: Store interface extracted to decouple consumers from backend
-- [ ] **DB-03**: Database migrations managed via dbmate with embedded SQL files
-- [ ] **DB-04**: Type-safe database queries generated via sqlc
+- [ ] **DB-03**: Database schema versioned via PRAGMA user_version with hand-written migrations
+- [ ] **DB-04**: Type-safe database queries via hand-written SQL with scan helpers
 - [ ] **DB-05**: All existing CRUD operations work identically with the new backend
 
 ### Markdown Templates
@@ -43,7 +43,9 @@ Deferred to later milestones.
 | Feature | Reason |
 |---------|--------|
 | JSON-to-SQLite migration | No existing data to migrate |
-| ORM (GORM, Ent, etc.) | sqlc provides type safety without ORM overhead |
+| ORM (GORM, Ent, etc.) | Hand-written SQL is clearer for single-table app |
+| sqlc | Overkill for simple CRUD on one table |
+| dbmate / goose / migrate | PRAGMA user_version sufficient for single-user desktop app |
 | Built-in markdown editor | External editor is the correct solution |
 | YAML frontmatter in templates | Unnecessary complexity |
 | FTS5 full-text search | Defer to v1.5 if needed; LIKE sufficient for now |
