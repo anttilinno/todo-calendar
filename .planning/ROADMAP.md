@@ -152,8 +152,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 13-01: Inline todo filter with `/` activation and Esc clear
-- [ ] 13-02: Full-screen search overlay with cross-month results and navigation
+- [x] 13-01: Inline todo filter with `/` activation and Esc clear
+- [x] 13-02: Full-screen search overlay with cross-month results and navigation
 
 ### 📋 v1.4 Data & Editing (Planned)
 
@@ -205,7 +205,7 @@ Plans:
 | 10. Overview Color Coding | v1.3 | 1/1 | Complete | 2026-02-06 |
 | 11. Date Format Setting | v1.3 | 1/1 | Complete | 2026-02-06 |
 | 12. Weekly Calendar View | v1.3 | 1/1 | Complete | 2026-02-06 |
-| 13. Search & Filter | v1.3 | 0/2 | Not started | - |
+| 13. Search & Filter | v1.3 | 2/2 | Complete | 2026-02-06 |
 | 14. Database Backend | v1.4 | 0/? | Not started | - |
 | 15. Markdown Templates | v1.4 | 0/? | Not started | - |
 | 16. External Editor | v1.4 | 0/? | Not started | - |

@@ -27,11 +27,11 @@ Requirements for milestone v1.3 Views & Usability.
 
 ### Search/Filter
 
-- [ ] **SRCH-01**: User can activate inline filter with `/` to filter visible todos by text
-- [ ] **SRCH-02**: User can clear inline filter with Esc to return to normal mode
-- [ ] **SRCH-03**: User can open full-screen search overlay to find todos across all months
-- [ ] **SRCH-04**: Search results show matching todos with their dates
-- [ ] **SRCH-05**: User can navigate search results and jump to a selected todo's month
+- [x] **SRCH-01**: User can activate inline filter with `/` to filter visible todos by text
+- [x] **SRCH-02**: User can clear inline filter with Esc to return to normal mode
+- [x] **SRCH-03**: User can open full-screen search overlay to find todos across all months
+- [x] **SRCH-04**: Search results show matching todos with their dates
+- [x] **SRCH-05**: User can navigate search results and jump to a selected todo's month
 
 ## Future Requirements
 
@@ -87,11 +87,11 @@ Deferred to later milestones.
 | WKVIEW-02 | Phase 12 | Complete |
 | WKVIEW-03 | Phase 12 | Complete |
 | WKVIEW-04 | Phase 12 | Complete |
-| SRCH-01 | Phase 13 | Pending |
-| SRCH-02 | Phase 13 | Pending |
-| SRCH-03 | Phase 13 | Pending |
-| SRCH-04 | Phase 13 | Pending |
-| SRCH-05 | Phase 13 | Pending |
+| SRCH-01 | Phase 13 | Complete |
+| SRCH-02 | Phase 13 | Complete |
+| SRCH-03 | Phase 13 | Complete |
+| SRCH-04 | Phase 13 | Complete |
+| SRCH-05 | Phase 13 | Complete |
 
 **Coverage:**
 - v1.3 requirements: 14 total
@@ -100,4 +100,4 @@ Deferred to later milestones.
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 after phase 11 completion*
+*Last updated: 2026-02-06 after phase 13 completion*
