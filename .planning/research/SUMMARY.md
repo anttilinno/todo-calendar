@@ -1,286 +1,246 @@
 # Project Research Summary
 
-**Project:** Todo Calendar TUI
-**Domain:** Terminal User Interface (TUI) calendar with integrated todo list
-**Researched:** 2026-02-05
+**Project:** Todo Calendar v1.3 - Views & Usability Enhancements
+**Domain:** TUI Calendar Application Feature Integration
+**Researched:** 2026-02-06
 **Confidence:** HIGH
 
 ## Executive Summary
 
-A TUI calendar combined with a todo list is a proven pattern exemplified by calcurse (2004, C/ncurses), calcure (2022, Python/curses), and partially by khal/todoman. The differentiator is modern Go implementation with Bubble Tea's Elm Architecture, contemporary styling via Lip Gloss, and native Finnish holiday support out of the box. The proven approach uses a split-pane layout (calendar left, todo list right) with keyboard-first navigation, local JSON storage, and optional date binding between todos and calendar dates.
+This is a feature expansion for an existing, stable Go TUI calendar+todo application (phases 1-9 shipped). Version 1.3 adds four usability enhancements: weekly calendar view toggle, search/filter capabilities, overview color coding for completion status, and configurable date formats. Research confirms all four features can be implemented with zero new dependencies - the existing stack (Go 1.25.6, Bubble Tea v1.3.10, Lipgloss v1.1.0, Bubbles v0.21.1) provides everything needed.
 
-The recommended stack is Bubble Tea v1.3.10 (stable) with Lip Gloss v1.1.0, Bubbles v0.21.1, rickar/cal v2 for holidays, and stdlib JSON for data. Avoid v2 pre-release libraries (still in RC/beta). The core architectural risk is frame size accounting errors in split-pane layout — this breaks in 90% of first attempts. The second major risk is View() being called before WindowSizeMsg arrives, causing zero-dimension panics. Both are well-documented with established mitigation patterns.
+The recommended approach prioritizes quick wins before complex features. Start with overview color coding (smallest scope, highest value-to-cost ratio), followed by date format settings (establishes format propagation patterns), then weekly view (contained within calendar component), and finish with search/filter (most architecturally impactful, splits naturally into inline filter and full-screen overlay). All four features are architecturally independent - they can be built in any order without blocking dependencies.
 
-The critical insight from pitfall research: implement atomic file writes from day one (write-temp-rename pattern) and establish the Cmd/Msg pattern correctly in the initial scaffold. These are not refactorable later without significant rework. All other complexity is incremental.
+Key risks center on state management rather than technology. Critical pitfalls include: weekly view grid width contract (must stay at 34 chars), date format round-trip corruption (display format must never touch storage), input state machine conflicts (search needs separate textinput), and overlay routing complexity (generalize before adding second overlay). All risks are mitigable with upfront design decisions documented in the pitfalls research.
 
 ## Key Findings
 
 ### Recommended Stack
 
-Go 1.25.x with Bubble Tea v1.3.10 provides the stable foundation. This is a deliberate choice over v2.0.0-rc.2 (released November 2025, 6 open milestone issues) because the companion libraries (Bubbles, Lip Gloss) remain in beta for v2. Migration to v2 is well-documented and mechanical when stable releases land.
+No new dependencies required. All four v1.3 features integrate cleanly into the existing technology stack with zero library additions. The Go standard library (`strings`, `time`, `fmt`) covers substring search and date formatting. Bubble Tea's Elm Architecture handles new view modes and overlays through existing message routing. Lipgloss provides color coding via `Foreground()` styling. Bubbles textinput, already used for todo add/edit, serves search input needs.
 
-**Core technologies:**
-- **Bubble Tea v1.3.10**: TUI framework implementing Elm Architecture — de facto standard for Go TUIs, 10,000+ apps built, production-proven
-- **Lip Gloss v1.1.0**: Terminal styling and layout — declarative CSS-like API, handles color profiles and box model, essential for split-pane rendering
-- **Bubbles v0.21.1**: Pre-built components (list, textinput, help, viewport) — official companion library with stable v1 compatibility
-- **rickar/cal v2.1.27**: Holiday calculations for 50+ countries including Finland — offline, no API dependencies, handles complex floating holidays (Midsummer, Easter offsets)
-- **encoding/json (stdlib)**: Todo data serialization — zero dependencies, human-readable, sufficient for structured todo data
-- **BurntSushi/toml v1.6.0**: Configuration format — native date types, comments for user-edited config, TOML v1.1.0 compliant
+**Core technologies (unchanged):**
+- **Go 1.25.6**: Standard library (`strings.Contains` for search, `time.Format` for dates) - sufficient for all new features
+- **Bubble Tea v1.3.10**: Elm Architecture handles view mode toggles and overlay state - no framework limitations
+- **Lipgloss v1.1.0**: `Foreground()`, `Background()`, `Bold()` methods cover overview color coding - existing theme system extends naturally
+- **Bubbles v0.21.1**: `textinput.Model` reusable for search filter - no new components needed
+- **BurntSushi/toml v1.6.0**: New `date_format` config field is a simple string - no schema changes
 
-**Critical version compatibility note:** Do NOT mix v1 and v2 Charm packages. Bubble Tea v1 is incompatible with Lip Gloss v2 or Bubbles v2. All packages must be v1 or (when stable) all v2.
+**Deliberately NOT adding:**
+- sahilm/fuzzy: Overkill for personal todo lists; `strings.Contains` substring matching is clearer and adds zero dependencies
+- bubbles/list: Would require rewriting existing custom todo list rendering
+- bubbles/viewport: Search results fit in manual scroll tracking, same pattern as current todo list
+- charmbracelet/huh: No forms needed; existing textinput and settings cycling patterns suffice
 
 ### Expected Features
 
-The feature landscape is defined by calcurse (table stakes), calcure (modern UX), and taskwarrior (todo functionality). The differentiation comes from integration + modern aesthetics, not novel features.
+All four features follow established TUI patterns from calcurse, calcure, and taskwarrior-tui. Research identified clear table stakes vs differentiators.
 
 **Must have (table stakes):**
-- Monthly calendar grid with day-of-week headers and today highlight
-- Month navigation (forward/backward) with instant feedback
-- National holidays displayed in red (Finland by default, configurable country)
-- Split-pane layout: calendar left, todos right
-- Date-bound todos shown for selected month
-- Floating (undated) todos section for "do this sometime" items
-- Todo CRUD: add, mark complete, delete
-- Local file persistence (JSON) with auto-save
-- Keyboard-driven navigation (hjkl or arrows, Tab to switch panes)
-- Terminal resize handling
-- Help overlay (?) showing keybindings
+- Weekly view: 7-day grid with single-key toggle, respects `first_day_of_week`, shows todo indicators and holidays
+- Inline filter: `/` key activates, Escape clears, case-insensitive substring match (standard TUI pattern from taskwarrior-tui)
+- Overview colors: Red/green semantic coloring for incomplete/complete months, theme-aware across all 4 themes
+- Date format: 3 common presets (ISO YYYY-MM-DD, European DD.MM.YYYY, US MM/DD/YYYY), persisted in config
 
-**Should have (competitive advantage):**
-- Holiday-aware calendar out of the box (calcurse/khal lack this)
-- Zero-config startup (no `.taskrc` or `khal configure` required)
-- Clean modern TUI aesthetic (Lip Gloss styling vs calcurse's dated ncurses)
-- Fast startup and rendering (native Go binary vs Python overhead)
-- Todo indicators on calendar dates (dots/badges showing which dates have items)
+**Should have (competitive differentiators):**
+- Full-screen search across all months: Neither calcurse nor calcure offer cross-month search; provides genuine "where did I put that?" utility
+- Week view showing todo counts per day: Todo-centric design (not time-slot appointments like calcurse)
+- Overview split counts: `[3] [2]` format showing incomplete/complete provides richer information than `[5]` total
+- Custom date format: Beyond presets, allow Go layout strings for power users
 
-**Defer (v2+):**
-- Recurring todos (RRULE complexity, add simple daily/weekly after validation)
-- Subtasks (changes data model from flat to tree)
-- Priority/urgency (adds UI complexity, users typically ignore it)
-- Search/filtering (only needed for large lists)
-- iCalendar import/export (RFC 5545 complexity)
-- Tags/categories (significant UI surface area)
-- CalDAV sync (entire project unto itself)
-- Weekly/daily views (monthly covers primary use case)
-
-**Anti-features (deliberately NOT building):**
-- Appointment scheduling with time blocks (this is a todo app, not calcurse)
-- Notifications/reminders (desktop integration complexity)
-- Weather/moon phases (scope creep)
+**Defer (explicitly ruled out):**
+- Day selection/cursor on calendar: Contradicts PROJECT.md core design; weekly view navigates by week, not day
+- Time-slotted weekly view: App has no concept of time-of-day; todos have dates only
+- Fuzzy matching in search: Over-engineering for small dataset; substring covers 95% of use cases
+- Search result ranking: Chronological order is natural and expected
 
 ### Architecture Approach
 
-The standard Bubble Tea architecture is Elm-based Model-Update-View with parent-child composition. The root model embeds calendar and todolist components as struct fields, routes messages based on focus, and composes views with lipgloss.JoinHorizontal. All I/O happens in tea.Cmd functions that return messages. State is immutable between Update calls.
+The existing architecture follows Bubble Tea Elm patterns with clean component boundaries: app.Model orchestrates, calendar.Model and todolist.Model handle respective panes, settings.Model provides overlay, store.Store is pure data. All four features integrate into this structure without architectural changes - only component extensions.
 
-**Major components:**
-1. **Root Model** (internal/app/) — owns all state, routes messages to focused child, composes split-pane layout, handles global keys (quit, tab, help toggle)
-2. **Calendar Component** (internal/calendar/) — renders month grid with Lip Gloss, handles date navigation, highlights today and holidays, emits MonthChangedMsg and DateSelectedMsg
-3. **Todo List Component** (internal/todolist/) — displays date-bound and floating todos, handles CRUD operations, uses Bubbles list or custom viewport, emits TodoChangedMsg
-4. **Todo Store** (internal/store/) — pure data layer with no Bubble Tea dependency, reads/writes JSON via atomic write-temp-rename pattern, all operations wrapped in tea.Cmd
-5. **Holiday Provider** (internal/holiday/) — wraps rickar/cal, returns holiday list for a given month+year, no UI dependency
-6. **Config** (internal/config/) — loads TOML config once at startup, contains country code and display preferences
+**Major components and v1.3 modifications:**
 
-**Key architectural patterns:**
-- **Elm Architecture**: Model-Update-View cycle, immutable state, side effects via tea.Cmd only
-- **Parent-child composition with focus routing**: Root routes KeyMsg to focused child, broadcasts WindowSizeMsg to ALL children
-- **Side-by-side layout with Lip Gloss**: JoinHorizontal for panes, GetFrameSize() for border accounting, focused pane gets distinct border color
-- **Commands for all I/O**: File operations wrapped in tea.Cmd, never blocking in Update
-- **Lazy initialization for window size**: Components wait for first WindowSizeMsg before layout, return "Loading..." until ready
+1. **calendar.Model** - Add `viewMode` enum (monthly/weekly), `weekOffset` for navigation, `RenderWeekGrid()` pure function alongside existing `RenderGrid()`, extend `renderOverview()` with done/pending color styles
+2. **todolist.Model** - Add `filterMode` to state machine, `filterQuery` field, date format propagation via `SetDateFormat()`, format conversion in `renderTodo()` and input validation
+3. **search.Model (NEW)** - Full-screen overlay following settings pattern, own textinput for query, `Search()` method on store, `SelectMsg`/`CloseMsg` bubble to app
+4. **store.Store** - Extend `TodoCountsByMonth()` to return done/pending breakdown (not just total), add `Search(query)` method for cross-month queries
+5. **config.Config** - Add `DateFormat` string field, `DateDisplayFormat()` helper translating presets to Go layouts
+6. **theme.Theme** - Add 2 new color roles (`OverviewDoneFg`, `OverviewPendingFg`) to existing 14, bringing total to 16 semantic roles
 
-**Build order implications:** Store and config first (no UI dependencies), then calendar and todolist in parallel, then root composition (wires everything together), finally holidays as cosmetic enhancement.
+**Key architectural patterns preserved:**
+- Pure rendering: `RenderGrid()` and new `RenderWeekGrid()` remain pure functions
+- Message routing: Root routes to focused child; overlays intercept when active
+- Theme propagation: New `SetDateFormat()` follows same setter pattern as `SetTheme()`
+- Overlay pattern: Search follows settings precedent (bool flag, message bubbling, full-screen replacement)
+- Fixed layout: Calendar grid stays exactly 34 chars wide in both views
 
 ### Critical Pitfalls
 
-These are not theoretical risks — they are documented failure modes from GitHub issues, community blog posts, and official Charm discussions.
+1. **Weekly View Grid Width Mismatch** - The calendar grid must remain exactly 34 characters wide in both monthly and weekly modes. The app layout hardcodes `calendarInnerWidth := 38`. Changing this breaks todo pane width calculation and causes rendering overflow. Avoid by keeping both views at 34-char width (same column format, just 1 row vs 5-6 rows).
 
-1. **View() called before WindowSizeMsg arrives** — First render attempts layout with zero width/height, causes panics or misaligned output. Solution: Track `ready` flag, wait for first WindowSizeMsg, render "Loading..." until dimensions known. (Pitfall verified in bubbletea#282)
+2. **Date Format Round-Trip Corruption** - Display format must NEVER touch storage. Store always uses ISO `YYYY-MM-DD` (`"2006-01-02"` layout). If display format accidentally reaches store methods or parsing logic, dates get silently corrupted (e.g., `06/02/2026` as DD/MM/YYYY stored, later parsed as MM/DD/YYYY produces wrong date). Avoid by: hard rule that format conversion happens ONLY in View functions, create single `FormatDate(isoDate, layout)` helper, never pass display layout to store.
 
-2. **Frame size accounting errors in split-pane layout** — Forgetting to subtract borders/padding from available width causes content to overflow terminal width, destroying layout. Solution: Always use `style.GetFrameSize()` to measure overhead, use `lipgloss.Width()` instead of `len()`, test at 80/120/200 column widths. (Most common layout bug in multi-pane Bubble Tea apps per discussion#307)
+3. **Search Input State Machine Conflict** - todolist.Model has 5-mode state machine sharing one `textinput.Model` field. Adding search mode creates edge case: user presses search while mid-edit, input state corrupts. Avoid by using separate `searchInput textinput.Model` field distinct from add/edit input, or ensure search key is blocked when `IsInputting()` returns true.
 
-3. **Non-atomic file writes cause data loss** — Using `os.WriteFile()` directly means crash mid-write produces truncated file, user loses all todos. Solution: Use write-temp-rename pattern via `github.com/google/renameio` or `natefinch/atomic`. (go#56173 documents that os.WriteFile is explicitly not atomic)
+4. **Full-Screen Overlay Routing Conflict** - Adding search as second overlay alongside settings creates dual-overlay risk if both `showSettings` and `showSearch` booleans exist. Two overlays open simultaneously causes message routing chaos. Avoid by converting to overlay enum before adding search: `type overlay int; const (noOverlay, settingsOverlay, searchOverlay)`.
 
-4. **Mutating model state outside Update()** — Capturing model pointer in tea.Cmd closure and mutating directly causes race conditions and lost updates. Solution: Commands capture only data needed, return tea.Msg, all mutations happen in Update in response to messages. Run with `-race` flag. (Pitfall verified in discussion#434)
-
-5. **Calendar grid alignment broken by ANSI codes** — Using `len()` to measure styled strings counts escape bytes, breaks column alignment. Solution: Use `lipgloss.Width()` for display width, build grid cell-by-cell with fixed-width styled cells, then join. (Affects any color-highlighted calendar)
-
-6. **WindowSizeMsg not propagated to children** — Handling resize in root but forgetting to forward to children causes stale dimensions, layout breaks. Solution: Always broadcast WindowSizeMsg to ALL children, not just focused one. (Discussion#943 demonstrates this exact bug)
+5. **View Mode State Not Synced to Todo List** - Calendar switches to weekly view but todo list shows full month, creating UX mismatch. Existing `SetViewMonth(year, month)` API has no concept of week ranges. Recommended approach: weekly view is calendar-only visual change, todo list always shows full month regardless (keeps API simple). If week-level filtering desired, extend to `SetViewRange(startDate, endDate)`.
 
 ## Implications for Roadmap
 
-Based on research, the natural build order follows dependency constraints from architecture and avoids documented pitfalls:
+Based on research, suggest 4 phases numbered 10-13 (continuing from shipped phase 9). All features are independent - no blocking dependencies - but ordering optimizes for risk and learning.
 
-### Phase 1: Application Scaffold
-**Rationale:** Establishes the Elm Architecture skeleton, handles the two most common failure modes (zero dimensions, frame accounting), and locks in stack versions before any feature code.
-
-**Delivers:**
-- Runnable Bubble Tea app with alt screen
-- Root model with focus management
-- Proper WindowSizeMsg handling with lazy init
-- Split-pane layout with correct frame size accounting
-- Global keybindings (quit, tab, help)
-- Verified at multiple terminal widths
-
-**Addresses pitfalls:**
-- View() before WindowSizeMsg (#1)
-- Frame size accounting (#2)
-- Version choice (v1 vs v2) locked in go.mod
-
-**Implementation notes:**
-- Start with empty panes that just show borders
-- Establish the Cmd/Msg pattern from first commit
-- Test resize handling before adding content
-- This phase prevents architectural rework later
-
-### Phase 2: Data Persistence & Calendar Display
-**Rationale:** These are independent systems that can be developed in parallel. Store has no UI dependency. Calendar rendering is complex (grid alignment, ANSI codes, holiday coloring) but self-contained.
+### Phase 10: Overview Color Coding
+**Rationale:** Smallest scope (4 files modified, no new packages), highest value-to-cost ratio, builds confidence with quick win. Entirely contained within calendar + store + theme - no app-level routing changes. Zero risk of breaking existing functionality since it is purely additive.
 
 **Delivers:**
-- JSON todo storage with atomic writes (renameio)
-- Todo struct with date binding
-- Monthly calendar grid with lipgloss
-- Month navigation (prev/next)
-- Today highlight
-- Finnish holiday display in red via rickar/cal
+- Overview panel shows completion status via color: red for months with incomplete todos, green for all-done months
+- Two new theme color roles defined for all 4 themes (dark, light, nord, solarized)
+- Extended `MonthCount` struct with done/pending breakdown
 
-**Addresses pitfalls:**
-- Non-atomic writes (#3) — must be correct from first save
-- Calendar ANSI alignment (#5) — use cell-based rendering from start
+**Addresses:**
+- Table stakes: Distinct colors for incomplete vs complete (FEATURES.md line 39)
+- Architecture: Modify renderOverview() and extend TodoCountsByMonth() (ARCHITECTURE.md lines 232-286)
 
-**Uses from stack:**
-- rickar/cal v2.1.27 for Finnish holidays
-- encoding/json for data
-- lipgloss.JoinVertical/JoinHorizontal for grid
-- renameio for atomic writes
+**Avoids:**
+- Overview color calculation in View(): Extend store method to return rich data in one pass (PITFALLS.md #7)
+- Colors invisible on themes: Use semantic color roles, test all themes (PITFALLS.md UX #3)
 
-**Implements architecture components:**
-- internal/store/ (pure data layer)
-- internal/calendar/model.go + grid.go
-- internal/holiday/provider.go
+**Research needed:** NO - standard Lipgloss color application, well-documented pattern
 
-**Research flag:** No additional research needed. Calendar rendering pattern is standard (see lipgloss examples). Holiday integration is straightforward rickar/cal API usage.
+---
 
-### Phase 3: Todo List Integration
-**Rationale:** With store and calendar working independently, connect them. This phase implements the core product value: calendar-aware todo management.
+### Phase 11: Date Format Setting
+**Rationale:** Establishes format propagation pattern before features that display dates (search). Cross-cutting but mechanically straightforward - config field flows through settings to display. Should precede search so results display in configured format. Main complexity is bidirectional conversion (display vs storage), better to solve early.
 
 **Delivers:**
-- Todo list pane (right side) using Bubbles list or custom viewport
-- Date-bound todos filtered by selected month
-- Floating todos section (always visible)
-- Todo CRUD: add (inline textinput), toggle complete, delete
-- Cross-component communication: MonthChangedMsg triggers todo reload
+- Settings overlay gains 4th option row for date format with 3 presets (ISO, European, US)
+- `config.DateFormat` field with default `"2006-01-02"`
+- Format propagation via `SetDateFormat()` to todolist
+- Date display conversion in `renderTodo()`, input validation updated
 
-**Addresses pitfalls:**
-- Model mutation (#4) — CRUD operations wrapped in tea.Cmd
-- Focus management — todo input mode does not trigger calendar navigation
-- Textinput focus — explicitly call Focus()/Blur() when switching modes
+**Addresses:**
+- Table stakes: 3 presets, accessible in settings, dates update everywhere (FEATURES.md lines 46-51)
+- Architecture: Config addition, todolist format conversion, settings integration (ARCHITECTURE.md lines 290-380)
 
-**Uses from stack:**
-- Bubbles textinput for add operation
-- Bubbles list for todo display (or custom if list's filtering conflicts)
-- Store methods wrapped in tea.Cmd
+**Avoids:**
+- Round-trip corruption: Storage always ISO, conversion in View only (PITFALLS.md #3)
+- Custom format injection: Use curated presets, validate layouts (PITFALLS.md #4)
+- Input prompt ambiguity: Keep input as YYYY-MM-DD always (PITFALLS.md "Looks Done" #9)
 
-**Implements architecture components:**
-- internal/todolist/model.go
-- internal/app/messages.go for cross-component messages
+**Research needed:** NO - Go time.Format is well-documented, pattern established in settings cycling
 
-**Research flag:** Minor — evaluate whether Bubbles list's built-in filtering helps or hinders. May need quick spike to decide custom viewport vs list component. 30 minutes max.
+---
 
-### Phase 4: UX Polish
-**Rationale:** Core functionality complete. This phase addresses usability gaps identified in pitfall research's "Looks Done But Isn't" checklist.
+### Phase 12: Weekly Calendar View
+**Rationale:** Self-contained within calendar package (no new packages). Calendar's pure-function pattern (`RenderGrid`) extends naturally to `RenderWeekGrid`. Should come after date format so week headers can use configured format. Main complexity is cross-month week boundaries, but contained in calendar component.
 
 **Delivers:**
-- Todo indicators on calendar dates (dots/badges showing which dates have items)
-- Help bar with context-sensitive keybindings (Bubbles help component)
-- Empty state messages (no todos for month, no floating todos)
-- Save confirmation in status bar
-- Delete confirmation prompt
-- Edge case handling: 6-week months, year boundaries, first launch file creation
-- Config file support (country code, first day of week) via BurntSushi/toml
+- `viewMode` enum in calendar.Model (monthly/weekly)
+- `RenderWeekGrid()` pure function rendering 7-day row
+- Toggle key binding (`w`) switching views
+- Week navigation (left/right moves by week in weekly mode, by month in monthly mode)
+- Week offset tracking with month boundary handling
 
-**Addresses features:**
-- Todo indicators on dates (differentiator)
-- Help overlay (table stakes)
-- Visual feedback (UX pitfall prevention)
-- Configurable country for holidays (v1.x feature pulled into v1 if time permits)
+**Addresses:**
+- Table stakes: 7-day grid, single-key toggle, week navigation, respect first_day_of_week (FEATURES.md lines 16-23)
+- Differentiators: Todo-centric weekly view (not time-slots) (FEATURES.md line 59)
+- Architecture: Add viewMode to calendar, new RenderWeekGrid, navigation branching (ARCHITECTURE.md lines 42-104)
 
-**Implements architecture components:**
-- internal/config/ with TOML loading
-- Enhance calendar to show todo counts
-- Status bar in root model
+**Avoids:**
+- Grid width mismatch: Keep weekly at 34 chars same as monthly (PITFALLS.md #1)
+- View sync issues: Weekly is calendar-only, todo list stays month-level (PITFALLS.md #2)
+- Navigation key overload: Define semantics per mode, update help bar (PITFALLS.md UX #5)
+- Month boundary weeks: Handle cross-month weeks like Jan 27 - Feb 2 (PITFALLS.md "Looks Done" #2)
 
-**Research flag:** None. All patterns established in earlier phases.
+**Research needed:** NO - week calculation is stdlib time.Date, existing grid rendering patterns apply
+
+---
+
+### Phase 13: Search/Filter Todos
+**Rationale:** Most complex - new package (search overlay) + todolist filter mode + store methods + app routing. Benefits from all prior phases being stable. Search overlay follows settings pattern established in phase 1-9. Search results should display dates in configured format (depends on phase 11). Consider splitting into 13a (inline filter) and 13b (full-screen overlay) if scope feels large.
+
+**Delivers:**
+- Inline filter mode in todolist: `/` key, textinput, real-time substring filtering in `visibleItems()`
+- Full-screen search overlay: new `search.Model` component, cross-month `store.Search()` method
+- Result navigation: `SelectMsg` navigates calendar to result's month, positions todolist cursor
+- Separate `searchInput` textinput to avoid state machine conflicts
+
+**Addresses:**
+- Table stakes: Inline filter with `/` and Escape, substring matching, visual filter indicator (FEATURES.md lines 29-33)
+- Differentiators: Full-screen cross-month search, result navigation (FEATURES.md line 58)
+- Architecture: Add search.Model package, extend store, add app overlay routing (ARCHITECTURE.md lines 106-229)
+
+**Avoids:**
+- Input state conflict: Use separate searchInput textinput (PITFALLS.md #5)
+- Overlay routing conflict: Convert overlays to enum before adding search (PITFALLS.md #6)
+- Special characters in search: Use strings.Contains, not regex (PITFALLS.md "Looks Done" #6)
+- Cross-month data source: Query store.Todos() directly, not visibleItems() (PITFALLS.md "Looks Done" #4)
+
+**Research needed:** NO for inline filter (standard textinput mode). MAYBE for full-screen overlay (first time with dual overlays, test enum pattern) - suggest quick spike on overlay enum refactor
+
+**Optional split:**
+- **Phase 13a:** Inline filter in todolist (contained, ~2 files, LOW complexity)
+- **Phase 13b:** Full-screen search overlay (new package, 5+ files, MEDIUM-HIGH complexity)
 
 ### Phase Ordering Rationale
 
-- **Scaffold first** because it prevents the two most common structural failures (zero dimensions, frame accounting). These cannot be band-aided later — they require correct initial architecture.
-- **Store and calendar in parallel** because they have zero mutual dependencies. Calendar never touches file system. Store has no UI knowledge.
-- **Todo list after store+calendar** because it depends on both: store for data operations, calendar for cross-component messages (MonthChangedMsg).
-- **Polish last** because it builds on fully functional core. Todo indicators require both calendar grid and todo data. Help bar requires all keybindings to be finalized.
-
-This order follows the architecture build order identified in ARCHITECTURE.md Phase 1-5 progression, matches the feature dependency graph from FEATURES.md, and avoids all critical pitfalls from PITFALLS.md by addressing them in the earliest phase where they become relevant.
+- **Dependencies:** All features are architecturally independent. Soft dependency: search should come after date format so results display correctly.
+- **Risk management:** Start with smallest scope (overview colors) to build momentum. Tackle most complex (search) last when codebase changes are well-understood.
+- **Learning path:** Date format establishes propagation patterns reused in weekly view. Settings overlay experience informs search overlay design.
+- **Component isolation:** Phases 10-12 modify existing components only. Phase 13 adds new package - deferred until foundation is solid.
 
 ### Research Flags
 
-**Phases needing deeper research during planning:**
-- None. All technologies are well-documented with official examples.
-
-**Quick validation spikes (< 1 hour):**
-- **Phase 3**: Evaluate Bubbles list vs custom viewport for todo display. Test whether list's filtering feature helps or conflicts with our date-based filtering. Decide in 30 minutes, either path is low risk.
-
 **Phases with standard patterns (skip research-phase):**
-- **All phases**: Bubble Tea parent-child composition is documented in official composable-views example. Split-pane layout has lipgloss layout example. File I/O has renameio README. Holiday integration has rickar/cal pkg.go.dev docs. No custom research needed — implement using documented patterns.
+- **Phase 10 (Overview colors):** Lipgloss color application, theme system extension - well-documented, existing patterns in codebase
+- **Phase 11 (Date format):** Go time.Format, settings cycling pattern - stdlib documented, pattern established
+- **Phase 12 (Weekly view):** Pure rendering function, time.Date week calculation - standard Go patterns
+- **Phase 13a (Inline filter):** textinput mode, strings.Contains - existing patterns, trivial search
+
+**Phases possibly needing spike/investigation:**
+- **Phase 13b (Search overlay):** First dual-overlay scenario. Suggest quick spike on converting `showSettings` bool to overlay enum before full implementation. Not deep research, just 30min validation that enum refactor doesn't break settings.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All libraries verified at pkg.go.dev with recent releases. Version compatibility confirmed via Charm GitHub discussions. Finnish holiday support verified in rickar/cal source code. |
-| Features | HIGH | Feature landscape verified against calcurse manual, calcure README, taskwarrior docs. Table stakes validated by analyzing 5+ established TUI tools. Anti-features informed by HN discussions on todo app complexity. |
-| Architecture | HIGH | Elm Architecture is Bubble Tea's core pattern (not optional). Parent-child composition documented in official examples. Split-pane layout pattern demonstrated in multiple Charm projects (glow, soft-serve). All patterns source-verified. |
-| Pitfalls | HIGH | All 6 critical pitfalls verified in official GitHub issues or discussions with issue numbers. Frame accounting bug documented in discussion#943 with reproduction. Non-atomic writes confirmed in go#56173. Racing on model mutation confirmed in discussion#434. |
+| Stack | HIGH | Full codebase review (20 files, 2492 LOC). All dependencies verified in go.mod. Bubble Tea patterns observed in existing code. |
+| Features | HIGH | calcurse, calcure, taskwarrior-tui official docs reviewed. UX patterns well-established. All table stakes identified. |
+| Architecture | HIGH | Existing architecture fully documented. Component boundaries clear. Integration points identified with line numbers. |
+| Pitfalls | HIGH | Derived from actual codebase analysis + Bubble Tea community patterns. All critical pitfalls have concrete prevention strategies. |
 
 **Overall confidence:** HIGH
 
-All research backed by primary sources (official docs, pkg.go.dev, GitHub issues, manual pages). No speculation or single-blog-post findings. Stack choices are conservative (stable v1, not RC). Architecture follows documented patterns. Pitfalls are known failure modes with verified solutions.
-
 ### Gaps to Address
 
-Minimal gaps — all key decisions have high-confidence answers:
+- **Weekly view todo panel grouping decision:** Must decide during phase 12 planning whether weekly view filters todo list to 7 days or shows full month. Research recommends month-level for simplicity (keeps existing `SetViewMonth` API), but team may prefer week-level filtering for UX. Decision affects todolist API design.
 
-- **Bubbles list vs custom viewport for todo display**: Quick spike in Phase 3 planning (30 minutes). Either path works; decide based on whether list's filtering conflicts with date-based filtering. Low risk — both are Bubbles components with identical integration patterns.
+- **Search overlay enum refactor timing:** Converting `showSettings` bool to overlay enum could happen in phase 13 or earlier. Recommend doing it immediately before phase 13b (search overlay) as a small preparatory refactor rather than bundled into search implementation. Keeps phase 13b focused.
 
-- **Config file necessity**: Can be deferred to Phase 4 if time-constrained. Hardcoded defaults (country="fi", first_day_of_week=Monday) work for v1 launch. Config adds configurability but is not architecturally required.
+- **Custom date format scope:** Research identifies Go layout strings as unintuitive for users. Three approaches: (1) presets only, (2) curated 5-6 options, (3) free-text with validation. Decide during phase 11 planning based on target user sophistication. Research leans toward presets-only for simplicity.
 
-- **Year boundary edge case testing**: Phase 2 calendar implementation must handle navigating from January -> December of previous year. This is a known edge case (mentioned in PITFALLS.md "Looks Done But Isn't" checklist) but the solution is straightforward date arithmetic. Verify in unit tests.
-
-No gaps require additional research or significantly affect roadmap structure. All are implementation details resolved during the relevant phase.
+- **Week numbering convention:** ISO 8601 weeks (Monday start, 1-53 numbering) vs US convention (Sunday start, different numbering). App already has `first_day_of_week` setting. Research suggests: if Monday start, use ISO week numbers; if Sunday start, use simple "Week N of month" count. Clarify during phase 12 planning.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [Bubble Tea GitHub Repository](https://github.com/charmbracelet/bubbletea) — v1.3.10 stable, v2 milestone status, official docs, issues #282, #434, discussions #307, #943, #1374
-- [Lip Gloss GitHub Repository](https://github.com/charmbracelet/lipgloss) — v1.1.0 stable, layout examples, GetFrameSize documentation
-- [Bubbles GitHub Repository](https://github.com/charmbracelet/bubbles) — v0.21.1 component library, list/textinput/help/viewport docs
-- [rickar/cal pkg.go.dev](https://pkg.go.dev/github.com/rickar/cal/v2) — v2.1.27, Finnish holidays verified in fi/fi_holidays.go source
-- [BurntSushi/toml pkg.go.dev](https://pkg.go.dev/github.com/BurntSushi/toml) — v1.6.0, TOML v1.1.0 compliance
-- [Go Release History](https://go.dev/doc/devel/release) — Go 1.25.7 confirmed latest stable
-- [golang/go#56173](https://github.com/golang/go/issues/56173) — os.WriteFile not atomic
-- [google/renameio pkg.go.dev](https://pkg.go.dev/github.com/google/renameio) — atomic file write library
-- [calcurse manual](https://calcurse.org/files/manual.html) — authoritative feature documentation
-- [taskwarrior documentation](https://taskwarrior.org/docs/) — todo feature landscape
-- [khal GitHub](https://github.com/pimutils/khal) — calendar TUI patterns
-- [calcure GitHub](https://github.com/anufrievroman/calcure) — modern TUI calendar+todo reference
+- Full codebase review: all 20 source files in internal/ (app, calendar, todolist, store, config, theme, settings, holidays) - 2492 total LOC
+- Go standard library documentation (pkg.go.dev): time package Format/Parse, strings package Contains/ToLower
+- Bubble Tea framework (github.com/charmbracelet/bubbletea): Elm Architecture patterns, message routing
+- Lipgloss documentation (pkg.go.dev/github.com/charmbracelet/lipgloss): Style API, Foreground/Background methods
+- Bubbles textinput (pkg.go.dev/github.com/charmbracelet/bubbles/textinput): CharLimit, Placeholder, Focus/Blur API
 
 ### Secondary (MEDIUM confidence)
-- [Commands in Bubble Tea (charm.land blog)](https://charm.land/blog/commands-in-bubbletea/) — official Charm blog on tea.Cmd patterns
-- [Tips for Building Bubble Tea Programs (leg100)](https://leg100.github.io/en/posts/building-bubbletea-programs/) — component tree, message routing, well-sourced community guide
-- [Managing Nested Models (donderom.com)](https://donderom.com/posts/managing-nested-models-with-bubble-tea/) — parent-child composition pattern
-- [Atomically Writing Files in Go (Michael Stapelberg)](https://michael.stapelberg.ch/posts/2017-01-28-golang_atomically_writing/) — write-temp-rename pattern explanation
-- [HN discussion on todo app design](https://news.ycombinator.com/item?id=44864134) — community sentiment on simplicity vs features
+- calcurse official manual (calcurse.org/files/manual.html): weekly view UX, date format presets, key bindings
+- calcure documentation (anufrievroman.gitbook.io/calcure): view options, confirmed no weekly view
+- taskwarrior-tui keybindings (kdheepak.com/taskwarrior-tui/keybindings/): `/` filter pattern
+- Go time.Format guides (yourbasic.org, gosamples.dev): Reference time layout patterns, format cheatsheets
+- Bubble Tea community patterns (leg100.github.io, donderom.com, lmika.org): State management, overlay composition
 
 ### Tertiary (LOW confidence)
-- None relied upon. All key decisions verified with primary sources.
+- ISO week date Wikipedia: Week boundary edge cases, ISO 8601 numbering - used for background, not primary design driver
 
 ---
-*Research completed: 2026-02-05*
+*Research completed: 2026-02-06*
 *Ready for roadmap: yes*

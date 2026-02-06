@@ -1,248 +1,430 @@
-# Feature Research
+# Feature Research: v1.3 Views & Usability
 
-**Domain:** TUI Calendar + Todo Application
-**Researched:** 2026-02-05
-**Confidence:** HIGH (based on analysis of calcurse, calcure, taskwarrior, todoman, khal, dooit, todo.txt ecosystem, and HN/community sentiment)
+**Domain:** TUI Calendar v1.3 features (weekly view, search/filter, overview colors, date format)
+**Researched:** 2026-02-06
+**Confidence:** HIGH for UX patterns, MEDIUM for implementation details
 
 ## Feature Landscape
 
-### Table Stakes (Users Expect These)
+### Table Stakes
 
-Features users assume exist. Missing these = product feels incomplete or broken.
+Features users expect when these capabilities are announced. Missing any = feature feels half-baked.
 
-#### Calendar
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Monthly calendar grid view | Every calendar app has this. It is the fundamental UI element. | LOW | Left pane in our layout. Standard 7-column grid with day numbers. |
-| Navigate between months | Users need to look ahead and behind. Calcurse, khal, calcure all support this. | LOW | Arrow keys or h/l (vim). Must feel instant. |
-| Today highlight | Users need immediate orientation -- "where am I?" | LOW | Bold, color, or inverse video on today's date. |
-| Day-of-week headers | Without these the grid is unreadable. | LOW | Mo Tu We Th Fr Sa Su (locale-configurable start day is a nice-to-have, not table stakes). |
-| National holidays in red | Explicitly in our project spec. calcure shows holidays. Users scanning a month need to see non-working days at a glance. | MEDIUM | Use `rickar/cal/v2` Go library -- supports Finland and 40+ countries. Holidays render in red/distinct color on the calendar grid. |
-
-#### Todo
+#### Weekly Calendar View
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Add a todo | Core CRUD. Every tool has this. | LOW | Inline entry in the right pane. Minimal friction -- type and press Enter. |
-| Mark todo as done | The fundamental dopamine hit. Calcurse, taskwarrior, todoman all have completion. | LOW | Single keypress toggle (e.g., `x` or `Enter`). Visual strikethrough or checkmark. |
-| Delete a todo | Users make mistakes or finish things. Calcurse uses `D`, taskwarrior uses `delete`. | LOW | Single keypress with optional confirmation (configurable). |
-| Date-bound todos | Our spec requires showing todos for a selected month. Without date binding, the right pane has no calendar connection. | LOW | Each todo optionally tied to a date. Displayed when that date/month is in view. |
-| Floating (undated) todos | Taskwarrior's default. Calcurse separates todos from appointments. Users need a place for "do this sometime" items. | LOW | Always visible in a separate section below date-bound items, or in a dedicated area. |
-| Persist data across sessions | Every tool saves to disk. Data loss is unacceptable. | LOW | Local file storage (JSON, plain text, or similar). Auto-save on every mutation. |
+| 7-day grid showing one week | The whole point of a weekly view. Users expect to see Mon-Sun (or Sun-Sat) for the selected week. | MEDIUM | Must respect `first_day_of_week` setting. |
+| Toggle between monthly/weekly with single key | Calcurse toggles views. Calcure uses `v` key. Users expect seamless switching. | LOW | Single keybinding (e.g., `w` or `v`). Must remember which month/week context to return to. |
+| Navigate between weeks | If you can see a week, you need to move to next/previous week. Calcurse uses j/k in weekly mode. | LOW | Same keys as month navigation (h/l) but move by week instead of month. |
+| Current week highlighted / today visible | Orientation is critical. Users must know "where am I in time?" | LOW | Today gets the same highlight style as in monthly view. |
+| Weekday headers | Same as monthly view -- day-of-week labels at top of columns. | LOW | Already exist in monthly view; reuse the pattern. |
+| Todo indicators on days | Already exist as `[N]` in monthly view. Weekly view must show them too. | LOW | Same data source (`IncompleteTodosPerDay`), just different rendering. |
+| Holiday display on days | Already exist in monthly view. Weekly view must show holidays. | LOW | Same data source, different rendering context. |
 
-#### UI/UX
+#### Search/Filter Todos
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Split-pane layout | In our spec. Calcurse uses this exact pattern (calendar left, content right). It is the established pattern for this type of app. | MEDIUM | Calendar left, todo list right. Bubble Tea viewport management. |
-| Keyboard-driven navigation | TUI users expect keyboard-first. Calcurse, khal, taskwarrior are all keyboard-only. Mouse is optional. | LOW | Vi-style (hjkl) or arrow keys. Tab to switch panes. |
-| Responsive to terminal resize | Users resize terminals constantly. Calcure explicitly advertises this. | MEDIUM | Bubble Tea handles this via WindowSizeMsg, but layout math needs to adapt. |
-| Visual feedback on actions | Adding, completing, deleting should provide immediate visual confirmation. | LOW | Highlight changes, status bar messages, or brief flash. |
-| Quit without data loss | Auto-save or save-on-quit. Calcurse has `general.autosave` option. | LOW | Save on every write operation. No explicit "save" step needed. |
-| Help / keybinding reference | Calcurse has `?` for help. Users need to discover available actions. | LOW | `?` key shows overlay or footer with keybindings. |
+| Inline filter in todo panel | Taskwarrior-tui uses `/` to filter. This is the standard TUI pattern. Users type, list narrows in real time. | MEDIUM | Filter applies to visible todos only (current month + floating). |
+| Clear filter with Escape | Standard pattern across all TUI apps with search. Esc exits filter mode and restores full list. | LOW | Must cleanly restore cursor position and full list. |
+| Full-screen search overlay across all months | Differentiator -- searching beyond the current view. Users need to find "where did I put that todo?" | HIGH | Requires scanning all todos, displaying results with month context, and navigating to a result. |
+| Substring matching (case-insensitive) | Users expect typing "buy" to find "Buy groceries". Case-insensitive is the default expectation. | LOW | `strings.Contains(strings.ToLower(...))` -- trivial. |
+| Visual indication of active filter | When a filter is active, users must know the list is filtered, not empty. | LOW | Show filter text in a status line or change the section header. |
 
-### Differentiators (Competitive Advantage)
+#### Overview Color Coding
 
-Features that set the product apart. Not required for v1, but create real value.
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Distinct colors for incomplete vs complete | If you color-code the overview, red/green (or equivalent semantic colors) for incomplete/complete is the obvious mapping. | LOW | Two new style fields per theme. |
+| Theme-aware colors | The app has 4 themes. Overview colors must work with all of them. | LOW | Add new semantic color roles to `Theme` struct (e.g., `OverviewIncompleteFg`, `OverviewCompleteFg`). |
+| Current month still visually distinct | Overview already highlights current month in bold. This must not regress. | LOW | Keep existing `OverviewActive` style; layer color on top. |
+
+#### Date Format Setting
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| At least 3 common presets | ISO (YYYY-MM-DD), European (DD.MM.YYYY), US (MM/DD/YYYY) cover the vast majority of users. Calcurse offers 4 formats. | LOW | Map preset names to Go layout strings. |
+| Setting accessible in settings overlay | The app already has a settings overlay. Adding a new option row is the natural place. | LOW | Same pattern as theme/country/first-day-of-week cycling. |
+| Dates update everywhere immediately | Calendar header, todo dates, date input prompts -- all must respect the format. | MEDIUM | Format string must propagate to all rendering code that displays dates. |
+| Persistence in config.toml | Same as other settings. | LOW | New `date_format` field in config. |
+
+### Differentiators
+
+Features that go beyond what users minimally expect, creating competitive advantage.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Integrated calendar+todo in one view | Calcurse has this but is aging (ncurses, C). Khal is calendar-only. Todoman is todo-only. Taskwarrior is todo-only. A modern Go/Bubble Tea app combining both with a clean aesthetic is genuinely rare. | N/A (this IS the product) | This is our core value prop. Not a feature to add -- it is the product concept itself. |
-| Holiday-aware calendar out of the box | Calcurse does NOT show national holidays. Khal does not either. Calcure shows them. Having holidays visible by default with zero config (auto-detect locale or simple country code setting) is a real differentiator vs calcurse/khal. | MEDIUM | `rickar/cal/v2` with Finnish holidays by default. Configurable country code. |
-| Clean, modern TUI aesthetic | Calcurse looks dated (1990s ncurses). Bubble Tea + Lip Gloss enable modern styling that calcure (Python) achieves but calcurse does not. | MEDIUM | Lip Gloss borders, colors, spacing. This is about polish, not features. |
-| Zero-config startup | Taskwarrior needs `.taskrc`. Khal needs `khal configure`. Todoman needs config for vdir paths. Calcurse works out of the box but with ugly defaults. Launch and immediately use -- no config file needed. | LOW | Sensible defaults. Config file optional for customization. Data directory auto-created. |
-| Fast startup and rendering | Go compiles to native binary. Calcure is Python (slow startup). Calcurse is C (fast but old). A Go binary starts instantly and renders smoothly. | LOW | Inherent to Go + Bubble Tea. No runtime dependency. |
-| Todo items visible on calendar dates | Show dots, marks, or count indicators on calendar dates that have todos. Calcure shows icons on event dates. This connects the two panes visually. | MEDIUM | Small dot or number badge on calendar dates that have associated todos. Powerful wayfinding feature. |
+| Full-screen search across all months | Neither calcurse nor calcure offer cross-month todo search in a TUI overlay. Taskwarrior-tui has it, but that is a different product class. For a calendar+todo app, being able to find "where is that todo?" across all time is genuinely useful. | HIGH | This is the expensive part of search/filter. |
+| Week view showing todos per day | Calcurse weekly view shows time-slotted appointments. Our weekly view would show todo counts or todo names per day -- a different and arguably more useful approach for a todo app (not a scheduler). | MEDIUM | This is the key design decision: our weekly view is todo-centric, not time-slot-centric. |
+| Overview showing split counts (incomplete/complete) | Current overview shows `[N]` total count. Showing `[3/5]` or color-coded incomplete vs complete gives much richer at-a-glance information. | LOW | Small change, high information density gain. |
+| Custom date format string | Beyond the 3 presets, allowing a custom Go layout string (e.g., `02 Jan 2006`) is power-user friendly. | LOW | Just a textinput in settings; validate by attempting `time.Format()`. |
 
-### Anti-Features (Deliberately NOT Building in v1)
+### Anti-Features
 
-Features that seem good but create complexity disproportionate to their value, or contradict the "intentionally minimal" v1 philosophy.
+Things to deliberately NOT build for v1.3, even though they seem related.
 
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| Recurring todos | Taskwarrior, calcurse, dooit all support recurrence. Seems essential. | Recurrence rules (daily, weekly, monthly, yearly, nth weekday) are a complexity explosion. RFC 5545 RRULE is notoriously hard to implement correctly. Edge cases around completion, regeneration, and skipped occurrences are endless. | v1: Users manually re-add recurring items. v2: Add simple recurrence (daily/weekly/monthly) once the core is solid. |
-| Todo priorities / urgency | Taskwarrior has H/M/L priorities and urgency scores. Calcurse has 1-9 priority. | Priority systems add UI complexity (how to set, how to display, sort order interactions) and cognitive overhead ("Is this a 3 or a 4?"). HN consensus: most people ignore priority after initial setup. | v1: Order implies priority -- items at the top are more important. Users reorder manually. v2: Consider simple High/Normal/Low if users request it. |
-| Subtasks / nested todos | Calcure and dooit support subtasks. Seems natural. | Subtask rendering in a TUI is tricky (indentation, collapse/expand, completion propagation). It also fundamentally changes the data model from flat list to tree. | v1: Flat todo list only. Users can use naming conventions like "Project: task" to group mentally. v2: Consider one level of nesting if validated. |
-| CalDAV / cloud sync | Khal, todoman, calcurse all support CalDAV or sync. | Sync is an entire project unto itself -- conflict resolution, authentication, network error handling, partial sync states. It violates "local file storage" simplicity. | v1: Local files only. Users can put the data directory in Dropbox/Syncthing for DIY sync. v2+: Consider CalDAV if there is demand. |
-| iCalendar (.ics) import/export | Calcurse, khal, todoman all support iCal. Standard interop. | Parsing iCal/RFC 5545 is complex (timezones, RRULE, VTODO, VEVENT, VALARM). It is a large surface area for a v1. | v1: Simple proprietary format (JSON or plain text). v2: Add .ics export. v3: Add .ics import. |
-| Multiple calendar sources | Calcure shows events from multiple .ics files. Khal handles multiple CalDAV calendars. | Multiple sources means a merging layer, source attribution, color coding per source, and conflict handling. | v1: Single data source. One file for todos, one for any events. |
-| Notifications / reminders | Calcurse has a full notification system with daemon mode. | Desktop notifications from a TUI require platform-specific integration (libnotify, osascript, etc.). Daemon mode is a separate architecture concern. | v1: No notifications. The app shows what is due when you open it. v2+: Consider terminal bell or system notification for overdue items. |
-| Appointment / event scheduling | Calcurse's core feature. Time-blocked appointments with start/end times. | Our spec says "todo list" not "appointment scheduler." Adding time-blocked events means a completely different data model, conflict detection, and calendar rendering (time slots). | v1: Todos only (date-bound or floating). No time-of-day scheduling. This is a todo app with a calendar view, not a scheduling app. |
-| Weekly / daily views | Calcurse has weekly view. Khal has day view. | Additional views multiply the rendering code and navigation complexity. Monthly view is sufficient for the "see your month, manage your todos" use case. | v1: Monthly view only. v2: Add week view if users want finer granularity. |
-| Search / filtering | Taskwarrior has powerful regex filtering. Calcurse supports search. | Search requires a search UI, result highlighting, and filter state management. For a minimal todo list, scrolling is sufficient. | v1: No search. List is short enough to scan visually. v2: Add `/` search if lists get long. |
-| Tags / categories / projects | Taskwarrior tags (+tag), contexts (@context), projects. | Tags require a tagging UI, filter-by-tag, tag management, and colored rendering. Significant UI surface area. | v1: No tags. Naming conventions suffice. v2: Consider simple color-coded categories. |
-| Undo / redo | Valuable safety net for destructive actions. | Undo requires a command history stack, inverse operations for each action, and memory management. Non-trivial to implement correctly. | v1: Delete confirmation prompt. No undo. v2: Simple one-level undo. |
-| Timer / pomodoro | Calcure has timers. Trendy productivity feature. | Timers are a fundamentally different feature (real-time countdown, notifications, state management). Scope creep disguised as productivity. | v1: Not a timer app. Use a dedicated pomodoro tool. |
-| Vim-mode text editing | Calcurse supports vim-style editing in input fields. Calcure uses vim keys for navigation. | Full vim emulation in input fields is a rabbit hole. Navigation vim keys (hjkl) are table stakes; vim text editing (dd, yy, p, etc.) is not. | v1: Vi-style navigation (hjkl). Standard line editing in input fields (readline-style). |
-| Weather / moon phases | Calcure shows weather and moon phases. | Requires external API calls, network dependencies, and UI space for non-core information. | v1: Not a weather app. Keep the UI focused on calendar + todos. |
+| Anti-Feature | Why It Seems Related | Why Avoid | What to Do Instead |
+|--------------|---------------------|-----------|-------------------|
+| Day selection / cursor on calendar | Weekly view might tempt adding per-day cursor navigation in the calendar grid. | This was explicitly ruled out in PROJECT.md: "Individual day selection / day-by-day arrow navigation -- month-level navigation is sufficient." Adding it contradicts the core design. Weekly view navigates by week, not by day. | Navigate weeks (prev/next week), not individual days. |
+| Time-slotted weekly view | Calcurse shows 4-hour time slots in weekly view. Seems like the standard. | This app has no concept of time-of-day. Todos have dates, not times. Time slots are meaningless without appointments. Building time slots would require a data model change for zero benefit. | Show a simple 7-column grid with day numbers, holidays, and todo indicators. The todo panel shows todos for the visible week (all 7 days). |
+| Fuzzy matching in search | Taskwarrior-tui supports regex. Fuzzy finders like fzf are popular. | Fuzzy matching adds complexity (scoring, ranking) for minimal gain when the dataset is small (personal todo list). Substring match covers 95% of use cases. | Use case-insensitive substring matching. If users complain, add regex support later. |
+| Search result ranking / scoring | Results could be ranked by relevance, date proximity, completion status. | Over-engineering for a small dataset. Chronological order (by date) is the natural and expected ordering. | Show results in chronological order (dated todos by date, then floating todos). |
+| Locale-based auto-detection of date format | Could detect system locale and set date format automatically. | Go's locale detection is unreliable. The app already requires manual country selection for holidays. Consistency: let users choose explicitly. | Offer presets + custom. Default to ISO 8601 (YYYY-MM-DD) which is the existing internal format. |
+| Separate overview panels for incomplete/complete | Could split the overview into two sections. | Doubles the vertical space used. The overview already competes for space below the calendar grid. | Use color coding within the existing single-line-per-month format. |
+
+## Feature Details
+
+### Weekly Calendar View
+
+**Expected UX Behavior:**
+
+The weekly view replaces the monthly grid in the calendar pane (left panel). It shows 7 days as columns, similar to the monthly view but zoomed in to one week. The critical design insight: this is a **todo calendar**, not a scheduling app. The weekly view shows day numbers, holiday indicators, and todo count indicators -- NOT time slots.
+
+**Layout concept (34 chars wide, matching monthly grid width):**
+
+```
+     Week 6 -- February 2026
+ Mo   Tu   We   Th   Fr   Sa   Su
+  2    3    4    5    6    7    8
+     [1]             [2]
+```
+
+Each day column shows: day number (top), todo indicator `[N]` if applicable (below), and holiday coloring on the day number. The todo panel (right) shows todos for all 7 days of the visible week, grouped by day, plus the floating section.
+
+**Interaction patterns:**
+
+| Action | Key | Behavior |
+|--------|-----|----------|
+| Toggle monthly/weekly | `w` | Switch view mode. Remember position: if viewing Feb 2026 monthly, switch to the week containing today (or the first of the month if not current month). |
+| Next week | `l` or `right` | Advance by 1 week. If crossing month boundary, update month context. |
+| Previous week | `h` or `left` | Go back 1 week. If crossing month boundary, update month context. |
+| Return to monthly | `w` | Toggle back. Return to the month that contains the current week. |
+
+**Edge cases:**
+
+1. **Week spanning two months:** A week starting Mon Jan 26 includes days in both January and February. The week view must show all 7 days regardless of month boundaries. The todo panel should show todos for all 7 days (from both months).
+2. **First/last week of year:** Week containing Jan 1 or Dec 31 may span years. Must handle year boundaries.
+3. **Week numbering:** ISO 8601 week numbers (1-53) are standard in Europe. US uses different conventions. Since the app has `first_day_of_week`, use it: Monday-start = ISO week numbers, Sunday-start = simple "Week N" count.
+4. **Returning to monthly view:** When toggling back from weekly to monthly, display the month that contains the majority of the current week (or the month of the first day of the week).
+5. **Overview panel in weekly mode:** The overview panel below the calendar should still show per-month todo counts. It does not change between views.
+6. **Todo panel grouping:** In weekly mode, the todo panel should group todos by day within the week (7 sections for dated, plus floating), rather than showing the entire month. Each day section shows the day name and date.
+
+**Dependencies on existing features:**
+- Calendar grid rendering (`RenderGrid`) -- needs a new `RenderWeekGrid` function or a mode parameter
+- `first_day_of_week` setting -- determines which day starts the week
+- `IncompleteTodosPerDay` -- needs to work across month boundaries for cross-month weeks
+- Todo panel (`visibleItems`) -- needs a "week mode" that shows todos for 7 specific dates instead of a whole month
+- Help bar -- needs to show week-specific navigation hints when in weekly mode
+
+**Complexity assessment:** MEDIUM-HIGH. The rendering is straightforward, but the cross-month week boundary handling and the todo panel regrouping add real complexity. The biggest challenge is making the todo panel work with a 7-day range that may span two months.
+
+---
+
+### Search/Filter Todos
+
+**Expected UX Behavior:**
+
+Two distinct modes with different scopes:
+
+**Mode 1: Inline filter (todo panel)**
+- User presses `/` while focused on the todo panel
+- A filter input appears at the top of the todo panel (or below the section headers)
+- As the user types, todos are filtered in real time (case-insensitive substring match)
+- Only matching todos are shown; non-matching todos are hidden
+- Headers ("February 2026", "Floating") remain visible even if their section is empty after filtering
+- Pressing `Escape` clears the filter and restores the full list
+- Pressing `Enter` accepts the filter and returns to normal mode with the filter active
+- A visual indicator shows that a filter is active (e.g., "Filter: buy" in the header area)
+
+**Mode 2: Full-screen search overlay**
+- User presses a different key (e.g., `Ctrl+f` or `?` -- needs to not conflict with existing bindings) from any context
+- A full-screen overlay appears (similar to the settings overlay pattern)
+- A search input at the top
+- Results show all matching todos across ALL months, grouped by month
+- Each result shows: todo text, date, completion status
+- User can scroll through results
+- Pressing `Enter` on a result navigates to that month and highlights/selects that todo
+- Pressing `Escape` closes the overlay without navigating
+
+**Interaction patterns for inline filter:**
+
+| Action | Key | Behavior |
+|--------|-----|----------|
+| Start filter | `/` | Enter filter mode. Show text input at top of todo panel. |
+| Type filter | (any text) | Filter list in real time. Case-insensitive substring match on todo text. |
+| Accept filter | `Enter` | Lock in the current filter. Return to normal mode. Filter indicator stays visible. |
+| Clear filter | `Escape` | Remove filter text, restore full list, return to normal mode. |
+| Navigate filtered list | `j`/`k` | Move cursor within filtered results only. |
+
+**Interaction patterns for full-screen search:**
+
+| Action | Key | Behavior |
+|--------|-----|----------|
+| Open search | `/` (from calendar pane) or `Ctrl+f` (from either pane) | Show full-screen search overlay. |
+| Type query | (any text) | Search all todos. Results update as you type. |
+| Navigate results | `j`/`k` or `up`/`down` | Move cursor through search results. |
+| Go to result | `Enter` | Close overlay, navigate calendar to the result's month, select the todo in the todo panel. |
+| Close search | `Escape` | Close overlay, no navigation change. |
+
+**Edge cases:**
+
+1. **Empty search results:** Show "No matching todos" message, not a blank screen.
+2. **Filter + add todo:** If a filter is active and user adds a todo, should the new todo appear even if it does not match the filter? Recommendation: Yes, temporarily show it (clear the filter on add).
+3. **Filter + month navigation:** If user navigates to a different month while filter is active, should the filter persist? Recommendation: Yes, keep the filter active across month changes.
+4. **Search result in a month far from current:** Navigating to the result must update both the calendar month and the todo panel.
+5. **Multiple matches in same month:** Group them together in the search results with the month as header.
+6. **Floating todos in search results:** Show them in a separate "Floating" section at the bottom of results.
+7. **Completed todos in search:** Include them by default. Users searching across months may be looking for completed work.
+
+**Dependencies on existing features:**
+- Todo panel input modes (already have `inputMode`, `dateInputMode`, etc.) -- add `filterMode`
+- Store methods -- need `SearchTodos(query string) []Todo` that scans all todos
+- Settings overlay pattern -- reuse for full-screen search overlay
+- Calendar month navigation -- search "go to result" must trigger month change
+- Help bar -- needs filter-specific bindings when filter is active
+
+**Complexity assessment:** MEDIUM for inline filter (reuses existing textinput and mode patterns). HIGH for full-screen search overlay (new component, cross-month data access, result navigation).
+
+**Recommendation:** Build inline filter first (Phase 1 of search). Full-screen search can be a separate phase. Inline filter alone provides 80% of the value for 30% of the cost.
+
+---
+
+### Overview Color Coding
+
+**Expected UX Behavior:**
+
+The overview panel currently shows lines like:
+
+```
+Overview
+ February 2026   [5]
+ March 2026      [2]
+ Unknown         [3]
+```
+
+With color coding, the counts would show completion information:
+
+```
+Overview
+ February 2026   [3] [2]    (3 incomplete in red/warm, 2 complete in green/cool)
+ March 2026      [2]        (2 incomplete, 0 complete -- no green indicator)
+ Unknown         [1] [2]    (1 incomplete, 2 complete)
+```
+
+**Design decisions:**
+
+1. **Format options:**
+   - Option A: `[3] [2]` -- two separate brackets, red and green respectively
+   - Option B: `[3/5]` -- fraction format (incomplete/total)
+   - Option C: `[3+2]` -- additive format
+
+   **Recommendation: Option A** (`[3] [2]`). Reasons:
+   - Consistent with existing `[N]` bracket indicator pattern on calendar dates
+   - Each bracket can be independently colored
+   - Clearer at a glance than fraction notation
+   - If complete count is 0, just show `[3]` in red (no green bracket) -- cleaner than `[3/3]` or `[3+0]`
+
+2. **Color mapping across themes:**
+
+   | Theme | Incomplete (pending work) | Complete (done) |
+   |-------|--------------------------|-----------------|
+   | Dark | Red (`#AF0000`) | Green (`#5F8700`) |
+   | Light | Red (`#D70000`) | Green (`#008700`) |
+   | Nord | Aurora Red (`#BF616A`) | Aurora Green (`#A3BE8C`) |
+   | Solarized | Red (`#DC322F`) | Green (`#859900`) |
+
+   These colors already exist in the theme palettes (red is used for holidays, green/aurora green is used for indicators in Nord/Solarized). This is deliberate: reuse established palette colors for semantic consistency.
+
+3. **Colorblind accessibility:** Red-green is the most common form of color blindness (8% of men). Mitigation:
+   - The bracket format `[3] [2]` provides positional information (first bracket = incomplete, second = complete) even without color
+   - The existing `[N]` indicator on calendar dates is already position-dependent (it only appears on dates with incomplete todos)
+   - Optional: use bold on incomplete counts for additional visual differentiation
+
+**Edge cases:**
+
+1. **Month with only completed todos:** Show `[5]` in green only (no red bracket). This is the "all done" state.
+2. **Month with only incomplete todos:** Show `[3]` in red only (no green bracket). Current behavior, just colored.
+3. **Month with zero todos:** Should not appear in overview (current behavior, no change needed).
+4. **Current month emphasis:** The active month is already bold. Colors layer on top of bold.
+5. **Floating section:** Same coloring applies to the "Unknown" (floating) line.
+
+**Dependencies on existing features:**
+- Theme struct -- add 2 new color fields: `OverviewIncompleteFg`, `OverviewCompleteFg`
+- Calendar styles -- add 2 new styles: `OverviewIncomplete`, `OverviewComplete`
+- Store -- need `TodoCountsByMonthSplit()` returning incomplete AND complete counts (current `TodoCountsByMonth()` returns total count only)
+- Overview rendering in `calendar/model.go` -- update `renderOverview()` to use new data and styles
+
+**Complexity assessment:** LOW. This is mostly adding 2 new theme colors, a new store method, and updating the render function. Small, well-scoped change.
+
+---
+
+### Date Format Setting
+
+**Expected UX Behavior:**
+
+Users select a date format from the settings overlay. The format affects how dates are displayed throughout the app. The internal storage format remains `YYYY-MM-DD` (ISO 8601) -- only the display changes.
+
+**Three presets:**
+
+| Preset Name | Display Format | Go Layout | Regions |
+|-------------|---------------|-----------|---------|
+| ISO | 2026-02-06 | `2006-01-02` | International, developer preference |
+| European | 06.02.2026 | `02.01.2006` | Germany, Finland, most of EU |
+| US | 02/06/2026 | `01/02/2006` | United States |
+
+**Custom format:** Allow entering a Go time layout string directly. The settings overlay shows a preview of the current date in the selected format for immediate feedback.
+
+**Where dates appear in the app (places that must update):**
+
+1. **Calendar header:** "February 2026" -- this is month+year, not a full date. The date format setting should NOT change this. Month names are always English (no locale). Only full dates (day+month+year) are affected.
+2. **Todo date display:** `2026-02-06` shown next to todo text in the todo panel. THIS is the primary place the format matters.
+3. **Date input prompt:** When adding a dated todo or editing a date, the placeholder should show the active format (e.g., "DD.MM.YYYY" or "YYYY-MM-DD") so users know what to type.
+4. **Date input parsing:** The input parser must accept the configured format AND the ISO format (as fallback). Users may paste ISO dates regardless of display setting.
+5. **Search results:** If full-screen search is implemented, dates in results must use the configured format.
+
+**Settings overlay integration:**
+
+Add a fourth row to the settings overlay:
+
+```
+> Theme              <  Dark  >
+  Country            <  FI - Finland  >
+  First Day of Week  <  Monday  >
+  Date Format        <  ISO (2026-02-06)  >
+```
+
+The display value shows both the preset name and a preview of today's date in that format. For custom format, show the format string and preview:
+
+```
+  Date Format        <  Custom: 02 Jan 2006  >
+```
+
+**Interaction for custom format:**
+- Cycling through options: ISO -> European -> US -> Custom
+- When "Custom" is selected, pressing Enter (or right arrow) opens a text input for the format string
+- The preview updates as the user types
+
+**Edge cases:**
+
+1. **Invalid custom format:** If user enters a non-sensical format string, validate by attempting `time.Now().Format(layout)` and checking the result contains expected components. If invalid, reject and keep previous.
+2. **Date input parsing ambiguity:** `01/02/2026` -- is that Jan 2 or Feb 1? The parser must use the configured format, not guess. The placeholder text must make the expected format clear.
+3. **Existing data:** Stored dates are always ISO 8601 (`YYYY-MM-DD`). The format setting is display-only. No data migration needed.
+4. **Config serialization:** Store the Go layout string in config.toml: `date_format = "2006-01-02"` (default), `date_format = "02.01.2006"`, etc. Presets are just convenient names for specific layout strings.
+5. **Date input must accept configured format:** If user's format is `DD.MM.YYYY`, typing `06.02.2026` in the date input must parse correctly. The input parser should try the configured format first, then fall back to ISO.
+
+**Dependencies on existing features:**
+- Config struct -- add `DateFormat string` field with default `"2006-01-02"`
+- Settings overlay -- add fourth option row with cycling + custom input
+- Todo rendering (`renderTodo`) -- format `todo.Date` using config format instead of raw string
+- Date input mode (`dateInputMode`, `editDateMode`) -- update placeholder and parser to use config format
+- Theme -- no change needed (this is not a visual styling feature)
+
+**Complexity assessment:** LOW-MEDIUM. The config/settings/display parts are straightforward. The tricky part is date input parsing -- accepting the configured format while remaining robust against typos and ambiguous inputs.
+
+---
 
 ## Feature Dependencies
 
 ```
-[Monthly Calendar Grid]
+[Weekly Calendar View]
     |
-    +--requires--> [Date Navigation] (need to move between months)
+    +--requires--> [first_day_of_week] (determines week start)
     |
-    +--requires--> [Today Highlight] (orientation within grid)
+    +--requires--> [Calendar grid rendering] (new RenderWeekGrid or mode)
     |
-    +--enhanced-by--> [Holiday Display] (needs calendar grid to render on)
+    +--requires--> [IncompleteTodosPerDay] (indicators in weekly grid)
     |
-    +--enhanced-by--> [Todo Indicators on Dates] (dots/badges on calendar dates)
+    +--requires--> [Holiday provider] (holidays in weekly grid)
+    |
+    +--modifies--> [Todo panel grouping] (show todos for 7 days, not full month)
+    |
+    +--modifies--> [Help bar] (show week navigation hints)
+    |
+    +--independent-of--> [Search/filter] (no dependency)
+    +--independent-of--> [Overview colors] (no dependency)
+    +--independent-of--> [Date format] (uses same format for display)
 
-[Todo List - Right Pane]
+[Search/Filter Todos]
     |
-    +--requires--> [Add Todo] (core CRUD)
+    +-- Inline filter:
+    |   +--requires--> [Todo panel] (renders filtered list)
+    |   +--requires--> [textinput component] (already used for add/edit)
+    |   +--requires--> [mode state machine] (add filterMode)
+    |   +--independent-of--> [Calendar pane] (filter is todo-panel only)
     |
-    +--requires--> [Complete Todo] (core CRUD)
-    |
-    +--requires--> [Delete Todo] (core CRUD)
-    |
-    +--requires--> [Data Persistence] (must save to disk)
-    |
-    +--requires--> [Date-Bound Todos] (connects todos to calendar)
-    |
-    +--requires--> [Floating Todos] (undated catch-all section)
+    +-- Full-screen search:
+        +--requires--> [Store.SearchTodos()] (scan all todos)
+        +--requires--> [Overlay pattern] (reuse settings overlay approach)
+        +--requires--> [Calendar month navigation] (go-to-result)
+        +--enhanced-by--> [Date format] (display dates in configured format)
 
-[Split-Pane Layout]
+[Overview Color Coding]
     |
-    +--requires--> [Monthly Calendar Grid] (left pane content)
+    +--requires--> [Theme struct] (new color fields)
     |
-    +--requires--> [Todo List] (right pane content)
+    +--requires--> [Store split counts] (incomplete + complete per month)
     |
-    +--requires--> [Pane Focus Switching] (Tab or similar)
+    +--requires--> [Overview rendering] (update renderOverview)
     |
-    +--requires--> [Terminal Resize Handling] (responsive layout)
+    +--independent-of--> [Weekly view] (overview works same in both views)
+    +--independent-of--> [Search/filter] (no dependency)
 
-[Date-Bound Todos] --connects--> [Monthly Calendar Grid]
-    (selecting a date in calendar filters/highlights todos for that date)
-
-[Todo Indicators on Dates] --requires--> [Date-Bound Todos] + [Monthly Calendar Grid]
-    (can only show indicators if both systems exist)
+[Date Format Setting]
+    |
+    +--requires--> [Config struct] (new field)
+    |
+    +--requires--> [Settings overlay] (new option row)
+    |
+    +--modifies--> [Todo date rendering] (format display dates)
+    |
+    +--modifies--> [Date input parsing] (accept configured format)
+    |
+    +--independent-of--> [Weekly view] (format applies to both views)
+    +--independent-of--> [Search/filter] (format used in search results)
+    +--independent-of--> [Overview colors] (overview shows counts, not dates)
 ```
 
-### Dependency Notes
-
-- **Split-Pane Layout requires both Calendar Grid and Todo List:** The layout is the container; without content for both panes it is meaningless. Build the panes first, then compose them.
-- **Date-Bound Todos connect the two panes:** This is the critical integration point. Without it, the calendar and todo list are just two unrelated widgets sharing screen space. The date binding is what makes this product coherent.
-- **Holiday Display enhances Calendar Grid:** Holidays are rendered as colored dates within the existing grid. The grid must exist and be navigable first.
-- **Todo Indicators on Dates require both subsystems:** Dots/badges on calendar dates depend on both the calendar rendering and the date-bound todo data model.
-
-## MVP Definition
-
-### Launch With (v1)
-
-Minimum viable product -- what is needed to validate the concept of a combined calendar+todo TUI.
-
-- [x] Monthly calendar grid with day-of-week headers -- the foundational left pane
-- [x] Navigate months forward/backward -- essential calendar interaction
-- [x] Today highlighted -- user orientation
-- [x] National holidays displayed in red -- key differentiator, low marginal cost with `rickar/cal/v2`
-- [x] Split-pane layout (calendar left, todos right) -- the core product concept
-- [x] Add todo with optional date -- core CRUD
-- [x] Mark todo as complete -- core CRUD
-- [x] Delete todo -- core CRUD
-- [x] Date-bound todos shown for selected month -- the integration that makes calendar+todo valuable
-- [x] Floating todos section -- catch-all for undated items
-- [x] Local file persistence (JSON) -- data must survive restarts
-- [x] Keyboard navigation (arrows/hjkl, Tab for pane switch) -- TUI standard
-- [x] Help overlay (?) -- discoverability
-- [x] Terminal resize handling -- Bubble Tea provides this, just need to wire it up
-
-### Add After Validation (v1.x)
-
-Features to add once core is working and users provide feedback.
-
-- [ ] Todo indicators on calendar dates (dots/counts) -- triggered by: users saying "I can't tell which dates have todos without scrolling"
-- [ ] Configurable country for holidays -- triggered by: non-Finnish users wanting their own holidays
-- [ ] Edit todo text/date after creation -- triggered by: users making typos or rescheduling
-- [ ] Simple todo reordering (move up/down) -- triggered by: users wanting manual priority via ordering
-- [ ] Color themes / customization -- triggered by: users wanting to match their terminal aesthetic
-- [ ] Configurable first day of week (Monday vs Sunday) -- triggered by: international users
-
-### Future Consideration (v2+)
-
-Features to defer until the core product is validated and users actively request them.
-
-- [ ] Weekly view -- defer because: monthly view covers the primary use case; weekly adds rendering complexity
-- [ ] Simple recurrence (daily/weekly/monthly) -- defer because: RRULE complexity; needs careful data model design
-- [ ] One-level subtasks -- defer because: changes data model from flat list to tree
-- [ ] Search / filter todos -- defer because: only needed when lists grow beyond visual scanning
-- [ ] iCalendar export -- defer because: format complexity; only needed for interop
-- [ ] Tags / categories with colors -- defer because: significant UI surface area
-- [ ] Undo (one level) -- defer because: command history architecture
+**Key insight: All four features are independent of each other.** They can be built in any order. The only soft dependency is that date format affects how dates appear in search results -- but search can launch with ISO dates and pick up the format setting when it arrives.
 
 ## Feature Prioritization Matrix
 
-| Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| Monthly calendar grid | HIGH | LOW | P1 |
-| Month navigation | HIGH | LOW | P1 |
-| Today highlight | HIGH | LOW | P1 |
-| National holidays (red) | HIGH | MEDIUM | P1 |
-| Split-pane layout | HIGH | MEDIUM | P1 |
-| Add todo | HIGH | LOW | P1 |
-| Complete todo | HIGH | LOW | P1 |
-| Delete todo | HIGH | LOW | P1 |
-| Date-bound todos | HIGH | LOW | P1 |
-| Floating todos | MEDIUM | LOW | P1 |
-| Local file persistence | HIGH | LOW | P1 |
-| Keyboard navigation | HIGH | LOW | P1 |
-| Help overlay | MEDIUM | LOW | P1 |
-| Terminal resize | MEDIUM | MEDIUM | P1 |
-| Todo indicators on dates | MEDIUM | MEDIUM | P2 |
-| Edit todo | MEDIUM | LOW | P2 |
-| Todo reordering | MEDIUM | LOW | P2 |
-| Country config for holidays | LOW | LOW | P2 |
-| Color themes | LOW | MEDIUM | P2 |
-| First day of week config | LOW | LOW | P2 |
-| Weekly view | MEDIUM | HIGH | P3 |
-| Recurrence | MEDIUM | HIGH | P3 |
-| Subtasks | LOW | HIGH | P3 |
-| Search / filter | LOW | MEDIUM | P3 |
-| iCal export | LOW | HIGH | P3 |
-| Tags / categories | LOW | MEDIUM | P3 |
+| Feature | User Value | Implementation Cost | Risk | Priority | Rationale |
+|---------|-----------|-------------------|------|----------|-----------|
+| Overview color coding | HIGH | LOW | LOW | P1 (build first) | Highest value-to-cost ratio. Small, self-contained change. Instant visual improvement. |
+| Date format setting | MEDIUM | LOW-MEDIUM | LOW | P2 | Well-understood problem. Settings overlay pattern is proven. Main risk is date input parsing. |
+| Inline filter (todo panel) | HIGH | MEDIUM | LOW | P3 | Reuses existing textinput and mode patterns. High utility as todo lists grow. |
+| Weekly calendar view | MEDIUM | MEDIUM-HIGH | MEDIUM | P4 | Cross-month boundary handling is the hardest problem. Todo panel regrouping is non-trivial. |
+| Full-screen search overlay | MEDIUM | HIGH | MEDIUM | P5 (build last) | Most complex feature. New component. Can be deferred if time-constrained. |
 
-**Priority key:**
-- P1: Must have for launch
-- P2: Should have, add when possible (v1.x)
-- P3: Nice to have, future consideration (v2+)
+**Recommended build order rationale:**
 
-## Competitor Feature Analysis
+1. **Overview colors first** -- quick win, builds confidence, no risk
+2. **Date format second** -- adds a settings row (warm-up for settings pattern), date parsing is a foundation for any future date work
+3. **Inline filter third** -- adds a new mode to an existing component (known pattern), provides immediate search value
+4. **Weekly view fourth** -- most architectural change, benefits from having date format and filter already working
+5. **Full-screen search last** -- highest cost, most optional, inline filter already covers 80% of search needs
 
-| Feature | calcurse | calcure | khal | taskwarrior | todoman | Our Approach (v1) |
-|---------|----------|---------|------|-------------|---------|-------------------|
-| Calendar view | Monthly + Weekly | Monthly | Monthly + Day | None | None | Monthly only |
-| Todo list | Yes (priority 1-9) | Yes (subtasks, deadlines, timers) | No | Yes (full GTD) | Yes (basic) | Yes (minimal: add/complete/delete) |
-| Combined calendar+todo | Yes (split pane) | Yes (side by side) | No (calendar only) | No (todo only) | No (todo only) | Yes (split pane, core concept) |
-| National holidays | No | Yes | No | N/A | N/A | Yes (via rickar/cal) |
-| Recurring items | Yes (RRULE) | No | Yes (iCal) | Yes | No | No (v1) |
-| Priorities | Yes (1-9) | No info | N/A | Yes (H/M/L + urgency) | Yes (basic) | No (v1, ordering implies priority) |
-| Subtasks | No | Yes | No | No (dependencies instead) | No | No (v1) |
-| CalDAV sync | Experimental | Via .ics files | Yes (via vdirsyncer) | Taskserver | Yes (via vdirsyncer) | No (local only) |
-| iCal support | Import + Export | Import (.ics) | Full | No (JSON) | Full (RFC 5545) | No (v1, JSON storage) |
-| Vim keybindings | Partial | Yes | Yes (ikhal) | N/A (CLI) | N/A (CLI) | Yes (navigation) |
-| Notifications | Yes (daemon) | No | No | No | No | No |
-| Data format | Plain text (custom) | Plain text (custom) | iCal/vdir | JSON | iCal/vdir | JSON |
-| Language | C | Python | Python | C++ (v3: Rust) | Python | Go |
-| TUI framework | ncurses | Python curses | urwid | N/A (CLI) | N/A (CLI) | Bubble Tea |
-| Zero-config startup | Mostly | Yes | No (needs configure) | No (needs .taskrc) | No (needs config) | Yes |
-| Modern aesthetic | No (dated) | Yes | Functional | N/A | N/A | Yes (Lip Gloss) |
+## Competitor Feature Comparison (v1.3 Scope)
+
+| Feature | calcurse | calcure | taskwarrior-tui | Our v1.3 Approach |
+|---------|----------|---------|-----------------|-------------------|
+| Weekly view | Yes (time-slotted, 4hr blocks) | Daily view (not weekly) | N/A (task list) | Todo-centric 7-day grid (no time slots) |
+| Search/filter | CLI flags only (no TUI search) | Not documented | `/` inline filter | Inline filter + full-screen overlay |
+| Overview colors | N/A | `color_todo`, `color_done` | Taskwarrior colors | Semantic red/green per theme |
+| Date format | 4 presets (mm/dd, dd/mm, yyyy/mm/dd, yyyy-mm-dd) | Not configurable | Taskwarrior rc | 3 presets + custom Go layout |
 
 ## Sources
 
-- [calcurse official site and manual](https://calcurse.org/files/manual.html) -- HIGH confidence, authoritative
-- [calcure GitHub and documentation](https://github.com/anufrievroman/calcure) -- HIGH confidence, primary source
-- [taskwarrior documentation](https://taskwarrior.org/docs/) -- HIGH confidence, authoritative
-- [todoman documentation](https://todoman.readthedocs.io/en/stable/) -- HIGH confidence, authoritative
-- [khal GitHub](https://github.com/pimutils/khal) -- HIGH confidence, primary source
-- [dooit on Terminal Trove](https://terminaltrove.com/dooit/) -- MEDIUM confidence, secondary source
-- [rickar/cal Go holiday library](https://pkg.go.dev/github.com/rickar/cal/v2) -- HIGH confidence, Go package docs (supports Finland)
-- [todo.txt format specification](https://github.com/todotxt/todo.txt) -- HIGH confidence, primary source
-- [HN discussion on todo app design](https://news.ycombinator.com/item?id=44864134) -- MEDIUM confidence, community sentiment (key insight: simplicity beats features)
-- [calcurse man page](https://www.mankier.com/1/calcurse) -- HIGH confidence, official documentation
-- [khal usage examples](https://commandmasters.com/commands/khal-common/) -- MEDIUM confidence, tutorial site
+- [calcurse manual -- weekly view, date formats, key bindings](https://calcurse.org/files/manual.html) -- HIGH confidence, authoritative official docs
+- [calcure documentation and key bindings](https://anufrievroman.gitbook.io/calcure) -- MEDIUM confidence, official but sparse on search details
+- [calcure settings -- color configuration, view options](https://anufrievroman.gitbook.io/calcure/settings) -- HIGH confidence, confirmed "weekly view is not supported" in calcure
+- [taskwarrior-tui keybindings -- `/` filter pattern, Esc to exit](https://kdheepak.com/taskwarrior-tui/keybindings/) -- HIGH confidence, authoritative
+- [Bubble Tea framework and bubbles components](https://github.com/charmbracelet/bubbles) -- HIGH confidence, list component has built-in fuzzy filtering
+- [Go time.Format reference -- layout patterns](https://pkg.go.dev/time) -- HIGH confidence, stdlib docs
+- [Go date formatting guide](https://yourbasic.org/golang/format-parse-string-time-date-example/) -- HIGH confidence, well-verified reference
+- [Color blind accessibility guidelines](https://rgblind.com/blog/color-blind-friendly-palette) -- MEDIUM confidence, general UX guidance
 
 ---
-*Feature research for: TUI Calendar + Todo Application*
-*Researched: 2026-02-05*
+*Feature research for: TUI Calendar v1.3 Views & Usability*
+*Researched: 2026-02-06*
