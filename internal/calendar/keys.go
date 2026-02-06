@@ -4,19 +4,20 @@ import "github.com/charmbracelet/bubbles/key"
 
 // KeyMap defines key bindings for calendar navigation.
 type KeyMap struct {
-	PrevMonth key.Binding
-	NextMonth key.Binding
+	PrevMonth  key.Binding
+	NextMonth  key.Binding
+	ToggleWeek key.Binding
 }
 
 // ShortHelp returns key bindings for the short help view.
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.PrevMonth, k.NextMonth}
+	return []key.Binding{k.PrevMonth, k.NextMonth, k.ToggleWeek}
 }
 
 // FullHelp returns key bindings for the full help view.
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.PrevMonth, k.NextMonth},
+		{k.PrevMonth, k.NextMonth, k.ToggleWeek},
 	}
 }
 
@@ -30,6 +31,10 @@ func DefaultKeyMap() KeyMap {
 		NextMonth: key.NewBinding(
 			key.WithKeys("right", "l"),
 			key.WithHelp("->/l", "next month"),
+		),
+		ToggleWeek: key.NewBinding(
+			key.WithKeys("w"),
+			key.WithHelp("w", "weekly view"),
 		),
 	}
 }
