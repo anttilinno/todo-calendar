@@ -5,21 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** v1.3 Views & Usability -- Phase 10 Overview Color Coding
+**Current focus:** v1.3 Views & Usability -- Phase 10 Overview Color Coding complete
 
 ## Current Position
 
 Phase: 10 of 13 (Overview Color Coding)
-Plan: 0 of 1 in current phase
-Status: Ready to execute
-Last activity: 2026-02-06 -- Roadmap created for v1.3
+Plan: 1 of 1 in current phase
+Status: Phase complete
+Last activity: 2026-02-06 -- Completed 10-01-PLAN.md
+
+Progress: ██████████████████░░░░░░░░ 69% (18/26 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17
+- Total plans completed: 18
 - Average duration: 2 min
-- Total execution time: 0.60 hours
+- Total execution time: 0.63 hours
 
 **By Phase:**
 
@@ -34,12 +36,17 @@ Last activity: 2026-02-06 -- Roadmap created for v1.3
 | 7 | 2 | 3 min | 1.5 min |
 | 8 | 2 | 5 min | 2.5 min |
 | 9 | 1 | 1 min | 1 min |
+| 10 | 1 | 2 min | 2 min |
 
 ## Accumulated Context
 
 ### Decisions
 
 See PROJECT.md Key Decisions table for complete log.
+
+- Always show both pending and completed counts (including zeros) for visual consistency
+- Dedicated PendingFg/CompletedCountFg theme roles instead of reusing HolidayFg/IndicatorFg
+- Replaced FloatingTodoCount() entirely with FloatingTodoCounts() since single caller
 
 ### Pending Todos
 
@@ -52,5 +59,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Roadmap created for v1.3 -- ready to plan phase 10
+Stopped at: Completed 10-01-PLAN.md -- phase 10 complete, ready for phase 11
 Resume file: None
