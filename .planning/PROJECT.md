@@ -34,11 +34,19 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 
 ### Active
 
-No active milestone. See v2 Candidates for next steps.
+**Current Milestone: v1.2 — Reorder & Settings**
+
+**Goal:** Let users reorder todos and configure the app from an in-app settings page instead of editing config.toml manually.
+
+- [ ] Reorder todos (move up/down with keybindings, persist order)
+- [ ] In-app settings page (full-screen overlay, live preview)
+- [ ] Settings: change theme with immediate visual feedback
+- [ ] Settings: change country for holidays
+- [ ] Settings: change first day of week
+- [ ] Settings: save changes to config.toml
 
 ### v2 Candidates
 
-- Reorder todos (move up/down)
 - Weekly calendar view
 - Simple recurring todos
 - Search/filter todos
@@ -85,10 +93,11 @@ No active milestone. See v2 Candidates for next steps.
 | Semantic theme color roles (14 fields) | Named by role not component, decoupled from UI structure | ✓ Good — clean theme propagation |
 | Styles struct + constructor DI over package-level vars | Enables runtime theme switching, testable | ✓ Good — no global state |
 | Empty string = terminal default in Dark theme | Respects user's terminal palette | ✓ Good — non-invasive default |
+| Settings as full-screen overlay with live preview | User wants to see changes immediately; overlay avoids cramming into split pane | — Pending |
 
 ## Known Tech Debt
 
 - Store.Save() errors ignored in CRUD methods (silent persistence failures on disk errors)
 
 ---
-*Last updated: 2026-02-05 after v1.1 milestone completed*
+*Last updated: 2026-02-06 after v1.2 milestone started*

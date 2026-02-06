@@ -2,19 +2,17 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-05)
+See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** Planning next milestone
+**Current focus:** v1.2 Reorder & Settings
 
 ## Current Position
 
-Phase: All complete (6 phases across v1.0 + v1.1)
-Plan: N/A
-Status: Milestone v1.1 complete, ready for next milestone
-Last activity: 2026-02-05 -- v1.1 milestone archived
-
-Progress: [============] 100% (12/12 plans across v1.0 + v1.1)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-06 — Milestone v1.2 started
 
 ## Performance Metrics
 
@@ -50,6 +48,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-05
-Stopped at: v1.1 milestone complete and archived
+Last session: 2026-02-06
+Stopped at: Defining v1.2 milestone
 Resume file: None
