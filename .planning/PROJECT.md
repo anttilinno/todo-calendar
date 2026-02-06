@@ -38,13 +38,16 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 
 ### Active
 
-No active milestone. v2 candidates below.
+Current milestone: v1.3 Views & Usability
+
+- Weekly calendar view with toggle between monthly/weekly — v1.3
+- Search/filter todos: inline filter in todo panel + full-screen search overlay across all months — v1.3
+- Overview color coding: uncompleted todos red, completed green, themed — v1.3
+- Date format setting: 3 presets (YYYY-MM-DD, DD.MM.YYYY, MM/DD/YYYY) + custom, in settings — v1.3
 
 ### v2 Candidates
 
-- Weekly calendar view
 - Simple recurring todos
-- Search/filter todos
 
 ### Out of Scope
 
@@ -97,4 +100,4 @@ No active milestone. v2 candidates below.
 - Store.Save() errors ignored in CRUD methods (silent persistence failures on disk errors)
 
 ---
-*Last updated: 2026-02-06 after v1.2 milestone shipped*
+*Last updated: 2026-02-06 after v1.3 milestone started*
