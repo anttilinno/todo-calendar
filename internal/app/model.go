@@ -2,7 +2,9 @@ package app
 
 import (
 	"github.com/antti/todo-calendar/internal/calendar"
+	"github.com/antti/todo-calendar/internal/config"
 	"github.com/antti/todo-calendar/internal/holidays"
+	"github.com/antti/todo-calendar/internal/settings"
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
 	"github.com/antti/todo-calendar/internal/todolist"
@@ -30,19 +32,23 @@ func (h helpKeyMap) FullHelp() [][]key.Binding  { return [][]key.Binding{h.bindi
 
 // Model is the root application model.
 type Model struct {
-	calendar   calendar.Model
-	todoList   todolist.Model
-	activePane pane
-	width      int
-	height     int
-	ready      bool
-	keys       KeyMap
-	help       help.Model
-	styles     Styles
+	calendar     calendar.Model
+	todoList     todolist.Model
+	activePane   pane
+	width        int
+	height       int
+	ready        bool
+	keys         KeyMap
+	help         help.Model
+	styles       Styles
+	showSettings bool
+	settings     settings.Model
+	cfg          config.Config
+	savedConfig  config.Config
 }
 
 // New creates a new root application model with the given dependencies.
-func New(provider *holidays.Provider, mondayStart bool, s *store.Store, t theme.Theme) Model {
+func New(provider *holidays.Provider, mondayStart bool, s *store.Store, t theme.Theme, cfg config.Config) Model {
 	cal := calendar.New(provider, mondayStart, s, t)
 	cal.SetFocused(true)
 
@@ -61,6 +67,7 @@ func New(provider *holidays.Provider, mondayStart bool, s *store.Store, t theme.
 		keys:       DefaultKeyMap(),
 		help:       h,
 		styles:     NewStyles(t),
+		cfg:        cfg,
 	}
 }
 
@@ -71,6 +78,44 @@ func (m Model) Init() tea.Cmd {
 
 // Update handles messages for the root model.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle settings-specific messages regardless of showSettings state,
+	// because they arrive as commands from the settings model in the next
+	// Update cycle.
+	switch msg := msg.(type) {
+	case settings.ThemeChangedMsg:
+		m.applyTheme(msg.Theme)
+		return m, nil
+
+	case settings.SaveMsg:
+		m.showSettings = false
+		oldCountry := m.cfg.Country
+		m.cfg = msg.Cfg
+		_ = config.Save(m.cfg)
+		// Apply the saved theme (may differ from live preview if user cycled
+		// theme multiple times before saving).
+		m.applyTheme(theme.ForName(msg.Cfg.Theme))
+		// Rebuild provider if country changed
+		if msg.Cfg.Country != oldCountry {
+			if p, err := holidays.NewProvider(msg.Cfg.Country); err == nil {
+				m.calendar.SetProvider(p)
+			}
+		}
+		m.calendar.SetMondayStart(msg.Cfg.MondayStart())
+		m.calendar.RefreshIndicators()
+		return m, nil
+
+	case settings.CancelMsg:
+		m.showSettings = false
+		m.cfg = m.savedConfig
+		m.applyTheme(theme.ForName(m.savedConfig.Theme))
+		return m, nil
+	}
+
+	// When settings overlay is open, route most messages there.
+	if m.showSettings {
+		return m.updateSettings(msg)
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		// In input mode, only ctrl+c quits (let 'q' go to textinput)
@@ -91,6 +136,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.todoList.SetFocused(m.activePane == todoPane)
 			m.todoList.SetViewMonth(m.calendar.Year(), m.calendar.Month())
 			m.calendar.RefreshIndicators()
+			return m, nil
+		case key.Matches(msg, m.keys.Settings) && !isInputting:
+			m.savedConfig = m.cfg
+			m.settings = settings.New(m.cfg, theme.ForName(m.cfg.Theme))
+			m.settings.SetSize(m.width, m.height)
+			m.showSettings = true
 			return m, nil
 		}
 
@@ -128,8 +179,44 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// updateSettings routes messages to the settings model when the overlay is open.
+func (m Model) updateSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Also propagate window resize to all children so the app resizes correctly.
+	if wsm, ok := msg.(tea.WindowSizeMsg); ok {
+		m.width = wsm.Width
+		m.height = wsm.Height
+		m.ready = true
+		m.help.Width = wsm.Width
+		m.settings.SetSize(wsm.Width, wsm.Height)
+
+		var calCmd, todoCmd tea.Cmd
+		m.calendar, calCmd = m.calendar.Update(msg)
+		m.todoList, todoCmd = m.todoList.Update(msg)
+		return m, tea.Batch(calCmd, todoCmd)
+	}
+
+	var cmd tea.Cmd
+	m.settings, cmd = m.settings.Update(msg)
+	return m, cmd
+}
+
+// applyTheme updates all component styles with the given theme.
+func (m *Model) applyTheme(t theme.Theme) {
+	m.styles = NewStyles(t)
+	m.calendar.SetTheme(t)
+	m.todoList.SetTheme(t)
+	m.settings.SetTheme(t)
+	m.help.Styles.ShortKey = lipgloss.NewStyle().Foreground(t.AccentFg)
+	m.help.Styles.ShortDesc = lipgloss.NewStyle().Foreground(t.MutedFg)
+	m.help.Styles.ShortSeparator = lipgloss.NewStyle().Foreground(t.MutedFg)
+}
+
 // currentHelpKeys returns an aggregated help KeyMap based on the active pane.
 func (m Model) currentHelpKeys() helpKeyMap {
+	if m.showSettings {
+		return helpKeyMap{bindings: m.settings.HelpBindings()}
+	}
+
 	var bindings []key.Binding
 
 	switch m.activePane {
@@ -140,7 +227,7 @@ func (m Model) currentHelpKeys() helpKeyMap {
 		bindings = append(bindings, m.todoList.HelpBindings()...)
 	}
 
-	bindings = append(bindings, m.keys.Tab, m.keys.Quit)
+	bindings = append(bindings, m.keys.Tab, m.keys.Settings, m.keys.Quit)
 	return helpKeyMap{bindings: bindings}
 }
 
@@ -148,6 +235,12 @@ func (m Model) currentHelpKeys() helpKeyMap {
 func (m Model) View() string {
 	if !m.ready {
 		return "Initializing..."
+	}
+
+	if m.showSettings {
+		m.help.Width = m.width
+		helpBar := m.help.View(m.currentHelpKeys())
+		return lipgloss.JoinVertical(lipgloss.Left, m.settings.View(), helpBar)
 	}
 
 	// Calculate frame overhead from pane style

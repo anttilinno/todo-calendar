@@ -38,7 +38,7 @@ func main() {
 	}
 
 	t := theme.ForName(cfg.Theme)
-	model := app.New(provider, cfg.MondayStart(), s, t)
+	model := app.New(provider, cfg.MondayStart(), s, t, cfg)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
