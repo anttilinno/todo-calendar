@@ -1,8 +1,11 @@
 package app
 
 import (
+	"os"
+
 	"github.com/antti/todo-calendar/internal/calendar"
 	"github.com/antti/todo-calendar/internal/config"
+	"github.com/antti/todo-calendar/internal/editor"
 	"github.com/antti/todo-calendar/internal/holidays"
 	"github.com/antti/todo-calendar/internal/preview"
 	"github.com/antti/todo-calendar/internal/search"
@@ -49,6 +52,7 @@ type Model struct {
 	search       search.Model
 	showPreview  bool
 	preview      preview.Model
+	editing      bool
 	store        store.TodoStore
 	cfg          config.Config
 	savedConfig  config.Config
@@ -138,6 +142,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case todolist.PreviewMsg:
 		m.preview = preview.New(msg.Todo.Text, msg.Todo.Body, m.cfg.Theme, theme.ForName(m.cfg.Theme), m.width, m.height)
 		m.showPreview = true
+		return m, nil
+
+	case todolist.OpenEditorMsg:
+		m.editing = true
+		todo := msg.Todo
+		return m, editor.Open(todo.ID, todo.Text, todo.Body)
+
+	case editor.EditorFinishedMsg:
+		m.editing = false
+		newBody, changed, err := editor.ReadResult(msg)
+		// Always clean up temp file after reading to prevent /tmp accumulation.
+		os.Remove(msg.TempPath)
+		if err != nil {
+			return m, nil
+		}
+		if changed {
+			m.store.UpdateBody(msg.TodoID, newBody)
+		}
+		m.calendar.RefreshIndicators()
 		return m, nil
 	}
 
@@ -330,6 +353,13 @@ func (m Model) currentHelpKeys() helpKeyMap {
 
 // View renders the root model.
 func (m Model) View() string {
+	// When an external editor is running, return empty string to prevent
+	// Bubble Tea from leaking TUI content to terminal scrollback during
+	// alt-screen teardown.
+	if m.editing {
+		return ""
+	}
+
 	if !m.ready {
 		return "Initializing..."
 	}

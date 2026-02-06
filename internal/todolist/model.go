@@ -21,6 +21,11 @@ type PreviewMsg struct {
 	Todo store.Todo
 }
 
+// OpenEditorMsg is emitted when the user wants to edit a todo's body in an external editor.
+type OpenEditorMsg struct {
+	Todo store.Todo
+}
+
 // mode represents the current input state of the todo list.
 type mode int
 
@@ -139,7 +144,7 @@ func (m Model) HelpBindings() []key.Binding {
 	if m.mode != normalMode {
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	}
-	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.MoveUp, m.keys.MoveDown, m.keys.Add, m.keys.AddDated, m.keys.Edit, m.keys.EditDate, m.keys.Toggle, m.keys.Delete, m.keys.Filter, m.keys.Preview, m.keys.TemplateUse, m.keys.TemplateCreate}
+	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.MoveUp, m.keys.MoveDown, m.keys.Add, m.keys.AddDated, m.keys.Edit, m.keys.EditDate, m.keys.Toggle, m.keys.Delete, m.keys.Filter, m.keys.Preview, m.keys.OpenEditor, m.keys.TemplateUse, m.keys.TemplateCreate}
 }
 
 // visibleItems builds the combined display list of headers, todos, and empty placeholders.
@@ -377,6 +382,19 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 			if todo != nil && todo.HasBody() {
 				t := *todo
 				return m, func() tea.Msg { return PreviewMsg{Todo: t} }
+			}
+		}
+
+	case key.Matches(msg, m.keys.OpenEditor):
+		if len(selectable) > 0 && m.cursor < len(selectable) {
+			todo := items[selectable[m.cursor]].todo
+			if todo != nil {
+				// Fetch fresh from store to get current body content.
+				fresh := m.store.Find(todo.ID)
+				if fresh != nil {
+					t := *fresh
+					return m, func() tea.Msg { return OpenEditorMsg{Todo: t} }
+				}
 			}
 		}
 
