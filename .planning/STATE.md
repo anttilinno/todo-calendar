@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 ## Current Position
 
 Phase: 7 of 9 (Todo Reordering)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-06 -- Roadmap created for v1.2
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-06 -- Completed 07-01-PLAN.md
 
-Progress: [██████████████░░░░░░░] 67% (phases 1-6 complete, 7-9 remaining)
+Progress: [███████████████░░░░░░] 72% (phases 1-6 complete, 7 plan 1/2 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: 2 min
-- Total execution time: 0.45 hours
+- Total execution time: 0.48 hours
 
 **By Phase:**
 
@@ -33,6 +33,7 @@ Progress: [██████████████░░░░░░░] 67% 
 | 4 | 2 | 5 min | 2.5 min |
 | 5 | 2 | 3 min | 1.5 min |
 | 6 | 2 | 4 min | 2 min |
+| 7 | 1 | 2 min | 2 min |
 
 ## Accumulated Context
 
@@ -43,6 +44,8 @@ See PROJECT.md Key Decisions table for complete log.
 Recent decisions affecting current work:
 - Settings as full-screen overlay with live preview (pending implementation)
 - Styles struct + constructor DI enables runtime theme switching (Phase 6)
+- SortOrder field with omitempty for backwards-compatible legacy JSON (Phase 7)
+- SwapOrder is silent no-op on missing IDs, consistent with Toggle/Delete pattern (Phase 7)
 
 ### Pending Todos
 
@@ -54,6 +57,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-06
-Stopped at: Roadmap created for v1.2 milestone
+Last session: 2026-02-06T07:44:50Z
+Stopped at: Completed 07-01-PLAN.md
 Resume file: None
