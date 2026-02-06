@@ -4,6 +4,7 @@ import (
 	"github.com/antti/todo-calendar/internal/calendar"
 	"github.com/antti/todo-calendar/internal/config"
 	"github.com/antti/todo-calendar/internal/holidays"
+	"github.com/antti/todo-calendar/internal/search"
 	"github.com/antti/todo-calendar/internal/settings"
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
@@ -43,6 +44,9 @@ type Model struct {
 	styles       Styles
 	showSettings bool
 	settings     settings.Model
+	showSearch   bool
+	search       search.Model
+	store        *store.Store
 	cfg          config.Config
 	savedConfig  config.Config
 }
@@ -68,6 +72,7 @@ func New(provider *holidays.Provider, mondayStart bool, s *store.Store, t theme.
 		keys:       DefaultKeyMap(),
 		help:       h,
 		styles:     NewStyles(t),
+		store:      s,
 		cfg:        cfg,
 	}
 }
@@ -111,11 +116,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cfg = m.savedConfig
 		m.applyTheme(theme.ForName(m.savedConfig.Theme))
 		return m, nil
+
+	case search.JumpMsg:
+		m.showSearch = false
+		m.calendar.SetYearMonth(msg.Year, msg.Month)
+		m.todoList.SetViewMonth(msg.Year, msg.Month)
+		m.calendar.RefreshIndicators()
+		return m, nil
+
+	case search.CloseMsg:
+		m.showSearch = false
+		return m, nil
 	}
 
 	// When settings overlay is open, route most messages there.
 	if m.showSettings {
 		return m.updateSettings(msg)
+	}
+
+	// When search overlay is open, route most messages there.
+	if m.showSearch {
+		return m.updateSearch(msg)
 	}
 
 	switch msg := msg.(type) {
@@ -145,6 +166,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.settings.SetSize(m.width, m.height)
 			m.showSettings = true
 			return m, nil
+		case key.Matches(msg, m.keys.Search) && !isInputting:
+			m.search = search.New(m.store, theme.ForName(m.cfg.Theme), m.cfg)
+			m.search.SetSize(m.width, m.height)
+			m.showSearch = true
+			return m, m.search.Init()
 		}
 
 	case tea.WindowSizeMsg:
@@ -202,12 +228,34 @@ func (m Model) updateSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// updateSearch routes messages to the search model when the overlay is open.
+func (m Model) updateSearch(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Also propagate window resize to all children so the app resizes correctly.
+	if wsm, ok := msg.(tea.WindowSizeMsg); ok {
+		m.width = wsm.Width
+		m.height = wsm.Height
+		m.ready = true
+		m.help.Width = wsm.Width
+		m.search.SetSize(wsm.Width, wsm.Height)
+
+		var calCmd, todoCmd tea.Cmd
+		m.calendar, calCmd = m.calendar.Update(msg)
+		m.todoList, todoCmd = m.todoList.Update(msg)
+		return m, tea.Batch(calCmd, todoCmd)
+	}
+
+	var cmd tea.Cmd
+	m.search, cmd = m.search.Update(msg)
+	return m, cmd
+}
+
 // applyTheme updates all component styles with the given theme.
 func (m *Model) applyTheme(t theme.Theme) {
 	m.styles = NewStyles(t)
 	m.calendar.SetTheme(t)
 	m.todoList.SetTheme(t)
 	m.settings.SetTheme(t)
+	m.search.SetTheme(t)
 	m.help.Styles.ShortKey = lipgloss.NewStyle().Foreground(t.AccentFg)
 	m.help.Styles.ShortDesc = lipgloss.NewStyle().Foreground(t.MutedFg)
 	m.help.Styles.ShortSeparator = lipgloss.NewStyle().Foreground(t.MutedFg)
@@ -215,6 +263,9 @@ func (m *Model) applyTheme(t theme.Theme) {
 
 // currentHelpKeys returns an aggregated help KeyMap based on the active pane.
 func (m Model) currentHelpKeys() helpKeyMap {
+	if m.showSearch {
+		return helpKeyMap{bindings: m.search.HelpBindings()}
+	}
 	if m.showSettings {
 		return helpKeyMap{bindings: m.settings.HelpBindings()}
 	}
@@ -229,7 +280,7 @@ func (m Model) currentHelpKeys() helpKeyMap {
 		bindings = append(bindings, m.todoList.HelpBindings()...)
 	}
 
-	bindings = append(bindings, m.keys.Tab, m.keys.Settings, m.keys.Quit)
+	bindings = append(bindings, m.keys.Tab, m.keys.Settings, m.keys.Search, m.keys.Quit)
 	return helpKeyMap{bindings: bindings}
 }
 
@@ -243,6 +294,12 @@ func (m Model) View() string {
 		m.help.Width = m.width
 		helpBar := m.help.View(m.currentHelpKeys())
 		return lipgloss.JoinVertical(lipgloss.Left, m.settings.View(), helpBar)
+	}
+
+	if m.showSearch {
+		m.help.Width = m.width
+		helpBar := m.help.View(m.currentHelpKeys())
+		return lipgloss.JoinVertical(lipgloss.Left, m.search.View(), helpBar)
 	}
 
 	// Calculate frame overhead from pane style

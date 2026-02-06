@@ -7,17 +7,18 @@ type KeyMap struct {
 	Quit     key.Binding
 	Tab      key.Binding
 	Settings key.Binding
+	Search   key.Binding
 }
 
 // ShortHelp returns key bindings for the short help view.
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Quit, k.Tab, k.Settings}
+	return []key.Binding{k.Quit, k.Tab, k.Settings, k.Search}
 }
 
 // FullHelp returns key bindings for the full help view.
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Quit, k.Tab, k.Settings},
+		{k.Quit, k.Tab, k.Settings, k.Search},
 	}
 }
 
@@ -35,6 +36,10 @@ func DefaultKeyMap() KeyMap {
 		Settings: key.NewBinding(
 			key.WithKeys("s"),
 			key.WithHelp("s", "settings"),
+		),
+		Search: key.NewBinding(
+			key.WithKeys("ctrl+f"),
+			key.WithHelp("C-f", "search"),
 		),
 	}
 }

@@ -1,0 +1,204 @@
+package search
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/antti/todo-calendar/internal/config"
+	"github.com/antti/todo-calendar/internal/store"
+	"github.com/antti/todo-calendar/internal/theme"
+)
+
+// JumpMsg is emitted when the user selects a dated search result.
+// The parent model uses Year and Month to navigate the calendar.
+type JumpMsg struct {
+	Year  int
+	Month time.Month
+}
+
+// CloseMsg is emitted when the user presses Esc to close the search overlay.
+type CloseMsg struct{}
+
+// Model represents the search overlay.
+type Model struct {
+	input      textinput.Model
+	results    []store.Todo
+	cursor     int
+	store      *store.Store
+	dateLayout string
+	width      int
+	height     int
+	keys       KeyMap
+	styles     Styles
+}
+
+// New creates a new search overlay model.
+func New(s *store.Store, t theme.Theme, cfg config.Config) Model {
+	ti := textinput.New()
+	ti.Placeholder = "Search all todos..."
+	ti.Prompt = "? "
+	ti.Focus()
+
+	return Model{
+		input:      ti,
+		store:      s,
+		dateLayout: cfg.DateLayout(),
+		keys:       DefaultKeyMap(),
+		styles:     NewStyles(t),
+	}
+}
+
+// Init returns the initial command (starts cursor blinking).
+func (m Model) Init() tea.Cmd {
+	return textinput.Blink
+}
+
+// SetSize stores dimensions for layout.
+func (m *Model) SetSize(w, h int) {
+	m.width = w
+	m.height = h
+}
+
+// SetTheme replaces the styles with ones built from the given theme.
+func (m *Model) SetTheme(t theme.Theme) {
+	m.styles = NewStyles(t)
+}
+
+// Update handles messages for the search overlay.
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, m.keys.Cancel):
+			return m, func() tea.Msg { return CloseMsg{} }
+
+		case key.Matches(msg, m.keys.Select):
+			if len(m.results) > 0 && m.cursor >= 0 && m.cursor < len(m.results) {
+				r := m.results[m.cursor]
+				if r.HasDate() {
+					d, err := time.Parse("2006-01-02", r.Date)
+					if err == nil {
+						year, month := d.Year(), d.Month()
+						return m, func() tea.Msg {
+							return JumpMsg{Year: year, Month: month}
+						}
+					}
+				}
+				// Floating todo -- no month to jump to, just close
+				return m, func() tea.Msg { return CloseMsg{} }
+			}
+			return m, nil
+
+		case key.Matches(msg, m.keys.Down):
+			if m.cursor < len(m.results)-1 {
+				m.cursor++
+			}
+			return m, nil
+
+		case key.Matches(msg, m.keys.Up):
+			if m.cursor > 0 {
+				m.cursor--
+			}
+			return m, nil
+		}
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+	}
+
+	// Forward to textinput and update results
+	var cmd tea.Cmd
+	m.input, cmd = m.input.Update(msg)
+	m.results = m.store.SearchTodos(m.input.Value())
+	// Clamp cursor
+	if m.cursor >= len(m.results) {
+		m.cursor = len(m.results) - 1
+	}
+	if m.cursor < 0 {
+		m.cursor = 0
+	}
+	return m, cmd
+}
+
+// View renders the search overlay.
+func (m Model) View() string {
+	var b strings.Builder
+
+	title := m.styles.Title.Render("Search")
+	b.WriteString(title)
+	b.WriteString("\n\n")
+
+	b.WriteString(m.input.View())
+	b.WriteString("\n\n")
+
+	query := m.input.Value()
+
+	if query == "" {
+		b.WriteString(m.styles.Empty.Render("Type to search across all months"))
+	} else if len(m.results) == 0 {
+		b.WriteString(m.styles.Empty.Render("(no matches)"))
+	} else {
+		maxVisible := m.height - 8
+		if maxVisible < 1 {
+			maxVisible = 1
+		}
+		visible := len(m.results)
+		if visible > maxVisible {
+			visible = maxVisible
+		}
+		for i := 0; i < visible; i++ {
+			r := m.results[i]
+
+			// Checkbox
+			check := "[ ]"
+			if r.Done {
+				check = "[x]"
+			}
+
+			// Date display
+			dateStr := "No date"
+			if r.HasDate() {
+				dateStr = config.FormatDate(r.Date, m.dateLayout)
+			}
+
+			if i == m.cursor {
+				line := fmt.Sprintf("> %s %s", check, r.Text)
+				b.WriteString(m.styles.SelectedResult.Render(line))
+				b.WriteString("  ")
+				b.WriteString(m.styles.SelectedDate.Render(dateStr))
+			} else {
+				line := fmt.Sprintf("  %s %s", check, r.Text)
+				b.WriteString(m.styles.ResultText.Render(line))
+				b.WriteString("  ")
+				b.WriteString(m.styles.ResultDate.Render(dateStr))
+			}
+			b.WriteString("\n")
+		}
+	}
+
+	b.WriteString("\n")
+	b.WriteString(m.styles.Hint.Render("  j/k navigate  |  enter jump to month  |  esc close"))
+
+	content := b.String()
+
+	// Center vertically if we have height information.
+	if m.height > 0 {
+		lines := strings.Count(content, "\n") + 1
+		topPad := (m.height - lines) / 2
+		if topPad > 0 {
+			content = strings.Repeat("\n", topPad) + content
+		}
+	}
+
+	return content
+}
+
+// HelpBindings returns search-specific key bindings for help bar display.
+func (m Model) HelpBindings() []key.Binding {
+	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Select, m.keys.Cancel}
+}
