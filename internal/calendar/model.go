@@ -100,8 +100,9 @@ func (m Model) View() string {
 }
 
 // renderOverview builds the overview section showing per-month todo counts
-// and the floating (undated) todo count. It is computed fresh from the store
-// on every render to guarantee live updates without cache invalidation.
+// (pending in red-family, completed in green-family) and the floating (undated)
+// todo counts. It is computed fresh from the store on every render to guarantee
+// live updates without cache invalidation.
 func (m Model) renderOverview() string {
 	var b strings.Builder
 
@@ -115,18 +116,28 @@ func (m Model) renderOverview() string {
 		if mc.Year != m.year {
 			label = fmt.Sprintf("%s %d", mc.Month.String(), mc.Year)
 		}
-		line := fmt.Sprintf(" %-16s[%d]", label, mc.Count)
+
+		paddedLabel := fmt.Sprintf(" %-16s", label)
+		pending := m.styles.OverviewPending.Render(fmt.Sprintf("%d", mc.Pending))
+		completed := m.styles.OverviewCompleted.Render(fmt.Sprintf("%d", mc.Completed))
+
 		if mc.Year == m.year && mc.Month == m.month {
-			b.WriteString(m.styles.OverviewActive.Render(line))
+			b.WriteString(m.styles.OverviewActive.Render(paddedLabel))
 		} else {
-			b.WriteString(m.styles.OverviewCount.Render(line))
+			b.WriteString(m.styles.OverviewCount.Render(paddedLabel))
 		}
+		b.WriteString(pending)
+		b.WriteString("  ")
+		b.WriteString(completed)
 		b.WriteString("\n")
 	}
 
-	floatingCount := m.store.FloatingTodoCount()
-	floatingLine := fmt.Sprintf(" %-16s[%d]", "Unknown", floatingCount)
-	b.WriteString(m.styles.OverviewCount.Render(floatingLine))
+	fc := m.store.FloatingTodoCounts()
+	paddedLabel := fmt.Sprintf(" %-16s", "Unknown")
+	b.WriteString(m.styles.OverviewCount.Render(paddedLabel))
+	b.WriteString(m.styles.OverviewPending.Render(fmt.Sprintf("%d", fc.Pending)))
+	b.WriteString("  ")
+	b.WriteString(m.styles.OverviewCompleted.Render(fmt.Sprintf("%d", fc.Completed)))
 	b.WriteString("\n")
 
 	return b.String()
