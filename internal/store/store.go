@@ -9,6 +9,29 @@ import (
 	"time"
 )
 
+// TodoStore defines the contract for todo persistence.
+// Consumers depend on this interface, not the concrete backend.
+type TodoStore interface {
+	Add(text string, date string) Todo
+	Toggle(id int)
+	Delete(id int)
+	Find(id int) *Todo
+	Update(id int, text string, date string)
+	Todos() []Todo
+	TodosForMonth(year int, month time.Month) []Todo
+	FloatingTodos() []Todo
+	IncompleteTodosPerDay(year int, month time.Month) map[int]int
+	TodoCountsByMonth() []MonthCount
+	FloatingTodoCounts() FloatingCount
+	SwapOrder(id1, id2 int)
+	SearchTodos(query string) []Todo
+	EnsureSortOrder()
+	Save() error
+}
+
+// Compile-time check: *Store implements TodoStore.
+var _ TodoStore = (*Store)(nil)
+
 // Store manages todo persistence with atomic file writes.
 type Store struct {
 	path string
