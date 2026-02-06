@@ -53,6 +53,7 @@ func New(provider *holidays.Provider, mondayStart bool, s *store.Store, t theme.
 	cal.SetFocused(true)
 
 	tl := todolist.New(s, t)
+	tl.SetDateFormat(cfg.DateLayout(), cfg.DatePlaceholder())
 	tl.SetViewMonth(cal.Year(), cal.Month())
 
 	h := help.New()
@@ -101,6 +102,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.calendar.SetMondayStart(msg.Cfg.MondayStart())
+		m.todoList.SetDateFormat(m.cfg.DateLayout(), m.cfg.DatePlaceholder())
 		m.calendar.RefreshIndicators()
 		return m, nil
 
