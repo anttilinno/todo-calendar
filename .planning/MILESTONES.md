@@ -1,5 +1,30 @@
 # Project Milestones: Todo Calendar
 
+## v1.3 Views & Usability (Shipped: 2026-02-06)
+
+**Delivered:** Enhanced calendar views (weekly toggle), search/filter (inline + full-screen), date format presets, and color-coded overview counts
+
+**Phases completed:** 10-13 (5 plans total)
+
+**Key accomplishments:**
+- Overview panel shows color-coded pending/completed counts per month across all 4 themes
+- 3-preset date format (ISO/EU/US) configurable in settings with format-aware input
+- Weekly calendar view with `w` toggle, week navigation, and auto-select current week
+- Inline todo filter (`/`) with real-time case-insensitive narrowing and Esc to clear
+- Full-screen search overlay (Ctrl+F) for cross-month todo discovery with jump-to-month
+
+**Stats:**
+- 31 files changed
+- 3,263 lines of Go across 23 source files
+- 4 phases, 5 plans
+- 2 days (2026-02-05 → 2026-02-06)
+
+**Git range:** `50c009d` → `e43b5f4`
+
+**What's next:** v1.4 Data & Editing — SQLite backend, markdown templates, external editor integration
+
+---
+
 ## v1.2 Reorder & Settings (Shipped: 2026-02-06)
 
 **Delivered:** Todo reordering, in-app settings overlay with live theme preview, and calendar overview panel with per-month todo counts
