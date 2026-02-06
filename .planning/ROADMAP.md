@@ -78,11 +78,11 @@ Plans:
   2. User can move the selected todo one position down in the list via keybinding
   3. Custom todo order survives app restart (order is persisted in JSON)
   4. Reorder keybindings appear in the help bar when a todo is selected
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
+- [ ] 07-01-PLAN.md -- Add SortOrder field, migration, SwapOrder method, updated sort logic
+- [ ] 07-02-PLAN.md -- Wire MoveUp/MoveDown keybindings and help bar integration
 
 #### Phase 8: Settings Overlay
 **Goal**: Users can configure theme, holiday country, and first day of week from inside the app with live preview
@@ -125,6 +125,6 @@ Plans:
 | 4. Date Indicators & Editing | v1.1 | 2/2 | Complete | 2026-02-05 |
 | 5. First Day of Week | v1.1 | 2/2 | Complete | 2026-02-05 |
 | 6. Color Themes | v1.1 | 2/2 | Complete | 2026-02-05 |
-| 7. Todo Reordering | v1.2 | 0/TBD | Not started | - |
+| 7. Todo Reordering | v1.2 | 0/2 | Planning | - |
 | 8. Settings Overlay | v1.2 | 0/TBD | Not started | - |
 | 9. Overview Panel | v1.2 | 0/TBD | Not started | - |
