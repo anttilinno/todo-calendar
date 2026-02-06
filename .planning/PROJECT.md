@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A terminal-based (TUI) application that combines a monthly/weekly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, date indicators for pending work, color-coded overview counts, and weekly view toggle. The right panel displays todos for the visible month alongside undated (floating) items with inline filter support. Includes full-screen cross-month search, editing and reordering todos, configurable date format and first day of week, 4 color themes, and an in-app settings overlay with live preview. Built with Go and Bubble Tea for personal use.
+A terminal-based (TUI) application that combines a monthly/weekly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, date indicators for pending work, color-coded overview counts, and weekly view toggle. The right panel displays todos for the visible month alongside undated (floating) items with inline filter support. Includes full-screen cross-month search, editing and reordering todos, configurable date format and first day of week, 4 color themes, and an in-app settings overlay with live preview. Todos are stored in SQLite with support for rich markdown bodies, reusable templates with placeholder prompting, and external editor integration ($EDITOR). Built with Go and Bubble Tea for personal use.
 
 ## Core Value
 
@@ -40,14 +40,15 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - Weekly calendar view with `w` toggle, week navigation, and auto-select current week — v1.3
 - Inline todo filter (`/`) with real-time case-insensitive narrowing — v1.3
 - Full-screen search overlay (Ctrl+F) for cross-month todo discovery with jump-to-month — v1.3
+- SQLite database backend replacing JSON storage — v1.4
+- TodoStore interface decoupling consumers from storage backend — v1.4
+- Markdown todo bodies with glamour-rendered preview overlay — v1.4
+- Reusable markdown templates with {{.Variable}} placeholder prompting — v1.4
+- External editor integration ($VISUAL/$EDITOR/vi fallback) — v1.4
 
 ### Active
 
-Current milestone: v1.4 Data & Editing
-
-- SQLite database backend replacing JSON storage — v1.4
-- Markdown todo bodies with template support — v1.4
-- External editor integration ($EDITOR) — v1.4
+(No active milestone — planning next)
 
 ### v2 Candidates
 
@@ -65,17 +66,17 @@ Current milestone: v1.4 Data & Editing
 
 ## Context
 
-- **Stack:** Go 1.25.6, Bubble Tea v1.3.10, Lipgloss v1.1.0, Bubbles v0.21.1
+- **Stack:** Go 1.25.6, Bubble Tea v1.3.10, Lipgloss v1.1.0, Bubbles v0.21.1, Glamour v0.10.0
 - **Holidays:** rickar/cal/v2 with 11-country registry (de, dk, ee, es, fi, fr, gb, it, no, se, us)
 - **Config:** TOML at ~/.config/todo-calendar/config.toml (BurntSushi/toml v1.6.0)
-- **Storage:** JSON at ~/.config/todo-calendar/todos.json with atomic writes
-- **Codebase:** 3,263 lines of Go across 23 source files
-- **Architecture:** Elm Architecture (Bubble Tea), pure rendering functions, constructor DI
+- **Storage:** SQLite at ~/.config/todo-calendar/todos.db (modernc.org/sqlite, pure Go, WAL mode)
+- **Codebase:** 4,670 lines of Go across ~30 source files
+- **Architecture:** Elm Architecture (Bubble Tea), pure rendering functions, constructor DI, TodoStore interface
 
 ## Constraints
 
 - **Stack**: Go + Bubble Tea — chosen for ergonomic component model and ecosystem
-- **Storage**: Local only — no network dependencies, no cloud sync
+- **Storage**: Local SQLite only — no network dependencies, no cloud sync
 - **Holidays**: Must work offline using bundled Go library, not an external API
 
 ## Key Decisions
@@ -84,7 +85,7 @@ Current milestone: v1.4 Data & Editing
 |----------|-----------|---------|
 | Go + Bubble Tea over Rust + Ratatui | Better component model for split-pane layout, gentler learning curve | ✓ Good — clean architecture, fast development |
 | Month-level navigation, no day selection | User doesn't have many items — showing all month todos is simpler | ✓ Good — keeps UI simple |
-| Local JSON file over SQLite | Simpler, more portable, sufficient for personal use | ⚠️ Revisit — migrating to SQLite in v1.4 |
+| Local JSON file → SQLite in v1.4 | JSON was simpler initially; SQLite needed for body/templates | ✓ Good — migrated in v1.4 via TodoStore interface |
 | Configurable country holidays via Go library | Offline, no API dependency, flexible | ✓ Good — 11 countries supported |
 | String dates (YYYY-MM-DD) over time.Time | Prevents timezone corruption during JSON round-trips | ✓ Good — research-informed decision |
 | Atomic file writes (CreateTemp+Sync+Rename) | Data safety from day one | ✓ Good — prevents corruption |
@@ -104,10 +105,19 @@ Current milestone: v1.4 Data & Editing
 | Keys() returns mode-aware copies | Avoids mutating stored key bindings; clean contextual help | ✓ Good — no side effects |
 | Search overlay creates fresh model on Ctrl+F | No stale state; simple initialization | ✓ Good — clean lifecycle |
 | Inline filter preserves section headers | Headers always visible with "(no matches)" placeholder for empty sections | ✓ Good — clear UX |
+| modernc.org/sqlite over mattn/go-sqlite3 | Pure Go, no CGo required, simpler cross-compilation | ✓ Good — zero build complexity |
+| TodoStore interface in store package | Decouple consumers from backend, enable future backends | ✓ Good — clean DI, all 5 consumers updated |
+| PRAGMA user_version for schema migration | Lightweight, no external tool, sufficient for single-user app | ✓ Good — v1→v2 migration seamless |
+| Hand-written SQL over sqlc/ORM | Single-table CRUD, scan helpers sufficient | ✓ Good — clear and debuggable |
+| text/template/parse AST walk for placeholders | Correct handling of all node types vs fragile regex | ✓ Good — handles If/Range/With correctly |
+| Glamour for markdown rendering | Charmbracelet ecosystem, theme-matched light/dark styles | ✓ Good — clean terminal markdown |
+| editing bool flag + View() empty guard | Prevents Bubble Tea alt-screen teardown leak to scrollback | ✓ Good — clean editor lifecycle |
+| $VISUAL → $EDITOR → vi fallback | POSIX standard editor resolution chain | ✓ Good — works on all Unix systems |
 
 ## Known Tech Debt
 
-- Store.Save() errors ignored in CRUD methods (silent persistence failures on disk errors)
+- JSON Store still exists but unused (main.go uses SQLiteStore exclusively)
+- JSON Store template methods are stubs (return error/nil/no-op)
 
 ---
-*Last updated: 2026-02-06 after v1.4 milestone started*
+*Last updated: 2026-02-06 after v1.4 milestone*

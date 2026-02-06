@@ -6,7 +6,7 @@
 - ✅ **v1.1 Polish & Personalization** - Phases 4-6 (shipped 2026-02-05)
 - ✅ **v1.2 Reorder & Settings** - Phases 7-9 (shipped 2026-02-06)
 - ✅ **v1.3 Views & Usability** - Phases 10-13 (shipped 2026-02-06)
-- 🚧 **v1.4 Data & Editing** - Phases 14-16 (in progress)
+- ✅ **v1.4 Data & Editing** - Phases 14-16 (shipped 2026-02-06)
 
 ## Phases
 
@@ -129,54 +129,34 @@ Plans:
 
 </details>
 
-### 🚧 v1.4 Data & Editing (In Progress)
+<details>
+<summary>✅ v1.4 Data & Editing (Phases 14-16) - SHIPPED 2026-02-06</summary>
 
-**Milestone Goal:** Replace JSON storage with SQLite, add rich markdown todo bodies with templates, and integrate external editor for power-user editing workflows.
-
-#### Phase 14: Database Backend
+### Phase 14: Database Backend
 **Goal**: Todos persist reliably in a SQLite database with zero behavior changes for the user
-**Depends on**: None (replaces existing JSON store)
-**Requirements**: DB-01, DB-02, DB-03, DB-04, DB-05
-**Success Criteria** (what must be TRUE):
-  1. User's todos are stored in and loaded from a SQLite database file
-  2. Store consumers (todolist, search, calendar, overview) work through a TodoStore interface without knowing the backend
-  3. Database schema is version-managed and migrations apply automatically on startup
-  4. All existing operations (add, complete, delete, edit, reorder, search, filter) behave identically to the JSON backend
 **Plans**: 2 plans
 
 Plans:
-- [x] 14-01-PLAN.md -- Extract TodoStore interface from concrete Store struct
-- [x] 14-02-PLAN.md -- Implement SQLite backend and wire into main.go
+- [x] 14-01: Extract TodoStore interface from concrete Store struct
+- [x] 14-02: Implement SQLite backend and wire into main.go
 
-#### Phase 15: Markdown Templates
+### Phase 15: Markdown Templates
 **Goal**: Todos support rich markdown bodies created from reusable templates
-**Depends on**: Phase 14 (SQLite schema includes body column and templates table)
-**Requirements**: MDTPL-01, MDTPL-02, MDTPL-03, MDTPL-04
-**Success Criteria** (what must be TRUE):
-  1. User can view a multi-line markdown body attached to any todo
-  2. User can create named templates containing markdown with placeholder variables
-  3. When creating a todo from a template, user is prompted for each placeholder value and the body is filled in
-  4. Todo body renders as styled terminal markdown (headings, lists, code blocks) in a preview pane
 **Plans**: 3 plans
 
 Plans:
-- [x] 15-01-PLAN.md -- Store foundation: Body field, templates table, template utilities
-- [x] 15-02-PLAN.md -- Preview overlay with glamour rendering and body indicator
-- [x] 15-03-PLAN.md -- Template creation and usage flow with placeholder prompting
+- [x] 15-01: Store foundation: Body field, templates table, template utilities
+- [x] 15-02: Preview overlay with glamour rendering and body indicator
+- [x] 15-03: Template creation and usage flow with placeholder prompting
 
-#### Phase 16: External Editor
+### Phase 16: External Editor
 **Goal**: Users can edit todo bodies in their preferred terminal editor
-**Depends on**: Phase 15 (markdown body field exists to edit)
-**Requirements**: EDITOR-01, EDITOR-02, EDITOR-03, EDITOR-04
-**Success Criteria** (what must be TRUE):
-  1. User presses a key on a selected todo and their configured editor opens with the todo body
-  2. App checks $VISUAL, then $EDITOR, then falls back to vi
-  3. Editor opens a temp file with .md extension so syntax highlighting works
-  4. If user exits editor without changing content, the todo body is not updated
 **Plans**: 1 plan
 
 Plans:
-- [x] 16-01-PLAN.md -- Editor package, keybinding, and app lifecycle wiring
+- [x] 16-01: Editor package, keybinding, and app lifecycle wiring
+
+</details>
 
 ## Progress
 
