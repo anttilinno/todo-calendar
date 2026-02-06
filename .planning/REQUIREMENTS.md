@@ -20,10 +20,10 @@ Requirements for milestone v1.3 Views & Usability.
 
 ### Weekly Calendar View
 
-- [ ] **WKVIEW-01**: User can toggle between monthly and weekly calendar view via keybinding
-- [ ] **WKVIEW-02**: Weekly view shows 7 days with day numbers, holidays, and todo indicators
-- [ ] **WKVIEW-03**: User can navigate forward/backward by week in weekly mode
-- [ ] **WKVIEW-04**: Current week is auto-selected when switching from monthly to weekly view
+- [x] **WKVIEW-01**: User can toggle between monthly and weekly calendar view via keybinding
+- [x] **WKVIEW-02**: Weekly view shows 7 days with day numbers, holidays, and todo indicators
+- [x] **WKVIEW-03**: User can navigate forward/backward by week in weekly mode
+- [x] **WKVIEW-04**: Current week is auto-selected when switching from monthly to weekly view
 
 ### Search/Filter
 
@@ -36,6 +36,24 @@ Requirements for milestone v1.3 Views & Usability.
 ## Future Requirements
 
 Deferred to later milestones.
+
+### Database Backend (v1.4)
+
+- **DB-01**: Todos are stored in a SQLite database instead of JSON files
+- **DB-02**: Existing JSON data is migrated to SQLite automatically on first launch
+- **DB-03**: All CRUD operations work identically with the database backend
+
+### Markdown Templates (v1.4)
+
+- **MDTPL-01**: Todos have a markdown body field beyond the single-line title
+- **MDTPL-02**: User can create markdown templates with placeholder variables
+- **MDTPL-03**: Creating a todo from a template fills in placeholders interactively
+
+### External Editor Integration (v1.4)
+
+- **EDITOR-01**: User can press a key to open the selected todo in $EDITOR
+- **EDITOR-02**: App suspends TUI, launches editor, and resumes cleanly after editor exits
+- **EDITOR-03**: Edits made in the external editor are saved back to the todo
 
 ### Recurring Todos
 
@@ -65,10 +83,10 @@ Deferred to later milestones.
 | DTFMT-01 | Phase 11 | Complete |
 | DTFMT-02 | Phase 11 | Complete |
 | DTFMT-03 | Phase 11 | Complete |
-| WKVIEW-01 | Phase 12 | Pending |
-| WKVIEW-02 | Phase 12 | Pending |
-| WKVIEW-03 | Phase 12 | Pending |
-| WKVIEW-04 | Phase 12 | Pending |
+| WKVIEW-01 | Phase 12 | Complete |
+| WKVIEW-02 | Phase 12 | Complete |
+| WKVIEW-03 | Phase 12 | Complete |
+| WKVIEW-04 | Phase 12 | Complete |
 | SRCH-01 | Phase 13 | Pending |
 | SRCH-02 | Phase 13 | Pending |
 | SRCH-03 | Phase 13 | Pending |
