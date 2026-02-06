@@ -14,9 +14,9 @@ Requirements for milestone v1.3 Views & Usability.
 
 ### Date Format
 
-- [ ] **DTFMT-01**: User can choose date display format from 3 presets (YYYY-MM-DD, DD.MM.YYYY, MM/DD/YYYY) in settings
-- [ ] **DTFMT-02**: All date displays in the app use the chosen format
-- [ ] **DTFMT-03**: Date format preference persists in config.toml
+- [x] **DTFMT-01**: User can choose date display format from 3 presets (YYYY-MM-DD, DD.MM.YYYY, MM/DD/YYYY) in settings
+- [x] **DTFMT-02**: All date displays in the app use the chosen format
+- [x] **DTFMT-03**: Date format preference persists in config.toml
 
 ### Weekly Calendar View
 
@@ -62,9 +62,9 @@ Deferred to later milestones.
 |-------------|-------|--------|
 | OVCLR-01 | Phase 10 | Complete |
 | OVCLR-02 | Phase 10 | Complete |
-| DTFMT-01 | Phase 11 | Pending |
-| DTFMT-02 | Phase 11 | Pending |
-| DTFMT-03 | Phase 11 | Pending |
+| DTFMT-01 | Phase 11 | Complete |
+| DTFMT-02 | Phase 11 | Complete |
+| DTFMT-03 | Phase 11 | Complete |
 | WKVIEW-01 | Phase 12 | Pending |
 | WKVIEW-02 | Phase 12 | Pending |
 | WKVIEW-03 | Phase 12 | Pending |
@@ -82,4 +82,4 @@ Deferred to later milestones.
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 after phase 10 completion*
+*Last updated: 2026-02-06 after phase 11 completion*
