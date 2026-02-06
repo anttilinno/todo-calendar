@@ -4,31 +4,33 @@ import "github.com/charmbracelet/bubbles/key"
 
 // KeyMap defines key bindings for todo list operations.
 type KeyMap struct {
-	Up       key.Binding
-	Down     key.Binding
-	MoveUp   key.Binding
-	MoveDown key.Binding
-	Add      key.Binding
-	AddDated key.Binding
-	Toggle   key.Binding
-	Delete   key.Binding
-	Edit     key.Binding
-	EditDate key.Binding
-	Filter   key.Binding
-	Preview  key.Binding
-	Confirm  key.Binding
-	Cancel   key.Binding
+	Up             key.Binding
+	Down           key.Binding
+	MoveUp         key.Binding
+	MoveDown       key.Binding
+	Add            key.Binding
+	AddDated       key.Binding
+	Toggle         key.Binding
+	Delete         key.Binding
+	Edit           key.Binding
+	EditDate       key.Binding
+	Filter         key.Binding
+	Preview        key.Binding
+	TemplateUse    key.Binding
+	TemplateCreate key.Binding
+	Confirm        key.Binding
+	Cancel         key.Binding
 }
 
 // ShortHelp returns key bindings for the short help view.
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.MoveUp, k.MoveDown, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.EditDate, k.Filter, k.Preview}
+	return []key.Binding{k.Up, k.Down, k.MoveUp, k.MoveDown, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.EditDate, k.Filter, k.Preview, k.TemplateUse, k.TemplateCreate}
 }
 
 // FullHelp returns key bindings for the full help view.
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Up, k.Down, k.MoveUp, k.MoveDown, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.EditDate, k.Filter, k.Preview},
+		{k.Up, k.Down, k.MoveUp, k.MoveDown, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.EditDate, k.Filter, k.Preview, k.TemplateUse, k.TemplateCreate},
 	}
 }
 
@@ -82,6 +84,14 @@ func DefaultKeyMap() KeyMap {
 		Preview: key.NewBinding(
 			key.WithKeys("p"),
 			key.WithHelp("p", "preview"),
+		),
+		TemplateUse: key.NewBinding(
+			key.WithKeys("t"),
+			key.WithHelp("t", "from template"),
+		),
+		TemplateCreate: key.NewBinding(
+			key.WithKeys("T"),
+			key.WithHelp("T", "new template"),
 		),
 		Confirm: key.NewBinding(
 			key.WithKeys("enter"),
