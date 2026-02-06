@@ -3,6 +3,7 @@ package settings
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -37,7 +38,7 @@ type CancelMsg struct{}
 // Model represents the settings overlay.
 type Model struct {
 	options []option
-	cursor  int // which option row is selected (0, 1, or 2)
+	cursor  int // which option row is selected (0-3)
 	width   int
 	height  int
 	keys    KeyMap
@@ -58,11 +59,20 @@ func New(cfg config.Config, t theme.Theme) Model {
 	dayValues := []string{"sunday", "monday"}
 	dayDisplay := []string{"Sunday", "Monday"}
 
+	formatValues := []string{"iso", "eu", "us"}
+	now := time.Now()
+	formatDisplay := []string{
+		fmt.Sprintf("ISO (%s)", now.Format("2006-01-02")),
+		fmt.Sprintf("European (%s)", now.Format("02.01.2006")),
+		fmt.Sprintf("US (%s)", now.Format("01/02/2006")),
+	}
+
 	return Model{
 		options: []option{
 			{label: "Theme", values: themeNames, display: themeDisplay, index: indexOf(themeNames, cfg.Theme)},
 			{label: "Country", values: countries, display: countryDisplay, index: indexOf(countries, cfg.Country)},
 			{label: "First Day of Week", values: dayValues, display: dayDisplay, index: indexOf(dayValues, cfg.FirstDayOfWeek)},
+			{label: "Date Format", values: formatValues, display: formatDisplay, index: indexOf(formatValues, cfg.DateFormat)},
 		},
 		keys:   DefaultKeyMap(),
 		styles: NewStyles(t),
@@ -75,6 +85,7 @@ func (m Model) Config() config.Config {
 		Theme:          m.options[0].values[m.options[0].index],
 		Country:        m.options[1].values[m.options[1].index],
 		FirstDayOfWeek: m.options[2].values[m.options[2].index],
+		DateFormat:     m.options[3].values[m.options[3].index],
 	}
 }
 

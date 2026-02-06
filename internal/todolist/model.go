@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/antti/todo-calendar/internal/config"
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
 )
@@ -53,9 +54,11 @@ type Model struct {
 	viewMonth   time.Month
 	addingDated bool   // true if current add will produce a dated todo
 	pendingText string // text saved during dateInputMode
-	editingID   int    // ID of the todo being edited
-	keys        KeyMap
-	styles      Styles
+	editingID      int    // ID of the todo being edited
+	dateLayout     string // Go time layout for date display/input
+	datePlaceholder string // human-readable date placeholder
+	keys           KeyMap
+	styles         Styles
 }
 
 // New creates a new todo list model backed by the given store.
@@ -67,12 +70,14 @@ func New(s *store.Store, t theme.Theme) Model {
 
 	now := time.Now()
 	return Model{
-		store:     s,
-		input:     ti,
-		viewYear:  now.Year(),
-		viewMonth: now.Month(),
-		keys:      DefaultKeyMap(),
-		styles:    NewStyles(t),
+		store:           s,
+		input:           ti,
+		viewYear:        now.Year(),
+		viewMonth:       now.Month(),
+		dateLayout:      "2006-01-02",
+		datePlaceholder: "YYYY-MM-DD",
+		keys:            DefaultKeyMap(),
+		styles:          NewStyles(t),
 	}
 }
 
@@ -272,9 +277,9 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 			todo := items[selectable[m.cursor]].todo
 			m.editingID = todo.ID
 			m.mode = editDateMode
-			m.input.Placeholder = "YYYY-MM-DD (empty = floating)"
+			m.input.Placeholder = m.datePlaceholder + " (empty = floating)"
 			m.input.Prompt = "Date: "
-			m.input.SetValue(todo.Date)
+			m.input.SetValue(config.FormatDate(todo.Date, m.dateLayout))
 			m.input.CursorEnd()
 			return m, m.input.Focus()
 		}
@@ -295,7 +300,7 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if m.addingDated {
 			m.pendingText = text
 			m.mode = dateInputMode
-			m.input.Placeholder = "YYYY-MM-DD"
+			m.input.Placeholder = m.datePlaceholder
 			m.input.Prompt = "Date: "
 			m.input.SetValue("")
 			return m, nil
@@ -328,12 +333,13 @@ func (m Model) updateDateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if date == "" {
 			return m, nil
 		}
-		// Validate date format
-		if _, err := time.Parse("2006-01-02", date); err != nil {
+		// Parse in user's configured format, convert to ISO for storage
+		isoDate, err := config.ParseUserDate(date, m.dateLayout)
+		if err != nil {
 			// Invalid date -- stay in date input mode
 			return m, nil
 		}
-		m.store.Add(m.pendingText, date)
+		m.store.Add(m.pendingText, isoDate)
 		m.mode = normalMode
 		m.input.Blur()
 		m.input.SetValue("")
@@ -390,8 +396,11 @@ func (m Model) updateEditDateMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Confirm):
 		date := strings.TrimSpace(m.input.Value())
 		// Empty date is valid -- means "make floating"
+		isoDate := ""
 		if date != "" {
-			if _, err := time.Parse("2006-01-02", date); err != nil {
+			var err error
+			isoDate, err = config.ParseUserDate(date, m.dateLayout)
+			if err != nil {
 				// Invalid date -- stay in edit mode
 				return m, nil
 			}
@@ -399,7 +408,7 @@ func (m Model) updateEditDateMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		// Get current todo to preserve its text
 		todo := m.store.Find(m.editingID)
 		if todo != nil {
-			m.store.Update(m.editingID, todo.Text, date)
+			m.store.Update(m.editingID, todo.Text, isoDate)
 		}
 		m.mode = normalMode
 		m.input.Blur()
@@ -472,10 +481,10 @@ func (m Model) renderTodo(b *strings.Builder, t *store.Todo, selected bool) {
 		check = "[x] "
 	}
 
-	// Text with optional date
+	// Text with optional date (display in user's configured format)
 	text := t.Text
 	if t.HasDate() {
-		text += " " + m.styles.Date.Render(t.Date)
+		text += " " + m.styles.Date.Render(config.FormatDate(t.Date, m.dateLayout))
 	}
 
 	if t.Done {
@@ -490,6 +499,12 @@ func (m Model) renderTodo(b *strings.Builder, t *store.Todo, selected bool) {
 // This preserves all model state (cursor, mode, input).
 func (m *Model) SetTheme(t theme.Theme) {
 	m.styles = NewStyles(t)
+}
+
+// SetDateFormat updates the date display layout and input placeholder.
+func (m *Model) SetDateFormat(layout, placeholder string) {
+	m.dateLayout = layout
+	m.datePlaceholder = placeholder
 }
 
 func max(a, b int) int {
