@@ -98,7 +98,7 @@ func (m Model) HelpBindings() []key.Binding {
 	if m.mode != normalMode {
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	}
-	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Add, m.keys.AddDated, m.keys.Edit, m.keys.EditDate, m.keys.Toggle, m.keys.Delete}
+	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.MoveUp, m.keys.MoveDown, m.keys.Add, m.keys.AddDated, m.keys.Edit, m.keys.EditDate, m.keys.Toggle, m.keys.Delete}
 }
 
 // visibleItems builds the combined display list of headers, todos, and empty placeholders.
@@ -190,6 +190,32 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Up):
 		if m.cursor > 0 {
 			m.cursor--
+		}
+
+	case key.Matches(msg, m.keys.MoveUp):
+		if len(selectable) > 0 && m.cursor > 0 && m.cursor < len(selectable) {
+			curIdx := selectable[m.cursor]
+			prevIdx := selectable[m.cursor-1]
+			curTodo := items[curIdx].todo
+			prevTodo := items[prevIdx].todo
+			if curTodo != nil && prevTodo != nil &&
+				curTodo.HasDate() == prevTodo.HasDate() {
+				m.store.SwapOrder(curTodo.ID, prevTodo.ID)
+				m.cursor--
+			}
+		}
+
+	case key.Matches(msg, m.keys.MoveDown):
+		if len(selectable) > 0 && m.cursor >= 0 && m.cursor < len(selectable)-1 {
+			curIdx := selectable[m.cursor]
+			nextIdx := selectable[m.cursor+1]
+			curTodo := items[curIdx].todo
+			nextTodo := items[nextIdx].todo
+			if curTodo != nil && nextTodo != nil &&
+				curTodo.HasDate() == nextTodo.HasDate() {
+				m.store.SwapOrder(curTodo.ID, nextTodo.ID)
+				m.cursor++
+			}
 		}
 
 	case key.Matches(msg, m.keys.Add):
