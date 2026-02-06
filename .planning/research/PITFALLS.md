@@ -1,317 +1,316 @@
-# Pitfalls Research
+# Pitfalls Research: v1.3 Feature Integration
 
-**Domain:** Go TUI Calendar + Todo App (Bubble Tea)
-**Researched:** 2026-02-05
-**Confidence:** HIGH (verified via official docs, GitHub discussions, and multiple community sources)
+**Domain:** TUI Calendar v1.3 -- weekly view, search/filter, overview colors, date format
+**Researched:** 2026-02-06
+**Confidence:** HIGH (pitfalls derived from analysis of actual codebase + verified Bubble Tea patterns)
+
+This document covers pitfalls specific to ADDING four v1.3 features to the existing stable codebase. It replaces the prior v1.0 scaffold-focused pitfalls document. The existing app already handles the v1.0 pitfalls (atomic writes, frame sizing, WindowSizeMsg guard, Elm Architecture discipline).
+
+---
 
 ## Critical Pitfalls
 
-### Pitfall 1: View() Called Before Terminal Dimensions Are Known
+### Pitfall 1: Weekly View Grid Width Differs From Monthly Grid Width
 
-**What goes wrong:**
-Bubble Tea calls `View()` before `tea.WindowSizeMsg` arrives. If your View function depends on `width` and `height` to calculate the split-pane layout, the first render produces garbage output -- misaligned columns, overflowing lines, or panics from zero-division when computing pane widths.
+**What goes wrong:** The existing `RenderGrid` function produces a 34-character-wide grid (7 columns x 4-char cells + 6 separators). A weekly view shows only 7 days but typically needs MORE horizontal space per cell (to show todo previews or date labels), not less. If the weekly view renders at a different width than 34 characters, the layout in `app.View()` breaks because `calendarInnerWidth` is hardcoded to 38 (34 grid + padding). The calendar pane either overflows or has dead space, and the todo pane width calculation `todoInnerWidth := m.width - calendarInnerWidth - (frameH * 2)` produces wrong values.
 
-**Why it happens:**
-The window size query runs asynchronously so it does not block program startup. `View()` is called immediately after `Init()`, but `WindowSizeMsg` has not yet arrived. This is documented behavior, not a bug (see [bubbletea#282](https://github.com/charmbracelet/bubbletea/issues/282)).
+**Why it happens:** The app model treats the calendar pane as fixed-width (line 255 of `app/model.go`: `calendarInnerWidth := 38`). Monthly and weekly grids have fundamentally different space needs. Developers add the weekly view to `RenderGrid` or a new `RenderWeekGrid` function but forget to update the width contract at the app level.
 
 **How to avoid:**
-Track initialization state on your model. Do not attempt layout calculations until dimensions arrive:
-```go
-type model struct {
-    state  int // 0 = initializing, 1 = ready
-    width  int
-    height int
-}
-
-func (m model) View() string {
-    if m.width == 0 || m.height == 0 {
-        return "Loading..."
-    }
-    // Safe to compute split-pane layout now
-}
-```
-Set `width`/`height` in `Update` when you receive `tea.WindowSizeMsg`, and propagate the dimensions to all child components at the same time.
+- Make the calendar pane width dynamic, queried from the calendar model based on current view mode: `calendarInnerWidth := m.calendar.ContentWidth()`
+- Alternatively, keep both views at exactly 34 characters wide. The weekly view renders 7 cells in the same 4-char format but with a single row instead of 5-6 rows. This is simpler and avoids the width problem entirely.
+- Decide the approach BEFORE implementation. The "same width" approach is strongly recommended -- it preserves the existing layout contract and only changes the vertical dimension.
 
 **Warning signs:**
-- Momentary layout flash on startup
-- Panic stack trace referencing View with zero dimensions
-- Layout arithmetic using hardcoded terminal sizes
+- Todo pane suddenly shrinks or grows when toggling views
+- Calendar content wraps to next line in weekly mode
+- Hardcoded `38` still present in app model after adding weekly view
 
-**Phase to address:**
-Phase 1 (scaffold) -- this must be in the initial application skeleton before any layout code is written.
+**Recovery cost:** LOW -- layout arithmetic fix, no data impact.
+
+**Phase to address:** Weekly view phase (first).
 
 ---
 
-### Pitfall 2: Frame Size Accounting Errors in Split-Pane Layout
+### Pitfall 2: View Mode State Not Synced Across Calendar and Todo List
 
-**What goes wrong:**
-When calculating pane widths for the calendar (left) and todo list (right), developers subtract the raw pane content width from terminal width but forget to account for borders, padding, and margins added by Lipgloss styles. The result: content overflows the terminal width, causing line wrapping that destroys the layout. This is the single most common layout bug in Bubble Tea applications with side-by-side panes.
+**What goes wrong:** When toggling between monthly and weekly view, the calendar model changes its view mode but the todo list model still shows the full month of todos. Or worse: the calendar shows "week of Feb 3-9" but the todo list shows all of February, creating a confusing mismatch. The `SetViewMonth(year, month)` API on the todo list has no concept of "week" -- it only accepts year+month.
 
-**Why it happens:**
-Lipgloss styles (borders, padding, margins) consume characters that are invisible in the mental model of "my pane is 40 columns wide." A 1-character border on each side of both panes eats 4 columns. A vertical separator eats 1 more. Developers hardcode `leftWidth = termWidth / 2` without subtracting frame overhead.
+**Why it happens:** The existing sync point is in `app/model.go` line 137 and 170: `m.todoList.SetViewMonth(m.calendar.Year(), m.calendar.Month())`. This works because the calendar only navigates at month granularity. Adding weekly navigation means the calendar now has sub-month positioning (which week), but the todo list API cannot express "show only this week's todos."
 
 **How to avoid:**
-Always use `style.GetFrameSize()` to measure the overhead of each style, and subtract it from available space before splitting:
-```go
-// Measure the overhead from borders, padding, margins
-hFrame, vFrame := calendarStyle.GetFrameSize()
-availableWidth := m.width - hFrame
-// Then split availableWidth between panes
-```
-Never hardcode dimension arithmetic. Use `lipgloss.Width()` and `lipgloss.Height()` to measure rendered strings rather than guessing their size. If the calendar pane is a fixed width (e.g., always 22 columns for a `cal`-like grid), compute the todo pane as `remainingWidth = totalWidth - calendarRenderedWidth - separatorWidth - frameOverhead`.
+- Decide upfront whether weekly view filters the todo list to that week's todos or not.
+- **Recommended approach:** Weekly view is a CALENDAR-ONLY visual change. The todo list always shows the full month regardless of view mode. This avoids the sync problem entirely and keeps the existing `SetViewMonth` API unchanged.
+- If week-level todo filtering IS desired: extend the todo list API to `SetViewRange(startDate, endDate string)` and update the sync points in app.Update() to pass the week boundaries.
 
 **Warning signs:**
-- Content wrapping to the next line in the terminal
-- Layout that "works on my terminal" but breaks at different sizes
-- Repeated manual tweaking of `+1` / `-1` constants
+- Calendar shows week view but todo list shows todos from dates not visible in the grid
+- Toggling view mode does not update the todo list at all
+- Navigation in weekly mode (prev/next week) does not call the todo list sync point
 
-**Phase to address:**
-Phase 1 (scaffold) -- establish the split-pane layout with correct frame accounting from the start. Regression-test at multiple terminal widths (80, 120, 200 columns).
+**Recovery cost:** MEDIUM -- requires API redesign of the calendar-todolist sync if discovered late.
+
+**Phase to address:** Weekly view phase. Decide the sync strategy during planning, not during coding.
 
 ---
 
-### Pitfall 3: Choosing Bubble Tea v1 vs v2 at the Wrong Time
+### Pitfall 3: Date Format Round-Trip Corruption
 
-**What goes wrong:**
-Starting a new project on v1 means eventually migrating to v2, which has significant breaking changes (new import path `charm.land/bubbletea/v2`, `View()` returns `tea.View` instead of `string`, `tea.KeyMsg` split into `KeyPressMsg`/`KeyReleaseMsg`, mouse API restructured). Starting on v2 RC means building on pre-release software where APIs may still shift and community examples are sparse.
+**What goes wrong:** The store uses `YYYY-MM-DD` internally (`store.dateFormat = "2006-01-02"`). A "date format" setting changes how dates are DISPLAYED (e.g., `DD/MM/YYYY`, `MM/DD/YYYY`). If the display format is accidentally used for storage or parsing, dates get silently corrupted. For example, storing `"06/02/2026"` (Feb 6 in DD/MM/YYYY) and later parsing it as MM/DD/YYYY produces June 2 -- a silent, data-corrupting bug with no error.
 
-**Why it happens:**
-As of February 2026, Bubble Tea v2 is at release candidate stage (v2.0.0-rc.2, released November 2025). The latest stable is v1.3.10 (September 2025). v2 has been in alpha/beta since March 2025. The stable release appears imminent but has not landed.
+**Why it happens:** Go's `time.Format` and `time.Parse` use layout strings, not format specifiers. The layout `"01/02/2006"` means MM/DD/YYYY while `"02/01/2006"` means DD/MM/YYYY. These look nearly identical in code. A developer might pass the display format layout to `time.Parse` when reading from the store, or pass the display format to `store.Add()` instead of the canonical format.
 
 **How to avoid:**
-**Recommendation: Start with v1 (v1.3.10).** Rationale:
-- v1 has stable APIs, comprehensive examples, and proven community patterns.
-- The `bubbles` component library (list, textinput, viewport) is battle-tested on v1.
-- For a personal todo app, the v2 improvements (synchronized output Mode 2026, better key handling) are nice-to-have, not critical.
-- Migration from v1 to v2 is mechanical and well-documented (see [discussion#1374](https://github.com/charmbracelet/bubbletea/discussions/1374)).
-- If v2 goes stable during development, migration is a bounded task -- not an architectural rewrite.
-
-Keep architecture clean (small models, message-driven updates) so that migration is a find-and-replace exercise, not a redesign.
+- **Hard rule:** The store NEVER changes. All dates in the store remain `YYYY-MM-DD` strings. The format setting is display-only.
+- The date format conversion happens exclusively in `View()` functions and `renderTodo()`. Never in `Update()`, never in store methods.
+- Create a single conversion function:
+  ```
+  func FormatDate(isoDate string, layout string) string
+  ```
+  This function takes the ISO date from the store and returns the display string. There is no reverse function needed -- user input for dates always uses `YYYY-MM-DD` (the existing dateInputMode already enforces this).
+- Store the display format layout string in config, NOT the formatted date.
 
 **Warning signs:**
-- Go module path pointing at pre-release version with `@v2.0.0-rc.X`
-- Struggling to find working examples for v2 APIs
-- `bubbles` components not yet updated for v2
+- `time.Parse` called with any layout other than `"2006-01-02"` on store data
+- Display format layout string passed to any store method
+- User-entered dates parsed with the display format instead of `"2006-01-02"`
+- Dates appearing correct in one format setting but wrong after changing the setting
 
-**Phase to address:**
-Phase 1 (scaffold) -- version choice is locked in with `go mod init`. Document the decision and the migration plan.
+**Recovery cost:** HIGH -- silent data corruption. Dates in the JSON file become ambiguous. If `"03/04/2026"` is stored, you cannot determine if it was March 4 or April 3 without external context. Recovery may require user to manually fix their data file.
+
+**Phase to address:** Date format phase. Must be enforced from the first line of implementation.
 
 ---
 
-### Pitfall 4: Mutating Model State Outside of Update()
+### Pitfall 4: Custom Date Format Layout String Injection
 
-**What goes wrong:**
-Directly modifying the model from within a `tea.Cmd` goroutine or from a helper method called outside `Update()` causes race conditions. The Bubble Tea runtime replaces the entire model after each `Update` call. Mutations made concurrently are silently lost or, worse, cause data races that corrupt state.
+**What goes wrong:** The date format feature offers "3 presets + custom." If the custom format allows arbitrary Go time layout strings, users can create formats that produce ambiguous output (e.g., `"01 02"` -- is that month-day or day-month?) or formats that cannot round-trip at all (e.g., `"Jan 2"` -- loses the year). Even worse, certain characters in Go layout strings have magic meaning: `1`, `2`, `3`, `4`, `5`, `6`, `7`, `01`, `02`, `15`, `Jan`, `Mon`, `MST`, etc. A user typing `"My date: 12/25"` as a custom format would see garbled output because Go interprets `1`, `2`, `5` as format verbs.
 
-**Why it happens:**
-Go developers are accustomed to pointer-receiver methods that mutate state in place. Bubble Tea's Elm Architecture requires all state changes to flow through `Update()` via messages. Commands (`tea.Cmd`) run in separate goroutines and must return `tea.Msg` values, never touch the model directly. This is the most common architectural mistake in Bubble Tea applications.
+**Why it happens:** Go's time layout system is notoriously unintuitive. Every digit and many words in the reference time `Mon Jan 2 15:04:05 MST 2006` are format specifiers. Users unfamiliar with Go's system (which is everyone) will expect strftime-style `%Y-%m-%d` or moment.js-style `YYYY-MM-DD`.
 
 **How to avoid:**
-- All I/O and async operations go in `tea.Cmd` functions. They return `tea.Msg`, not modify the model.
-- All model mutations happen in `Update()` in response to messages.
-- Run `go vet -race` during development to catch data races early.
-- Never capture `*model` in a `tea.Cmd` closure. Capture only the data the command needs (e.g., a filename, a todo ID), not the model itself.
-
-```go
-// WRONG: captures model pointer in Cmd closure
-func (m *model) saveTodos() tea.Cmd {
-    return func() tea.Msg {
-        m.saving = true  // RACE CONDITION
-        err := save(m.todos)
-        return savedMsg{err: err}
-    }
-}
-
-// CORRECT: captures only data, returns a message
-func saveTodosCmd(todos []Todo, path string) tea.Cmd {
-    return func() tea.Msg {
-        err := saveTodosToFile(todos, path)
-        return savedMsg{err: err}
-    }
-}
-```
+- **Recommended:** Do NOT expose raw Go layout strings to the user. Instead, offer a small set of validated presets:
+  - `YYYY-MM-DD` (ISO) -> layout `"2006-01-02"`
+  - `DD/MM/YYYY` (European) -> layout `"02/01/2006"`
+  - `MM/DD/YYYY` (US) -> layout `"01/02/2006"`
+- If a "custom" option is truly needed, present it as a preset-picker with perhaps 5-6 curated options, not a free-text field.
+- If free-text custom IS implemented: validate the layout by formatting a known reference date and checking the output looks reasonable. Show a live preview in the settings overlay (the existing live-preview pattern supports this).
 
 **Warning signs:**
-- `-race` flag detects data races
-- Intermittent state corruption (todo appears then vanishes)
-- Model fields changing without a corresponding message in Update
+- Free-text input field for date format with no validation
+- Settings overlay does not preview the formatted date
+- Layout string stored in config but never validated on load (corrupt config produces garbled dates on next startup)
 
-**Phase to address:**
-Phase 1 (scaffold) -- establish the Cmd/Msg pattern in the initial skeleton. Every subsequent phase inherits this discipline.
+**Recovery cost:** LOW -- display-only, no data corruption. But poor UX if dates render as nonsense.
+
+**Phase to address:** Date format phase. Design the preset list during planning.
 
 ---
 
-### Pitfall 5: Non-Atomic File Writes Causing Data Loss
+### Pitfall 5: Search Mode Conflicts With Existing Input State Machine
 
-**What goes wrong:**
-Using `os.WriteFile()` to persist todos means a crash or power loss mid-write produces a truncated or empty file. The user loses all their todo data. `os.WriteFile` is explicitly not atomic -- the Go standard library documents this (see [golang/go#56173](https://github.com/golang/go/issues/56173)).
+**What goes wrong:** The todolist already has a 5-mode state machine: `normalMode`, `inputMode`, `dateInputMode`, `editTextMode`, `editDateMode`. Adding search introduces at least one new mode (`searchMode`), possibly two (inline filter + full-screen overlay). If the search textinput reuses the same `m.input` field as the add/edit modes, entering search while mid-edit (or vice versa) corrupts the input state -- the user's half-typed todo text gets replaced by a search query, or the search query gets saved as a todo.
 
-**Why it happens:**
-`os.WriteFile` is the obvious stdlib choice and works fine in development. The failure mode only manifests under real-world conditions: process killed during write, filesystem full, power loss. By the time data is lost, there is no recovery.
+**Why it happens:** The current model has a single `input textinput.Model` field shared across all modes. The mode enum prevents concurrent use in normal operation, but adding a new mode creates edge cases: what happens if the user presses the search key while in `editTextMode`? The `IsInputting()` check at the app level (line 122 of `app/model.go`) suppresses most keys during input, but search might be bound to a key not covered by `IsInputting()`.
 
 **How to avoid:**
-Use the write-to-temp-then-rename pattern:
-1. Write to a temporary file in the same directory.
-2. `fsync` the temporary file.
-3. `os.Rename` the temp file over the target (atomic on Linux/macOS).
-
-Use an existing library like `github.com/google/renameio` or `github.com/natefinch/atomic` rather than hand-rolling this. Example:
-```go
-import "github.com/google/renameio"
-
-func saveTodos(path string, data []byte) error {
-    return renameio.WriteFile(path, data, 0644)
-}
-```
-
-Note: On Windows, `os.Rename` is not atomic. If Windows support matters, use `natefinch/atomic` which handles this. For a personal Linux TUI tool, `renameio` is sufficient.
+- **Option A (recommended):** Use a separate `searchInput textinput.Model` field for search, distinct from the existing `input` field. This eliminates any state sharing between search and add/edit.
+- **Option B:** Continue sharing `input` but make the mode transitions explicit. Search key is blocked when `IsInputting()` returns true. Exiting search clears the input and resets to `normalMode`.
+- Either way: ensure `IsInputting()` returns true for the search mode too, so that `q` (quit) and `tab` (switch pane) are suppressed during search input.
 
 **Warning signs:**
-- Direct `os.WriteFile` or `ioutil.WriteFile` calls in the save path
-- No temporary file in the save logic
-- Missing `fsync` before rename
-- No backup/recovery mechanism
+- Single `textinput.Model` field used for both search and add/edit
+- Search key works while user is mid-edit of a todo
+- `IsInputting()` does not cover the new search mode
+- App quits when user types `q` during search
 
-**Phase to address:**
-Phase 2 (data persistence) -- this must be correct from the first time data is saved to disk. Do not ship a "write directly" approach and plan to fix it later.
+**Recovery cost:** MEDIUM -- requires refactoring the input field ownership if discovered after both features are built.
+
+**Phase to address:** Search/filter phase. Design input ownership before coding.
 
 ---
 
-### Pitfall 6: Calendar Grid Alignment Broken by ANSI Color Codes
+### Pitfall 6: Full-Screen Search Overlay Message Routing Conflict
 
-**What goes wrong:**
-When highlighting holidays in red using ANSI escape codes (via Lipgloss), the escape characters are invisible but consume bytes. If you compute string widths using `len()` instead of a display-width-aware function, column alignment in the calendar grid breaks. Days shift right, the grid becomes ragged, and the calendar is unreadable.
+**What goes wrong:** The app already has a full-screen overlay pattern (`showSettings`). Adding a full-screen search overlay creates a second overlay state. If both `showSettings` and `showSearch` can be true simultaneously, the app has two overlays competing for message routing and View rendering. Even if they are mutually exclusive, the routing logic in `app.Update()` becomes a growing chain of `if showSettings { ... } else if showSearch { ... }` that is easy to get wrong.
 
-**Why it happens:**
-A `cal`-like calendar grid depends on exact column alignment. Each day number must be exactly 2-3 characters wide, with precise spacing. ANSI escape codes for red text add ~11 bytes per colored cell (`\033[31m12\033[0m` vs `12`). `len()` counts bytes, not visible characters. `utf8.RuneCountInString()` counts runes but still includes escape sequence runes.
+**Why it happens:** The settings overlay was the first and only overlay, so it was implemented as a simple boolean flag with inline routing. Each new overlay adds another flag and another routing branch. The code in `app.Update()` lines 114-117 shows the pattern: `if m.showSettings { return m.updateSettings(msg) }`. Adding search duplicates this pattern.
 
 **How to avoid:**
-Always use `lipgloss.Width()` to measure the visible width of styled strings. Build the calendar grid by constructing each cell as a styled string of a fixed visible width, then join cells with `lipgloss.JoinHorizontal`. Do NOT build the grid as a raw string and apply styles after the fact -- style each cell individually, then compose.
-
-```go
-// Each cell is exactly 3 visible characters wide
-cell := lipgloss.NewStyle().
-    Foreground(lipgloss.Color("9")). // red for holidays
-    Width(3).
-    Render(fmt.Sprintf("%2d", day))
-```
+- **Recommended:** Generalize the overlay pattern to an enum or interface before adding the second overlay:
+  ```
+  type overlay int
+  const (
+      noOverlay overlay = iota
+      settingsOverlay
+      searchOverlay
+  )
+  ```
+  The `Update()` function routes based on `m.activeOverlay`, and only one overlay can be active at a time. This prevents the "two overlays open simultaneously" bug by design.
+- Ensure the search overlay key binding is suppressed when settings is open, and vice versa.
 
 **Warning signs:**
-- Calendar columns misalign when holidays are present but align when they are absent
-- Visual width of rows differs between holiday and non-holiday rows
-- Manual space-padding that works for plain text but breaks for styled text
+- Two separate boolean flags (`showSettings`, `showSearch`) instead of a single enum
+- Both overlays can be opened simultaneously
+- Copy-pasted routing logic for each overlay
 
-**Phase to address:**
-Phase 2 (calendar rendering) -- this is the core of calendar display. Get the cell-based rendering pattern right from the first calendar implementation.
+**Recovery cost:** LOW -- refactoring booleans to an enum is straightforward. But the two-overlays-open bug can be confusing to debug if it manifests as garbled rendering.
+
+**Phase to address:** Search/filter phase (or earlier if architecture is being cleaned up).
+
+---
+
+### Pitfall 7: Overview Color Calculation Done in View() on Every Render
+
+**What goes wrong:** The overview panel (`renderOverview()` in `calendar/model.go`) already calls `m.store.TodoCountsByMonth()` on every render. Adding color coding (red for overdue/incomplete, green for all-done) requires ADDITIONAL per-month computation: not just "how many todos" but "how many done vs incomplete." If this computation iterates all todos for every month on every render frame, it creates O(months x todos) work per frame. For a personal app this is unlikely to cause visible lag, but it sets a bad pattern.
+
+**Why it happens:** The existing code already computes overview data fresh on every `View()` call (line 112: `months := m.store.TodoCountsByMonth()`). This was acceptable because it was a simple count. Adding completion-status color coding requires a second pass or a richer data structure, doubling the per-render cost.
+
+**How to avoid:**
+- Extend `TodoCountsByMonth()` to return completion data in the same pass: a struct with `{Total, Done, Incomplete int}` per month. One iteration, richer data.
+- Alternatively, cache the overview data and only recompute after store mutations (when `RefreshIndicators()` is called). The current `RefreshIndicators()` only refreshes the current month's day-level indicators -- extend it to also refresh the overview cache.
+
+**Warning signs:**
+- Two separate store methods called in `renderOverview()` (one for counts, one for completion status)
+- Noticeable delay when navigating months with many todos
+- `TodoCountsByMonth()` signature unchanged but new `CompletionByMonth()` method added alongside it
+
+**Recovery cost:** LOW -- refactoring the store method to return richer data is a minor change.
+
+**Phase to address:** Overview colors phase.
 
 ---
 
 ## Technical Debt Patterns
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Hardcoding terminal width (e.g., 80 columns) | Fast initial layout | Breaks on any other terminal size; must rewrite layout | Never -- `WindowSizeMsg` is trivial to use |
-| Single monolithic model struct | Everything in one place, no message routing | Unmaintainable after ~300 lines; all concerns tangled | MVP only if refactored before adding features |
-| Storing todos as plain text instead of structured JSON | Simpler initial implementation | Cannot add fields (dates, completion status) without parsing migration | Never -- JSON is equally simple to implement from day one |
-| Saving on every keystroke | Data is always persisted | Excessive disk I/O; perceptible lag on slow storage; file contention | Never -- save on meaningful actions (add, complete, delete) |
-| Skipping error handling in Cmds | Less code | Silent data loss; user never knows save failed | Never |
+| Shortcut | Immediate Benefit | Long-term Cost | Avoid? |
+|----------|-------------------|----------------|--------|
+| Hardcoded `calendarInnerWidth := 38` surviving into weekly view | No layout refactor needed | Breaks when weekly view needs different width | YES -- make it dynamic or verify both views fit in 38 |
+| Reusing single `textinput.Model` for search + add/edit | Fewer fields on model | State corruption when modes overlap | YES -- use separate textinput for search |
+| Separate boolean flags for each overlay | Quick to add | Combinatorial state explosion with each new overlay | YES -- use enum from the second overlay onward |
+| Storing display format in store (even "temporarily") | Simpler display logic | Data corruption if canonical format is lost | NEVER -- display format is View-only |
+| `strings.ToLower` on every keystroke during search | Correct filtering | Allocates new strings per keystroke per todo | OK for personal use -- premature optimization to avoid |
+| Free-text custom date format | Maximum flexibility | Users will create broken formats | YES -- use curated presets instead |
 
-## Integration Gotchas
-
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| `rickar/cal` holiday library | Assuming all countries are supported; importing the entire library | Check the [v2 subdirectories](https://github.com/rickar/cal/tree/master/v2) for your country's ISO code. ~46 countries supported. Finland (FI), US, GB, DE, etc. are present. Import only your country's subpackage. |
-| `rickar/cal` holiday dates | Assuming holiday dates are always the calendar date, ignoring observed dates | Holidays have both `ActualDate` and `ObservedDate`. A holiday on Saturday may be observed on Friday. Decide which to display and be consistent. |
-| `bubbles/list` component | Using the list component for the todo panel and fighting its built-in filtering/search behavior | The `list` bubble includes filtering by default. For a simple todo list, either disable filtering or build a custom list from scratch with a viewport. Evaluate whether the built-in list actually matches your needs before committing to it. |
-| `bubbles/textinput` for adding todos | Forgetting to call `Focus()` on the textinput when entering add mode | The textinput is blurred by default. Without calling `Focus()`, it silently swallows all keyboard input. Toggle `Focus()`/`Blur()` explicitly when switching between navigation and input modes. |
-
-## Performance Traps
-
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Rebuilding the entire calendar grid on every `View()` call | Slight lag on low-powered terminals or SSH sessions | Cache the rendered calendar string; only regenerate when the viewed month changes or terminal resizes | Noticeable on Raspberry Pi or high-latency SSH connections |
-| Rendering all todos in the View even when list exceeds viewport | Long render times; invisible content below the fold still computed | Use a viewport/scrollable container; only render visible items | Unlikely for personal use (few hundred todos), but good practice |
-| Re-reading the todo file from disk on every Update cycle | Disk I/O on every keypress | Load once into memory on startup; write-back on mutations only | Immediate lag if file is on network storage or slow disk |
-| Calling `lipgloss.Render` with complex styles in tight loops | Measurable rendering overhead from style computation | Pre-compute styles at initialization; reuse style objects rather than creating new ones per render | Dozens of styled cells per frame (calendar grid with 42 cells is fine; hundreds would show lag) |
-
-## Security Mistakes
-
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Storing todo file with world-readable permissions (0644) | Other users on shared system can read personal todos | Use `0600` permissions. The `renameio` or `atomic` libraries accept permissions as a parameter. |
-| Not sanitizing todo text before rendering | Control characters or ANSI escape sequences in todo text could corrupt terminal display | Strip or escape control characters when accepting input; Lipgloss rendering handles most cases, but raw string injection in View could break layout |
-| Hardcoding file path (e.g., `~/.todos.json`) instead of using XDG | File stored in unexpected location; conflicts with other tools; no standard cleanup path | Use `os.UserConfigDir()` for config, `os.UserHomeDir()` + `.local/share/` for data, or the `adrg/xdg` library for full XDG compliance |
+---
 
 ## UX Pitfalls
 
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| No visual feedback when saving | User unsure if todo was actually saved | Brief status message in footer: "Saved" that fades after 2 seconds, or a subtle indicator |
-| No confirmation before delete | Accidental deletion with no undo | Either add a confirmation prompt, or implement soft-delete (mark deleted, purge on exit), or show a brief "Undo? Press z" message |
-| Calendar navigation overwrites todo panel focus | User typing a todo accidentally navigates months | Maintain explicit focus state: calendar pane vs todo pane. Only the focused pane responds to keys. Tab or a dedicated key switches focus. |
-| Holiday names not visible anywhere | User sees red dates but does not know which holiday it is | Show holiday name in a footer bar or tooltip area when the month contains holidays. Even a simple list below the calendar: "5 -- Independence Day" |
-| Adding a todo requires too many keystrokes | Friction discourages use | Single keypress (e.g., `a`) enters add mode. Type text, optional date prefix, Enter to save. Minimal ceremony. |
+### UX Pitfall 1: View Toggle Has No Visual Indicator
+
+**What goes wrong:** User presses the toggle key and the calendar changes, but there is no label or indicator showing which view mode is active. Users forget which mode they are in, especially if weekly and monthly views look similar for weeks with few events.
+
+**How to avoid:** Add a mode indicator to the calendar header. The existing header line (`"February 2026"`) could become `"February 2026 [month]"` or `"Feb 3-9, 2026 [week]"`. This also solves the problem of knowing WHICH week is shown.
+
+---
+
+### UX Pitfall 2: Search Clears on Mode Exit With No Way to Resume
+
+**What goes wrong:** User types a search query, reviews results, exits search to interact with a todo, then wants to resume searching -- but the query is gone. They have to retype it.
+
+**How to avoid:** Preserve the last search query. When re-entering search mode, pre-populate the textinput with the previous query. The existing `editTextMode` pattern already does this (line 265: `m.input.SetValue(todo.Text)`).
+
+---
+
+### UX Pitfall 3: Overview Colors Invisible on Some Themes
+
+**What goes wrong:** Red/green color coding for completion status is invisible or unreadable on certain terminal themes. Red-on-dark-red is invisible. Green that is close to the terminal's normal text color provides no signal.
+
+**How to avoid:** Use the theme's semantic color roles, not hardcoded red/green. The theme already has 14 roles. Add two new roles (e.g., `OverviewDoneFg`, `OverviewPendingFg`) and define them per theme with sufficient contrast. Test all four themes (dark, light, nord, solarized).
+
+---
+
+### UX Pitfall 4: Date Format Setting Not Previewed in Settings Overlay
+
+**What goes wrong:** User changes the date format setting but cannot see the effect until they close settings. They may cycle through formats without knowing which one produces `DD/MM/YYYY` vs `MM/DD/YYYY`.
+
+**How to avoid:** The settings overlay already supports live preview for themes (via `ThemeChangedMsg`). Apply the same pattern: show a sample date formatted with the currently selected format directly in the settings overlay. e.g., `"Date Format    < DD/MM/YYYY >  (today: 06/02/2026)"`.
+
+---
+
+### UX Pitfall 5: Weekly Navigation Overloads Existing Keys
+
+**What goes wrong:** The calendar currently uses `left`/`h` for previous month and `right`/`l` for next month. If weekly view reuses these keys to mean "previous week" / "next week", there is no way to jump to the previous/next month while in weekly view. Users get trapped navigating week-by-week through a 12-month range.
+
+**How to avoid:** Define navigation semantics per view mode:
+- **Monthly view:** `left`/`right` = previous/next month (unchanged)
+- **Weekly view:** `left`/`right` = previous/next week; add `[`/`]` or `H`/`L` for previous/next month jump
+- OR keep `left`/`right` as month navigation in both modes, and add new keys for week navigation in weekly mode
+
+The key design must be decided before implementation. Update the help bar to reflect the current mode's key bindings.
+
+---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Split-pane layout:** Often missing resize handling -- verify layout recalculates on `WindowSizeMsg` and looks correct at 80, 120, and 200+ column widths
-- [ ] **Calendar rendering:** Often missing the 6th week row -- months can span 6 weeks (e.g., a month starting on Saturday). Verify February and months starting late in the week render correctly with 4, 5, and 6 week rows
-- [ ] **Holiday highlighting:** Often missing edge cases -- verify holidays that fall on weekends, observed dates vs actual dates, and that the correct year's holidays are calculated (not just the current year, but also for navigated months in other years)
-- [ ] **Todo persistence:** Often missing error handling -- verify what happens when the file is missing on first launch (should create it), when the file is corrupted (should not crash), and when disk is full (should show error, not silently fail)
-- [ ] **Keyboard handling:** Often missing edge cases -- verify that pressing keys rapidly does not drop inputs, that Ctrl+C always exits cleanly, and that the escape key works consistently to cancel operations
-- [ ] **Month navigation:** Often missing year boundary -- verify navigating backward from January goes to December of the previous year, and forward from December goes to January of the next year
-- [ ] **Empty states:** Often missing entirely -- verify what the app looks like with zero todos for a month (should show a helpful message, not a blank pane) and what the todo pane shows for months with only floating items
+- [ ] **Weekly view toggle:** Does the view mode persist across month navigation? (Switching to next month should stay in weekly view, not reset to monthly)
+- [ ] **Weekly view boundary:** What happens at month boundaries? Week of Jan 27 - Feb 2 spans two months. Which month's todos are shown? Does the overview highlight both months?
+- [ ] **Weekly view + monday start:** Does the weekly view respect the `mondayStart` config setting? The week must start on the configured day, not always Monday or always Sunday.
+- [ ] **Search across all months:** Does the full-screen search actually search ALL todos in the store, not just the current month? The `visibleItems()` method only returns current-month + floating todos. Search needs a different data source.
+- [ ] **Search results navigation:** After finding a todo via search, can the user navigate to it? Does selecting a search result switch the calendar to that todo's month?
+- [ ] **Search with special characters:** Does searching for `[` or `]` work? These characters appear in the calendar grid as todo indicators `[12]`. If search uses regex internally, special characters will cause panics or wrong results.
+- [ ] **Overview colors update after toggle:** When a todo is toggled complete/incomplete, does the overview color update immediately? The existing `RefreshIndicators()` call in app.Update() only refreshes day-level indicators. Overview colors need to refresh too.
+- [ ] **Date format in todo list:** Does the date format setting affect dates shown in the todo list (line 478 of `todolist/model.go`: `m.styles.Date.Render(t.Date)`)? Currently it renders the raw ISO date string. The format setting must be propagated to the todolist renderer.
+- [ ] **Date format in date input:** When the user enters a date for a new todo, the prompt says `"YYYY-MM-DD"`. This should always say `YYYY-MM-DD` regardless of the display format setting, because the input format is always ISO. Do NOT change the input format to match the display format -- that would require parsing ambiguous user input.
+- [ ] **Date format on config load:** What happens if the config file has an invalid `date_format` value? Ensure `FormatDate` falls back to ISO format, not panic.
+- [ ] **Theme color roles added:** Are the new overview color roles defined for ALL four themes (dark, light, nord, solarized)? Missing a theme causes zero-value colors (empty string = terminal default), which may be invisible against the background.
+- [ ] **Help bar updated:** Does the help bar show the correct keys for the current mode? Weekly view has different navigation keys. Search mode has its own keys. The `currentHelpKeys()` method in app.Model must account for these.
 
-## Recovery Strategies
-
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| Data loss from non-atomic write | HIGH (data gone) | Implement atomic writes. If data already lost, no recovery possible. Consider adding periodic backup (copy to `.bak` before overwrite) as defense-in-depth. |
-| Layout miscalculated due to frame size errors | LOW | Fix the arithmetic using `GetFrameSize()`. No data impact, purely visual. |
-| Race condition from model mutation in Cmd | MEDIUM | Refactor Cmd to return messages instead of mutating model. May require restructuring several handlers. Run with `-race` to verify fix. |
-| Calendar grid misalignment from ANSI width | LOW | Switch to cell-based rendering with `lipgloss.Width()`. Isolated to calendar component. |
-| Wrong Bubble Tea version choice | MEDIUM | Migration from v1 to v2 is documented and mechanical, but touches every file with Update/View/KeyMsg. Budget a focused sprint for it. |
-| Holidays missing for user's country | LOW | `rickar/cal` supports ~46 countries. If missing, define custom holidays using the library's `Holiday` struct. The API supports exact dates, floating rules, and custom functions. |
+---
 
 ## Pitfall-to-Phase Mapping
 
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| View() before WindowSizeMsg | Phase 1: Scaffold | App shows "Loading..." briefly then renders correctly; no panics on startup |
-| Frame size accounting errors | Phase 1: Scaffold | Layout tested at 80, 120, 200 columns with no line wrapping |
-| v1 vs v2 version choice | Phase 1: Scaffold | `go.mod` pins `bubbletea v1.3.10`; migration plan documented |
-| Model mutation outside Update | Phase 1: Scaffold | `go vet -race` passes; all Cmds return Msg, never reference model |
-| Non-atomic file writes | Phase 2: Data persistence | Save uses write-temp-rename pattern; verify by killing process during save |
-| Calendar ANSI alignment | Phase 2: Calendar rendering | Calendar grid aligned with and without holidays; tested with different terminal themes |
-| Focus management between panes | Phase 3: Todo interaction | Tab switches focus; typing in todo mode does not navigate calendar; calendar keys do not corrupt todo input |
-| Holiday edge cases | Phase 2: Calendar rendering | Holidays render correctly for navigated months across year boundaries; observed dates handled |
-| Empty states | Phase 3: Todo interaction | Every state has a visual representation: no todos, no dated todos, no floating todos |
-| Delete confirmation / undo | Phase 3: Todo interaction | Accidental delete is recoverable; user tested the delete flow |
+| Phase | Pitfall | Prevention Strategy |
+|-------|---------|---------------------|
+| Weekly View | Grid width mismatch (#1) | Keep weekly grid at 34 chars wide; verify `calendarInnerWidth` still correct |
+| Weekly View | View mode not synced to todo list (#2) | Decide week-level todo filtering strategy upfront; recommended: month-level stays |
+| Weekly View | Navigation key overload (UX #5) | Design key bindings before coding; update help bar |
+| Weekly View | Month boundary weeks ("Looks Done" #2) | Test with Jan 27 - Feb 2 type weeks |
+| Weekly View | Monday start respected ("Looks Done" #3) | Pass `mondayStart` to weekly renderer |
+| Search/Filter | Input state machine conflict (#5) | Use separate `searchInput` textinput field |
+| Search/Filter | Overlay routing conflict (#6) | Convert boolean overlay flags to enum |
+| Search/Filter | Special characters in search ("Looks Done" #6) | Use `strings.Contains`, not regex |
+| Search/Filter | Cross-month search data source ("Looks Done" #4) | Query `store.Todos()` directly, not `visibleItems()` |
+| Overview Colors | Per-render computation cost (#7) | Extend `TodoCountsByMonth` to include completion data |
+| Overview Colors | Colors invisible on themes (UX #3) | Add semantic color roles; test all four themes |
+| Overview Colors | Colors not refreshing ("Looks Done" #7) | Extend `RefreshIndicators` or add separate refresh |
+| Date Format | Round-trip corruption (#3) | Store is ALWAYS ISO; format conversion in View only |
+| Date Format | Custom format injection (#4) | Use curated presets, not free-text |
+| Date Format | Format not applied in todo list ("Looks Done" #8) | Propagate format setting to todolist renderer |
+| Date Format | Input prompt unchanged ("Looks Done" #9) | Keep input prompt as YYYY-MM-DD always |
+| Date Format | Preview in settings (UX #4) | Show sample formatted date in settings overlay |
+
+---
+
+## Recovery Strategies
+
+| Pitfall | Recovery Cost | What To Do |
+|---------|---------------|------------|
+| Grid width mismatch (#1) | LOW | Fix `calendarInnerWidth` to be dynamic or verify both views fit |
+| View mode sync (#2) | MEDIUM | Add `SetViewRange` API or accept month-level sync |
+| Date format corruption (#3) | HIGH | Manual data file repair; no automated recovery possible |
+| Custom format injection (#4) | LOW | Replace free-text with preset picker |
+| Input state conflict (#5) | MEDIUM | Add separate textinput field; refactor mode transitions |
+| Overlay routing (#6) | LOW | Convert booleans to enum |
+| Overview computation (#7) | LOW | Extend store method to return richer struct |
+
+---
 
 ## Sources
 
-- [Bubble Tea GitHub repository](https://github.com/charmbracelet/bubbletea) -- official docs, issues, discussions (HIGH confidence)
-- [View() called before WindowSizeMsg - Issue #282](https://github.com/charmbracelet/bubbletea/issues/282) (HIGH confidence)
-- [Pointer receivers discussion #434](https://github.com/charmbracelet/bubbletea/discussions/434) (HIGH confidence)
-- [Tips for building Bubble Tea programs - leg100](https://leg100.github.io/en/posts/building-bubbletea-programs/) (MEDIUM confidence -- community, but well-sourced)
-- [Bubble Tea v2 migration guide - Discussion #1374](https://github.com/charmbracelet/bubbletea/discussions/1374) (HIGH confidence)
-- [Layout handling discussion #307](https://github.com/charmbracelet/bubbletea/discussions/307) (HIGH confidence)
-- [View Layout Issues discussion #943](https://github.com/charmbracelet/bubbletea/discussions/943) (HIGH confidence)
-- [Commands in Bubble Tea - charm.land blog](https://charm.land/blog/commands-in-bubbletea/) (HIGH confidence -- official)
-- [Loss of input in Bubble Tea - dr-knz.net](https://dr-knz.net/bubbletea-control-inversion.html) (MEDIUM confidence)
-- [rickar/cal v2 -- Go holiday library](https://github.com/rickar/cal) (HIGH confidence)
-- [google/renameio -- atomic file writes](https://pkg.go.dev/github.com/google/renameio) (HIGH confidence)
-- [natefinch/atomic](https://github.com/natefinch/atomic) (HIGH confidence)
-- [golang/go#56173 -- os.WriteFile not atomic](https://github.com/golang/go/issues/56173) (HIGH confidence)
-- [Atomically writing files in Go - Michael Stapelberg](https://michael.stapelberg.ch/posts/2017-01-28-golang_atomically_writing/) (MEDIUM confidence)
-- [adrg/xdg -- XDG Base Directory Specification for Go](https://github.com/adrg/xdg) (HIGH confidence)
-- [Flickering on Windows - Issue #1019](https://github.com/charmbracelet/bubbletea/issues/1019) (HIGH confidence)
-- [Resize truncation - Discussion #661](https://github.com/charmbracelet/bubbletea/discussions/661) (HIGH confidence)
-- [Lipgloss GitHub repository](https://github.com/charmbracelet/lipgloss) (HIGH confidence)
-- [Bubbles component library](https://github.com/charmbracelet/bubbles) (HIGH confidence)
-- [Bubble Tea bubbletea DeepWiki - Core Components](https://deepwiki.com/charmbracelet/bubbletea/2-core-components) (MEDIUM confidence)
-- [Bubble Tea bubbletea DeepWiki - Component Integration](https://deepwiki.com/charmbracelet/bubbletea/6.5-component-integration) (MEDIUM confidence)
+- Codebase analysis: `internal/app/model.go`, `internal/calendar/model.go`, `internal/calendar/grid.go`, `internal/todolist/model.go`, `internal/store/store.go`, `internal/store/todo.go`, `internal/config/config.go`, `internal/theme/theme.go`, `internal/settings/model.go` (HIGH confidence -- primary source)
+- [Go time package documentation](https://pkg.go.dev/time) -- date format layout system (HIGH confidence)
+- [Go time.Format reference date explanation](https://yourbasic.org/golang/format-parse-string-time-date-example/) -- "regrettable historic error" of American date convention (MEDIUM confidence)
+- [Tips for building Bubble Tea programs - leg100](https://leg100.github.io/en/posts/building-bubbletea-programs/) -- state management patterns (MEDIUM confidence)
+- [Managing nested models with Bubble Tea - Roman Parykin](https://donderom.com/posts/managing-nested-models-with-bubble-tea/) -- overlay routing complexity (MEDIUM confidence)
+- [Overlay composition using Bubble Tea - Leon Mika](https://lmika.org/2022/09/24/overlay-composition-using.html) -- rendering challenges (MEDIUM confidence)
+- [ISO week date - Wikipedia](https://en.wikipedia.org/wiki/ISO_week_date) -- week boundary edge cases (HIGH confidence)
+- [Bubble Tea GitHub - charmbracelet/bubbletea](https://github.com/charmbracelet/bubbletea) -- framework reference (HIGH confidence)
+- [Lipgloss GitHub - charmbracelet/lipgloss](https://github.com/charmbracelet/lipgloss) -- color profile and adaptive colors (HIGH confidence)
+- [Case-insensitive string search in Go](https://programming-idioms.org/idiom/133/case-insensitive-string-contains/1723/go) -- search performance (MEDIUM confidence)
+- Prior v1.0 pitfalls research (`.planning/research/PITFALLS.md` dated 2026-02-05) -- foundational patterns already addressed (HIGH confidence)
 
 ---
-*Pitfalls research for: Go TUI Calendar + Todo App (Bubble Tea)*
-*Researched: 2026-02-05*
+
+*Pitfalls research for: TUI Calendar v1.3 feature integration*
+*Researched: 2026-02-06*
