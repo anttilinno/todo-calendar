@@ -5,16 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** v1.2 Reorder & Settings -- Phase 9 (Overview Panel) -- COMPLETE
+**Current focus:** v1.2 shipped. No active milestone.
 
 ## Current Position
 
-Phase: 9 of 9 (Overview Panel) -- COMPLETE
-Plan: 1 of 1 in current phase
-Status: All phases complete
-Last activity: 2026-02-06 -- Completed 09-01-PLAN.md
+Milestone: v1.2 Reorder & Settings -- SHIPPED 2026-02-06
+Status: Between milestones
+Last activity: 2026-02-06 -- Completed milestone v1.2
 
-Progress: [█████████████████████] 100% (all 9 phases complete)
+Progress: [█████████████████████] 100% (v1.2 shipped)
 
 ## Performance Metrics
 
@@ -43,20 +42,6 @@ Progress: [█████████████████████] 100%
 
 See PROJECT.md Key Decisions table for complete log.
 
-Recent decisions affecting current work:
-- No caching of overview data; computed fresh every View() call (Phase 9)
-- MonthCount exported type for clean API boundary (Phase 9)
-- Local ym struct key for map grouping avoids fmt import in store (Phase 9)
-- Floating todos labeled "Unknown" matching existing UI terminology (Phase 9)
-- Cross-year months show year suffix for disambiguation (Phase 9)
-- Settings model uses cycling options (not free-text) for all 3 fields (Phase 8)
-- countryLabels uses hardcoded 11-entry map, no ISO library (Phase 8)
-- SetTheme pointer receivers modify in place without model recreation (Phase 8)
-- Settings overlay wired as full-screen with live preview, save, and cancel (Phase 8)
-- updateSettings handles routing + app-level message catching in single method (Phase 8)
-- applyTheme cascades to all children for visual consistency (Phase 8)
-- Styles struct + constructor DI enables runtime theme switching (Phase 6)
-
 ### Pending Todos
 
 None.
@@ -67,6 +52,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-06T09:08:21Z
-Stopped at: Completed 09-01-PLAN.md (Phase 9 complete, all phases done)
+Last session: 2026-02-06
+Stopped at: Milestone v1.2 archived and shipped
 Resume file: None

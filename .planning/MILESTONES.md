@@ -1,5 +1,30 @@
 # Project Milestones: Todo Calendar
 
+## v1.2 Reorder & Settings (Shipped: 2026-02-06)
+
+**Delivered:** Todo reordering, in-app settings overlay with live theme preview, and calendar overview panel with per-month todo counts
+
+**Phases completed:** 7-9 (5 plans total)
+
+**Key accomplishments:**
+- Todo reordering with J/K keybindings, SortOrder persistence, and section boundary checks
+- Full-screen settings overlay with live theme preview, country and week-start config
+- Save/cancel settings with config.toml persistence and theme revert on cancel
+- Calendar overview panel showing per-month todo counts and floating todo count below grid
+- All 11 requirements shipped without scope changes
+
+**Stats:**
+- 30 files changed
+- 2,492 lines of Go across 20 source files
+- 3 phases, 5 plans
+- 1 day (2026-02-06)
+
+**Git range:** `5823244` → `cd70d07`
+
+**What's next:** v2 candidates — weekly calendar view, recurring todos, search/filter
+
+---
+
 ## v1.1 Polish & Personalization (Shipped: 2026-02-05)
 
 **Delivered:** Calendar date indicators, todo editing, configurable first day of week, and 4 preset color themes for a more informative and personalized experience

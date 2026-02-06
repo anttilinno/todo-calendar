@@ -65,57 +65,35 @@ Plans:
 
 </details>
 
-### v1.2 Reorder & Settings (In Progress)
+<details>
+<summary>✅ v1.2 Reorder & Settings (Phases 7-9) - SHIPPED 2026-02-06</summary>
 
-**Milestone Goal:** Let users reorder todos, configure the app from an in-app settings page, and see todo count overview on the calendar.
-
-#### Phase 7: Todo Reordering
+### Phase 7: Todo Reordering
 **Goal**: Users can arrange todos in their preferred order
-**Depends on**: Phase 6 (existing store and todolist component)
-**Requirements**: REORD-01, REORD-02, REORD-03
-**Success Criteria** (what must be TRUE):
-  1. User can move the selected todo one position up in the list via keybinding
-  2. User can move the selected todo one position down in the list via keybinding
-  3. Custom todo order survives app restart (order is persisted in JSON)
-  4. Reorder keybindings appear in the help bar when a todo is selected
 **Plans**: 2 plans
 
 Plans:
 - [x] 07-01: Add SortOrder field, migration, SwapOrder method, updated sort logic
 - [x] 07-02: Wire MoveUp/MoveDown keybindings and help bar integration
 
-#### Phase 8: Settings Overlay
+### Phase 8: Settings Overlay
 **Goal**: Users can configure theme, holiday country, and first day of week from inside the app with live preview
-**Depends on**: Phase 7 (builds on store changes, existing theme/config systems)
-**Requirements**: SETT-01, SETT-02, SETT-03, SETT-04, SETT-05, SETT-06
-**Success Criteria** (what must be TRUE):
-  1. User can open a full-screen settings overlay via a keybinding from any panel
-  2. User can change the color theme and see the app redraw immediately (live preview)
-  3. User can change the holiday country and first day of week within the settings overlay
-  4. User can save all settings changes to config.toml and return to the main view
-  5. User can dismiss settings without saving, reverting any previewed changes
 **Plans**: 2 plans
 
 Plans:
 - [x] 08-01: Config.Save, theme.Names, settings model, SetTheme methods
 - [x] 08-02: Wire settings overlay into app with live preview and save/cancel
 
-#### Phase 9: Overview Panel
+### Phase 9: Overview Panel
 **Goal**: Calendar panel shows at-a-glance todo counts so users know where work is concentrated
-**Depends on**: Phase 7 (store queries for counts; independent of settings)
-**Requirements**: OVRVW-01, OVRVW-02
-**Success Criteria** (what must be TRUE):
-  1. Calendar panel displays todo count per month below the calendar grid (e.g., "January [7]")
-  2. Overview shows count of undated (floating) todos (e.g., "Unknown [12]")
-  3. Counts update live as todos are added, completed, or deleted
 **Plans**: 1 plan
 
 Plans:
 - [x] 09-01: Store aggregation methods, overview styles, and calendar overview rendering
 
-## Progress
+</details>
 
-**Execution Order:** 7 -> 8 -> 9
+## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|

@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A terminal-based (TUI) application that combines a monthly calendar view with a todo list. The left panel shows a navigable calendar with national holidays and date indicators showing pending work. The right panel displays todos for the visible month alongside undated (floating) items. Supports editing todos after creation, configurable first day of week, and 4 color themes. Built with Go and Bubble Tea for personal use.
+A terminal-based (TUI) application that combines a monthly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, date indicators for pending work, and an overview of todo counts per month. The right panel displays todos for the visible month alongside undated (floating) items. Supports editing and reordering todos, configurable first day of week, 4 color themes, and an in-app settings overlay with live preview. Built with Go and Bubble Tea for personal use.
 
 ## Core Value
 
@@ -31,20 +31,14 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - Edit todo text and date after creation — v1.1
 - Configurable first day of week (Monday/Sunday) — v1.1
 - 4 preset color themes (Dark, Light, Nord, Solarized) selectable in config — v1.1
+- Reorder todos (move up/down with keybindings, persist order) — v1.2
+- In-app settings overlay (full-screen, live theme preview, save/cancel) — v1.2
+- Settings: change theme, country, first day of week with immediate feedback — v1.2
+- Overview panel below calendar showing todo counts per month + undated count — v1.2
 
 ### Active
 
-**Current Milestone: v1.2 — Reorder & Settings**
-
-**Goal:** Let users reorder todos and configure the app from an in-app settings page instead of editing config.toml manually.
-
-- [ ] Reorder todos (move up/down with keybindings, persist order)
-- [ ] In-app settings page (full-screen overlay, live preview)
-- [ ] Settings: change theme with immediate visual feedback
-- [ ] Settings: change country for holidays
-- [ ] Settings: change first day of week
-- [ ] Settings: save changes to config.toml
-- [ ] Overview panel below calendar showing todo counts per month + undated count
+No active milestone. v2 candidates below.
 
 ### v2 Candidates
 
@@ -68,7 +62,7 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - **Holidays:** rickar/cal/v2 with 11-country registry (de, dk, ee, es, fi, fr, gb, it, no, se, us)
 - **Config:** TOML at ~/.config/todo-calendar/config.toml (BurntSushi/toml v1.6.0)
 - **Storage:** JSON at ~/.config/todo-calendar/todos.json with atomic writes
-- **Codebase:** 1,695 lines of Go across 18 source files
+- **Codebase:** 2,492 lines of Go across 20 source files
 - **Architecture:** Elm Architecture (Bubble Tea), pure rendering functions, constructor DI
 
 ## Constraints
@@ -94,11 +88,13 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 | Semantic theme color roles (14 fields) | Named by role not component, decoupled from UI structure | ✓ Good — clean theme propagation |
 | Styles struct + constructor DI over package-level vars | Enables runtime theme switching, testable | ✓ Good — no global state |
 | Empty string = terminal default in Dark theme | Respects user's terminal palette | ✓ Good — non-invasive default |
-| Settings as full-screen overlay with live preview | User wants to see changes immediately; overlay avoids cramming into split pane | — Pending |
+| Settings as full-screen overlay with live preview | User wants to see changes immediately; overlay avoids cramming into split pane | ✓ Good — clean UX with save/cancel |
+| SortOrder field with gap-10 spacing | Efficient reordering without renumbering all items | ✓ Good — simple swap-based reorder |
+| No caching of overview data; fresh from store | Tiny dataset, no cache invalidation complexity | ✓ Good — always correct |
 
 ## Known Tech Debt
 
 - Store.Save() errors ignored in CRUD methods (silent persistence failures on disk errors)
 
 ---
-*Last updated: 2026-02-06 after v1.2 milestone started*
+*Last updated: 2026-02-06 after v1.2 milestone shipped*
