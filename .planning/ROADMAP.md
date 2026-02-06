@@ -160,9 +160,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 15-01-PLAN.md -- Store foundation: Body field, templates table, template utilities
-- [ ] 15-02-PLAN.md -- Preview overlay with glamour rendering and body indicator
-- [ ] 15-03-PLAN.md -- Template creation and usage flow with placeholder prompting
+- [x] 15-01-PLAN.md -- Store foundation: Body field, templates table, template utilities
+- [x] 15-02-PLAN.md -- Preview overlay with glamour rendering and body indicator
+- [x] 15-03-PLAN.md -- Template creation and usage flow with placeholder prompting
 
 #### Phase 16: External Editor
 **Goal**: Users can edit todo bodies in their preferred terminal editor
@@ -193,5 +193,5 @@ Plans:
 | 12. Weekly Calendar View | v1.3 | 1/1 | Complete | 2026-02-06 |
 | 13. Search & Filter | v1.3 | 2/2 | Complete | 2026-02-06 |
 | 14. Database Backend | v1.4 | 2/2 | Complete | 2026-02-06 |
-| 15. Markdown Templates | v1.4 | 0/3 | Planned | - |
+| 15. Markdown Templates | v1.4 | 3/3 | Complete | 2026-02-06 |
 | 16. External Editor | v1.4 | 0/? | Not started | - |
