@@ -29,7 +29,7 @@ type Model struct {
 	input      textinput.Model
 	results    []store.Todo
 	cursor     int
-	store      *store.Store
+	store      store.TodoStore
 	dateLayout string
 	width      int
 	height     int
@@ -38,7 +38,7 @@ type Model struct {
 }
 
 // New creates a new search overlay model.
-func New(s *store.Store, t theme.Theme, cfg config.Config) Model {
+func New(s store.TodoStore, t theme.Theme, cfg config.Config) Model {
 	ti := textinput.New()
 	ti.Placeholder = "Search all todos..."
 	ti.Prompt = "? "

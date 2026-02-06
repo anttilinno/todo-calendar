@@ -50,7 +50,7 @@ type Model struct {
 	mode        mode
 	cursor      int // index into selectable items (todo items only)
 	input       textinput.Model
-	store       *store.Store
+	store       store.TodoStore
 	viewYear    int
 	viewMonth   time.Month
 	addingDated bool   // true if current add will produce a dated todo
@@ -64,7 +64,7 @@ type Model struct {
 }
 
 // New creates a new todo list model backed by the given store.
-func New(s *store.Store, t theme.Theme) Model {
+func New(s store.TodoStore, t theme.Theme) Model {
 	ti := textinput.New()
 	ti.Placeholder = "What needs doing?"
 	ti.CharLimit = 120
