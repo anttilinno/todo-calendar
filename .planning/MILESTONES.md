@@ -1,5 +1,30 @@
 # Project Milestones: Todo Calendar
 
+## v1.4 Data & Editing (Shipped: 2026-02-06)
+
+**Delivered:** SQLite database backend, markdown todo bodies with reusable templates, and external editor integration for power-user editing workflows
+
+**Phases completed:** 14-16 (6 plans total)
+
+**Key accomplishments:**
+- Replaced JSON storage with SQLite (modernc.org/sqlite pure Go driver, WAL mode, PRAGMA user_version migrations)
+- Extracted TodoStore interface decoupling all consumers from storage backend
+- Markdown todo bodies with glamour-rendered preview overlay and [+] body indicators
+- Reusable markdown templates with {{.Variable}} placeholder prompting and multi-line textarea input
+- External editor integration ($VISUAL/$EDITOR/vi fallback) with content change detection and clean TUI lifecycle
+
+**Stats:**
+- 44 files changed, 6040 insertions(+), 1475 deletions(-)
+- 4,670 lines of Go across the codebase
+- 3 phases, 6 plans
+- 1 day (2026-02-06)
+
+**Git range:** `16860da` → `299f5c4`
+
+**What's next:** v1.5 or v2 candidates — recurring todos, FTS5 search, or other enhancements
+
+---
+
 ## v1.3 Views & Usability (Shipped: 2026-02-06)
 
 **Delivered:** Enhanced calendar views (weekly toggle), search/filter (inline + full-screen), date format presets, and color-coded overview counts
