@@ -16,6 +16,7 @@ type KeyMap struct {
 	EditDate       key.Binding
 	Filter         key.Binding
 	Preview        key.Binding
+	OpenEditor     key.Binding
 	TemplateUse    key.Binding
 	TemplateCreate key.Binding
 	Confirm        key.Binding
@@ -24,13 +25,13 @@ type KeyMap struct {
 
 // ShortHelp returns key bindings for the short help view.
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.MoveUp, k.MoveDown, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.EditDate, k.Filter, k.Preview, k.TemplateUse, k.TemplateCreate}
+	return []key.Binding{k.Up, k.Down, k.MoveUp, k.MoveDown, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.EditDate, k.Filter, k.Preview, k.OpenEditor, k.TemplateUse, k.TemplateCreate}
 }
 
 // FullHelp returns key bindings for the full help view.
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Up, k.Down, k.MoveUp, k.MoveDown, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.EditDate, k.Filter, k.Preview, k.TemplateUse, k.TemplateCreate},
+		{k.Up, k.Down, k.MoveUp, k.MoveDown, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.EditDate, k.Filter, k.Preview, k.OpenEditor, k.TemplateUse, k.TemplateCreate},
 	}
 }
 
@@ -84,6 +85,10 @@ func DefaultKeyMap() KeyMap {
 		Preview: key.NewBinding(
 			key.WithKeys("p"),
 			key.WithHelp("p", "preview"),
+		),
+		OpenEditor: key.NewBinding(
+			key.WithKeys("o"),
+			key.WithHelp("o", "open editor"),
 		),
 		TemplateUse: key.NewBinding(
 			key.WithKeys("t"),
