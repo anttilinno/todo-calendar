@@ -9,8 +9,8 @@ Requirements for milestone v1.3 Views & Usability.
 
 ### Overview Color Coding
 
-- [ ] **OVCLR-01**: Overview shows split count per month: pending (red) and completed (green)
-- [ ] **OVCLR-02**: Overview colors follow the active theme (not hardcoded red/green)
+- [x] **OVCLR-01**: Overview shows split count per month: pending (red) and completed (green)
+- [x] **OVCLR-02**: Overview colors follow the active theme (not hardcoded red/green)
 
 ### Date Format
 
@@ -60,8 +60,8 @@ Deferred to later milestones.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| OVCLR-01 | Phase 10 | Pending |
-| OVCLR-02 | Phase 10 | Pending |
+| OVCLR-01 | Phase 10 | Complete |
+| OVCLR-02 | Phase 10 | Complete |
 | DTFMT-01 | Phase 11 | Pending |
 | DTFMT-02 | Phase 11 | Pending |
 | DTFMT-03 | Phase 11 | Pending |
@@ -82,4 +82,4 @@ Deferred to later milestones.
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 after roadmap creation*
+*Last updated: 2026-02-06 after phase 10 completion*
