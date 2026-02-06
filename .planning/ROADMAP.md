@@ -6,7 +6,7 @@
 - ✅ **v1.1 Polish & Personalization** - Phases 4-6 (shipped 2026-02-05)
 - ✅ **v1.2 Reorder & Settings** - Phases 7-9 (shipped 2026-02-06)
 - ✅ **v1.3 Views & Usability** - Phases 10-13 (shipped 2026-02-06)
-- 📋 **v1.4 Data & Editing** - Phases 14-16 (planned)
+- 🚧 **v1.4 Data & Editing** - Phases 14-16 (in progress)
 
 ## Phases
 
@@ -129,38 +129,41 @@ Plans:
 
 </details>
 
-### 📋 v1.4 Data & Editing (Planned)
+### 🚧 v1.4 Data & Editing (In Progress)
 
-**Milestone Goal:** Persistent database storage, rich markdown todo bodies, and external editor integration for power-user workflows.
+**Milestone Goal:** Replace JSON storage with SQLite, add rich markdown todo bodies with templates, and integrate external editor for power-user editing workflows.
 
 #### Phase 14: Database Backend
-**Goal**: Migrate todo persistence from JSON to SQLite for reliability and query capability
-**Depends on**: Nothing (replaces existing JSON store)
-**Requirements**: DB-01, DB-02, DB-03
+**Goal**: Todos persist reliably in a SQLite database with zero behavior changes for the user
+**Depends on**: None (replaces existing JSON store)
+**Requirements**: DB-01, DB-02, DB-03, DB-04, DB-05
 **Success Criteria** (what must be TRUE):
-  1. Todos are stored in a SQLite database instead of JSON files
-  2. Existing JSON data is migrated automatically on first launch
-  3. All existing CRUD operations work identically with the new backend
+  1. User's todos are stored in and loaded from a SQLite database file
+  2. Store consumers (todolist, search, calendar, overview) work through a TodoStore interface without knowing the backend
+  3. Database schema is version-managed and migrations apply automatically on startup
+  4. All existing operations (add, complete, delete, edit, reorder, search, filter) behave identically to the JSON backend
 **Plans**: TBD
 
 #### Phase 15: Markdown Templates
-**Goal**: Todo bodies use markdown templates with placeholders so users can define reusable todo structures
-**Depends on**: Phase 14 (database supports richer todo body storage)
-**Requirements**: MDTPL-01, MDTPL-02, MDTPL-03
+**Goal**: Todos support rich markdown bodies created from reusable templates
+**Depends on**: Phase 14 (SQLite schema includes body column and templates table)
+**Requirements**: MDTPL-01, MDTPL-02, MDTPL-03, MDTPL-04
 **Success Criteria** (what must be TRUE):
-  1. Todos have a markdown body field beyond the single-line title
-  2. User can create markdown templates with placeholder variables
-  3. Creating a todo from a template fills in placeholders interactively
+  1. User can view a multi-line markdown body attached to any todo
+  2. User can create named templates containing markdown with placeholder variables
+  3. When creating a todo from a template, user is prompted for each placeholder value and the body is filled in
+  4. Todo body renders as styled terminal markdown (headings, lists, code blocks) in a preview pane
 **Plans**: TBD
 
-#### Phase 16: External Editor Integration
-**Goal**: Users can open and edit todo content in their preferred $EDITOR (neovim, vim, etc.)
-**Depends on**: Phase 15 (markdown body exists to edit)
-**Requirements**: EDITOR-01, EDITOR-02, EDITOR-03
+#### Phase 16: External Editor
+**Goal**: Users can edit todo bodies in their preferred terminal editor
+**Depends on**: Phase 15 (markdown body field exists to edit)
+**Requirements**: EDITOR-01, EDITOR-02, EDITOR-03, EDITOR-04
 **Success Criteria** (what must be TRUE):
-  1. User can press a key to open the selected todo in $EDITOR
-  2. App suspends TUI, launches editor, and resumes cleanly after editor exits
-  3. Edits made in the external editor are saved back to the todo
+  1. User presses a key on a selected todo and their configured editor opens with the todo body
+  2. App checks $VISUAL, then $EDITOR, then falls back to vi
+  3. Editor opens a temp file with .md extension so syntax highlighting works
+  4. If user exits editor without changing content, the todo body is not updated
 **Plans**: TBD
 
 ## Progress
