@@ -113,5 +113,22 @@ func (m Model) Year() int { return m.year }
 // Month returns the currently viewed month.
 func (m Model) Month() time.Month { return m.month }
 
+// SetTheme replaces the calendar styles with ones built from the given theme.
+// This preserves all model state (year, month, cursor, provider).
+func (m *Model) SetTheme(t theme.Theme) {
+	m.styles = NewStyles(t)
+}
+
+// SetProvider replaces the holiday provider and refreshes holidays for the current month.
+func (m *Model) SetProvider(p *holidays.Provider) {
+	m.provider = p
+	m.holidays = p.HolidaysInMonth(m.year, m.month)
+}
+
+// SetMondayStart sets whether the week starts on Monday.
+func (m *Model) SetMondayStart(v bool) {
+	m.mondayStart = v
+}
+
 // Keys returns the calendar key bindings (for help bar aggregation).
 func (m Model) Keys() KeyMap { return m.keys }
