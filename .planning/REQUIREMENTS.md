@@ -17,10 +17,10 @@ Requirements for milestone v1.4 Data & Editing.
 
 ### Markdown Templates
 
-- [ ] **MDTPL-01**: Todos have a markdown body field beyond the single-line title
-- [ ] **MDTPL-02**: User can create reusable markdown templates with {{.Variable}} placeholders
-- [ ] **MDTPL-03**: Creating a todo from a template fills in placeholders interactively
-- [ ] **MDTPL-04**: Todo body renders as styled markdown (via Glamour) in a preview
+- [x] **MDTPL-01**: Todos have a markdown body field beyond the single-line title
+- [x] **MDTPL-02**: User can create reusable markdown templates with {{.Variable}} placeholders
+- [x] **MDTPL-03**: Creating a todo from a template fills in placeholders interactively
+- [x] **MDTPL-04**: Todo body renders as styled markdown (via Glamour) in a preview
 
 ### External Editor
 
@@ -63,10 +63,10 @@ Deferred to later milestones.
 | DB-03 | Phase 14 | Complete |
 | DB-04 | Phase 14 | Complete |
 | DB-05 | Phase 14 | Complete |
-| MDTPL-01 | Phase 15 | Pending |
-| MDTPL-02 | Phase 15 | Pending |
-| MDTPL-03 | Phase 15 | Pending |
-| MDTPL-04 | Phase 15 | Pending |
+| MDTPL-01 | Phase 15 | Complete |
+| MDTPL-02 | Phase 15 | Complete |
+| MDTPL-03 | Phase 15 | Complete |
+| MDTPL-04 | Phase 15 | Complete |
 | EDITOR-01 | Phase 16 | Pending |
 | EDITOR-02 | Phase 16 | Pending |
 | EDITOR-03 | Phase 16 | Pending |

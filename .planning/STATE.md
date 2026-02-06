@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** v1.4 Data & Editing -- Phase 15 Markdown Templates (COMPLETE)
+**Current focus:** v1.4 Data & Editing -- Phase 16 External Editor
 
 ## Current Position
 
-Phase: 15 of 16 (Markdown Templates)
-Plan: 03 of 03
-Status: Phase complete
-Last activity: 2026-02-06 -- Completed 15-03-PLAN.md
+Phase: 16 of 16 (External Editor)
+Plan: --
+Status: Ready to plan
+Last activity: 2026-02-06 -- Phase 15 verified and complete
 
-Progress: ██████████████████████████████ 100% (27/27 plans estimated through v1.4)
+Progress: █████████████████████████████░ 97% (27/28 plans estimated through v1.4)
 
 ## Performance Metrics
 
