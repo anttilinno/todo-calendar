@@ -79,6 +79,21 @@ func (s *SQLiteStore) migrate() error {
 			return fmt.Errorf("set user_version: %w", err)
 		}
 	}
+
+	if version < 2 {
+		if _, err := s.db.Exec(`CREATE TABLE IF NOT EXISTS templates (
+			id         INTEGER PRIMARY KEY AUTOINCREMENT,
+			name       TEXT    NOT NULL UNIQUE,
+			content    TEXT    NOT NULL,
+			created_at TEXT    NOT NULL
+		)`); err != nil {
+			return fmt.Errorf("create templates table: %w", err)
+		}
+		if _, err := s.db.Exec(`PRAGMA user_version = 2`); err != nil {
+			return fmt.Errorf("set user_version: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -343,6 +358,65 @@ func (s *SQLiteStore) SearchTodos(query string) []Todo {
 // EnsureSortOrder assigns sort_order = id * 10 to any todos with sort_order = 0.
 func (s *SQLiteStore) EnsureSortOrder() {
 	s.db.Exec("UPDATE todos SET sort_order = id * 10 WHERE sort_order = 0")
+}
+
+// AddTemplate creates a new template with the given name and content.
+// Returns an error if the name is not unique.
+func (s *SQLiteStore) AddTemplate(name, content string) (Template, error) {
+	createdAt := time.Now().Format(dateFormat)
+	result, err := s.db.Exec(
+		"INSERT INTO templates (name, content, created_at) VALUES (?, ?, ?)",
+		name, content, createdAt,
+	)
+	if err != nil {
+		return Template{}, fmt.Errorf("add template: %w", err)
+	}
+	id, _ := result.LastInsertId()
+	return Template{
+		ID:        int(id),
+		Name:      name,
+		Content:   content,
+		CreatedAt: createdAt,
+	}, nil
+}
+
+// ListTemplates returns all templates ordered by name.
+func (s *SQLiteStore) ListTemplates() []Template {
+	rows, err := s.db.Query("SELECT id, name, content, created_at FROM templates ORDER BY name")
+	if err != nil {
+		return []Template{}
+	}
+	defer rows.Close()
+
+	var templates []Template
+	for rows.Next() {
+		var t Template
+		if err := rows.Scan(&t.ID, &t.Name, &t.Content, &t.CreatedAt); err != nil {
+			continue
+		}
+		templates = append(templates, t)
+	}
+	if templates == nil {
+		return []Template{}
+	}
+	return templates
+}
+
+// FindTemplate returns the template with the given ID, or nil if not found.
+func (s *SQLiteStore) FindTemplate(id int) *Template {
+	var t Template
+	err := s.db.QueryRow(
+		"SELECT id, name, content, created_at FROM templates WHERE id = ?", id,
+	).Scan(&t.ID, &t.Name, &t.Content, &t.CreatedAt)
+	if err != nil {
+		return nil
+	}
+	return &t
+}
+
+// DeleteTemplate removes the template with the given ID.
+func (s *SQLiteStore) DeleteTemplate(id int) {
+	s.db.Exec("DELETE FROM templates WHERE id = ?", id)
 }
 
 // Save is a no-op for SQLiteStore since all mutations are immediately persisted.

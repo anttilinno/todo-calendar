@@ -2,6 +2,7 @@ package store
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -24,6 +25,10 @@ type TodoStore interface {
 	TodoCountsByMonth() []MonthCount
 	FloatingTodoCounts() FloatingCount
 	UpdateBody(id int, body string)
+	AddTemplate(name, content string) (Template, error)
+	ListTemplates() []Template
+	FindTemplate(id int) *Template
+	DeleteTemplate(id int)
 	SwapOrder(id1, id2 int)
 	SearchTodos(query string) []Todo
 	EnsureSortOrder()
@@ -191,6 +196,24 @@ func (s *Store) UpdateBody(id int, body string) {
 		}
 	}
 }
+
+// AddTemplate is not supported in the JSON store.
+func (s *Store) AddTemplate(name, content string) (Template, error) {
+	return Template{}, fmt.Errorf("templates not supported in JSON store")
+}
+
+// ListTemplates returns nil in the JSON store (templates not supported).
+func (s *Store) ListTemplates() []Template {
+	return nil
+}
+
+// FindTemplate returns nil in the JSON store (templates not supported).
+func (s *Store) FindTemplate(id int) *Template {
+	return nil
+}
+
+// DeleteTemplate is a no-op in the JSON store (templates not supported).
+func (s *Store) DeleteTemplate(id int) {}
 
 // Todos returns all todos in the store.
 func (s *Store) Todos() []Todo {
