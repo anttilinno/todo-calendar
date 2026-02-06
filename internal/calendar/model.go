@@ -13,6 +13,27 @@ import (
 	"github.com/antti/todo-calendar/internal/theme"
 )
 
+// ViewMode controls whether the calendar shows a full month or a single week.
+type ViewMode int
+
+const (
+	// MonthView shows the full month grid (default).
+	MonthView ViewMode = iota
+	// WeekView shows a single 7-day week.
+	WeekView
+)
+
+// weekStartFor returns the date of the first day of the week containing t.
+// If mondayStart is true, weeks start on Monday; otherwise Sunday.
+func weekStartFor(t time.Time, mondayStart bool) time.Time {
+	wd := int(t.Weekday()) // Sunday=0 .. Saturday=6
+	if mondayStart {
+		offset := (wd + 6) % 7 // Monday=0 .. Sunday=6
+		return time.Date(t.Year(), t.Month(), t.Day()-offset, 0, 0, 0, 0, time.Local)
+	}
+	return time.Date(t.Year(), t.Month(), t.Day()-wd, 0, 0, 0, 0, time.Local)
+}
+
 // Model represents the calendar pane.
 type Model struct {
 	focused     bool
@@ -28,6 +49,8 @@ type Model struct {
 	keys        KeyMap
 	mondayStart bool
 	styles      Styles
+	viewMode    ViewMode
+	weekStart   time.Time
 }
 
 // New creates a new calendar model with the given holiday provider,
@@ -60,20 +83,45 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 
 		switch {
+		case key.Matches(msg, m.keys.ToggleWeek):
+			if m.viewMode == MonthView {
+				m.viewMode = WeekView
+				m.weekStart = weekStartFor(time.Now(), m.mondayStart)
+				m.year = m.weekStart.Year()
+				m.month = m.weekStart.Month()
+			} else {
+				m.viewMode = MonthView
+				// m.year and m.month already track the week's month
+			}
+			m.holidays = m.provider.HolidaysInMonth(m.year, m.month)
+			m.indicators = m.store.IncompleteTodosPerDay(m.year, m.month)
+
 		case key.Matches(msg, m.keys.PrevMonth):
-			m.month--
-			if m.month < time.January {
-				m.month = time.December
-				m.year--
+			if m.viewMode == WeekView {
+				m.weekStart = m.weekStart.AddDate(0, 0, -7)
+				m.year = m.weekStart.Year()
+				m.month = m.weekStart.Month()
+			} else {
+				m.month--
+				if m.month < time.January {
+					m.month = time.December
+					m.year--
+				}
 			}
 			m.holidays = m.provider.HolidaysInMonth(m.year, m.month)
 			m.indicators = m.store.IncompleteTodosPerDay(m.year, m.month)
 
 		case key.Matches(msg, m.keys.NextMonth):
-			m.month++
-			if m.month > time.December {
-				m.month = time.January
-				m.year++
+			if m.viewMode == WeekView {
+				m.weekStart = m.weekStart.AddDate(0, 0, 7)
+				m.year = m.weekStart.Year()
+				m.month = m.weekStart.Month()
+			} else {
+				m.month++
+				if m.month > time.December {
+					m.month = time.January
+					m.year++
+				}
 			}
 			m.holidays = m.provider.HolidaysInMonth(m.year, m.month)
 			m.indicators = m.store.IncompleteTodosPerDay(m.year, m.month)
@@ -89,6 +137,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 // View renders the calendar pane content including the overview section.
 func (m Model) View() string {
+	if m.viewMode == WeekView {
+		grid := RenderWeekGrid(m.weekStart, time.Now(), m.provider, m.mondayStart, m.store, m.styles)
+		return grid + m.renderOverview()
+	}
+
 	todayDay := 0
 	now := time.Now()
 	if now.Year() == m.year && now.Month() == m.month {
@@ -178,4 +231,17 @@ func (m *Model) SetMondayStart(v bool) {
 }
 
 // Keys returns the calendar key bindings (for help bar aggregation).
-func (m Model) Keys() KeyMap { return m.keys }
+// Help text is contextual: in WeekView, PrevMonth/NextMonth show "prev week"/"next week"
+// and ToggleWeek shows "monthly view".
+func (m Model) Keys() KeyMap {
+	k := m.keys
+	if m.viewMode == WeekView {
+		k.PrevMonth = key.NewBinding(key.WithKeys("left", "h"), key.WithHelp("<-/h", "prev week"))
+		k.NextMonth = key.NewBinding(key.WithKeys("right", "l"), key.WithHelp("->/l", "next week"))
+		k.ToggleWeek = key.NewBinding(key.WithKeys("w"), key.WithHelp("w", "monthly view"))
+	}
+	return k
+}
+
+// GetViewMode returns the current view mode (MonthView or WeekView).
+func (m Model) GetViewMode() ViewMode { return m.viewMode }
