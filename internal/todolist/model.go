@@ -139,12 +139,27 @@ func (m Model) IsInputting() bool {
 	return m.mode != normalMode
 }
 
-// HelpBindings returns context-appropriate key bindings for the help bar.
+// HelpBindings returns a short list of context-appropriate key bindings for the help bar.
+// In normal mode, shows max 5 most-used keys (HELP-01).
 func (m Model) HelpBindings() []key.Binding {
 	if m.mode != normalMode {
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	}
-	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.MoveUp, m.keys.MoveDown, m.keys.Add, m.keys.AddDated, m.keys.Edit, m.keys.EditDate, m.keys.Toggle, m.keys.Delete, m.keys.Filter, m.keys.Preview, m.keys.OpenEditor, m.keys.TemplateUse, m.keys.TemplateCreate}
+	return []key.Binding{m.keys.Add, m.keys.Toggle, m.keys.Delete, m.keys.Edit, m.keys.Filter}
+}
+
+// AllHelpBindings returns all key bindings for the expanded help view.
+// In non-normal modes, still returns only Confirm/Cancel (HELP-02).
+func (m Model) AllHelpBindings() []key.Binding {
+	if m.mode != normalMode {
+		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
+	}
+	return []key.Binding{
+		m.keys.Up, m.keys.Down, m.keys.MoveUp, m.keys.MoveDown,
+		m.keys.Add, m.keys.AddDated, m.keys.Edit, m.keys.EditDate,
+		m.keys.Toggle, m.keys.Delete, m.keys.Filter,
+		m.keys.Preview, m.keys.OpenEditor, m.keys.TemplateUse, m.keys.TemplateCreate,
+	}
 }
 
 // visibleItems builds the combined display list of headers, todos, and empty placeholders.
