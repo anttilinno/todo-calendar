@@ -1,5 +1,31 @@
 # Project Milestones: Todo Calendar
 
+## v1.6 Templates & Recurring (Shipped: 2026-02-07)
+
+**Delivered:** Template management overlay with CRUD operations, recurring schedule system with 4 cadence types, and auto-creation engine that generates scheduled todos on app launch
+
+**Phases completed:** 20-22 (8 plans total)
+
+**Key accomplishments:**
+- Full-screen template management overlay (M key) with list, preview, rename, delete, and external editor integration
+- ScheduleRule engine supporting daily, weekdays, weekly (day selection), and monthly (day-of-month with clamping) cadences
+- SQLite schema extensions: schedules table with FK CASCADE, todos schedule columns with dedup UNIQUE index
+- AutoCreate engine running on startup, generating todos for 7-day rolling window with deduplication
+- Schedule picker UI with cadence cycling, weekly day toggling, and monthly day input
+- Placeholder defaults prompting at schedule creation with JSON serialization and pre-fill on edit
+
+**Stats:**
+- 16 files changed, 2,362 insertions(+)
+- 7,624 lines of Go across 35 source files
+- 3 phases, 8 plans
+- 2 days (2026-02-05 to 2026-02-07)
+
+**Git range:** `4aa445a` → `768b6f3`
+
+**What's next:** v2 candidates or new feature milestones
+
+---
+
 ## v1.5 UX Polish (Shipped: 2026-02-07)
 
 **Delivered:** Visual overhaul with styled checkboxes and section separators, full-pane editing with dual-field forms, mode-aware help bar, and 7 pre-built markdown templates seeded on first launch

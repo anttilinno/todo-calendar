@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A terminal-based (TUI) application that combines a monthly/weekly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, date indicators for pending work, color-coded overview counts, and weekly view toggle. The right panel displays todos for the visible month alongside undated (floating) items with inline filter support. Includes full-screen cross-month search, editing and reordering todos, configurable date format and first day of week, 4 color themes, and an in-app settings overlay with live preview. Todos are stored in SQLite with support for rich markdown bodies, reusable templates with placeholder prompting, and external editor integration ($EDITOR). Built with Go and Bubble Tea for personal use.
+A terminal-based (TUI) application that combines a monthly/weekly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, date indicators for pending work, color-coded overview counts, and weekly view toggle. The right panel displays todos for the visible month alongside undated (floating) items with inline filter support. Includes full-screen cross-month search, editing and reordering todos, configurable date format and first day of week, 4 color themes, and an in-app settings overlay with live preview. Todos are stored in SQLite with support for rich markdown bodies, reusable templates with placeholder prompting, and external editor integration ($EDITOR). Templates can be managed in a dedicated overlay and have recurring schedules (daily, weekdays, weekly, monthly) that auto-create todos on app launch. Built with Go and Bubble Tea for personal use.
 
 ## Core Value
 
@@ -49,13 +49,15 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - Full-pane editing for add/edit todo with dual-field dated-add and Tab switching — v1.5
 - Mode-aware help bar showing 5 keys in normal mode, full list via ? toggle — v1.5
 - 7 pre-built markdown templates (3 general + 4 dev) seeded on first launch — v1.5
+- Template management overlay with CRUD (list, preview, rename, delete, edit) — v1.6
+- Recurring schedules on templates (daily, weekdays, weekly, monthly) with schedule picker UI — v1.6
+- Auto-creation of scheduled todos on app launch (rolling 7-day window with dedup) — v1.6
+- Placeholder defaults prompting at schedule creation for auto-created todos — v1.6
+- [R] indicator on recurring todos and schedule cadence suffix in template overlay — v1.6
 
 ### Active
 
-- Template management overlay (list, view, edit, rename, delete)
-- Recurring schedules on templates (daily, weekday(s), monthly on Nth)
-- Auto-creation of scheduled todos on app launch (rolling 7-day window)
-- Placeholder prompting for auto-created recurring todos on first launch
+(None — all shipped through v1.6)
 
 ### v2 Candidates
 
@@ -77,7 +79,7 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - **Holidays:** rickar/cal/v2 with 11-country registry (de, dk, ee, es, fi, fr, gb, it, no, se, us)
 - **Config:** TOML at ~/.config/todo-calendar/config.toml (BurntSushi/toml v1.6.0)
 - **Storage:** SQLite at ~/.config/todo-calendar/todos.db (modernc.org/sqlite, pure Go, WAL mode)
-- **Codebase:** 5,209 lines of Go across 33 source files
+- **Codebase:** 7,624 lines of Go across 35 source files
 - **Architecture:** Elm Architecture (Bubble Tea), pure rendering functions, constructor DI, TodoStore interface
 
 ## Constraints
@@ -124,11 +126,20 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 | Mode-branched View() with editView()/normalView() | Clean separation of edit vs list rendering | ✓ Good — each mode fully owns the pane |
 | SetSize(w,h) replacing WindowSizeMsg | Todolist gets dimensions from parent, not global messages | ✓ Good — cleaner ownership |
 | Migration-based template seeding (PRAGMA user_version) | Run-once, idempotent, no runtime checks | ✓ Good — follows existing migration pattern |
+| Raw text preview in template overlay (not glamour) | Reveals placeholder syntax {{.Variable}} | ✓ Good — users see what they'll edit |
+| UpdateTemplate returns error for UNIQUE constraint | Rename UI shows error for duplicate names | ✓ Good — clean error handling |
+| tmplmgr overlay as separate package | Follows search/settings/preview pattern | ✓ Good — consistent architecture |
+| CadenceType/CadenceValue flexible string columns | Extensible without schema changes | ✓ Good — simple and clean |
+| PlaceholderDefaults as JSON string in schedules | Arbitrary key-value pairs per schedule | ✓ Good — flexible storage |
+| FK CASCADE templates→schedules, SET NULL schedules→todos | Template delete cleans schedules; schedule delete preserves todos | ✓ Good — correct cascade semantics |
+| UNIQUE index on (schedule_id, schedule_date) | Database-level deduplication for auto-created todos | ✓ Good — prevents duplicates |
+| AutoCreate runs synchronously before TUI | Simple, no goroutine complexity | ✓ Good — fast for small schedule counts |
+| Placeholder defaults prompting intercepts schedule confirm | Single flow: pick cadence → fill defaults → save | ✓ Good — natural UX progression |
 
 ## Known Tech Debt
 
 - JSON Store still exists but unused (main.go uses SQLiteStore exclusively)
-- JSON Store template methods are stubs (return error/nil/no-op)
+- JSON Store template and schedule methods are stubs (return error/nil/no-op)
 
 ---
-*Last updated: 2026-02-07 after v1.6 milestone start*
+*Last updated: 2026-02-07 after v1.6 milestone*
