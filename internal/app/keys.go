@@ -4,22 +4,23 @@ import "github.com/charmbracelet/bubbles/key"
 
 // KeyMap defines key bindings for the application.
 type KeyMap struct {
-	Quit     key.Binding
-	Tab      key.Binding
-	Settings key.Binding
-	Search   key.Binding
-	Help     key.Binding
+	Quit      key.Binding
+	Tab       key.Binding
+	Settings  key.Binding
+	Search    key.Binding
+	Templates key.Binding
+	Help      key.Binding
 }
 
 // ShortHelp returns key bindings for the short help view.
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Quit, k.Tab, k.Settings, k.Search, k.Help}
+	return []key.Binding{k.Quit, k.Tab, k.Settings, k.Search, k.Templates, k.Help}
 }
 
 // FullHelp returns key bindings for the full help view.
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Quit, k.Tab, k.Settings, k.Search, k.Help},
+		{k.Quit, k.Tab, k.Settings, k.Search, k.Templates, k.Help},
 	}
 }
 
@@ -41,6 +42,10 @@ func DefaultKeyMap() KeyMap {
 		Search: key.NewBinding(
 			key.WithKeys("ctrl+f"),
 			key.WithHelp("C-f", "search"),
+		),
+		Templates: key.NewBinding(
+			key.WithKeys("M"),
+			key.WithHelp("M", "templates"),
 		),
 		Help: key.NewBinding(
 			key.WithKeys("?"),
