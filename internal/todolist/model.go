@@ -72,9 +72,10 @@ type Model struct {
 	styles          Styles
 
 	// Full-pane edit fields
-	dateInput    textinput.Model // separate input for date field in full-pane mode
-	bodyTextarea textarea.Model  // textarea for body editing in edit mode
-	editField    int             // 0 = title, 1 = date, 2 = body
+	dateInput     textinput.Model // separate input for date field in full-pane mode
+	bodyTextarea  textarea.Model  // textarea for body editing in edit mode
+	editField     int             // 0 = title, 1 = date, 2 = body, 3 = template
+	templateInput textinput.Model // placeholder input for template field (Phase 25 adds picker)
 
 	// Template workflow fields
 	pendingTemplateName string           // name for template being created
@@ -101,12 +102,18 @@ func New(s store.TodoStore, t theme.Theme) Model {
 	ba.Placeholder = "Body text (markdown supported)"
 	ba.ShowLineNumbers = false
 
+	tmplInput := textinput.New()
+	tmplInput.Placeholder = "Press Enter to select template"
+	tmplInput.Prompt = "> "
+	tmplInput.CharLimit = 0 // Read-only placeholder for Phase 25
+
 	now := time.Now()
 	return Model{
 		store:            s,
 		input:            ti,
 		dateInput:        di,
 		bodyTextarea:     ba,
+		templateInput:    tmplInput,
 		templateTextarea: ta,
 		viewYear:         now.Year(),
 		viewMonth:        now.Month(),
@@ -279,10 +286,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		if _, ok := msg.(tea.KeyMsg); !ok {
 			if _, ok := msg.(tea.WindowSizeMsg); !ok {
 				var cmd tea.Cmd
-				switch {
-				case m.mode == editMode && m.editField == 2:
+				switch m.editField {
+				case 2:
 					m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
-				case m.editField == 1:
+				case 3:
+					m.templateInput, cmd = m.templateInput.Update(msg)
+				case 1:
 					m.dateInput, cmd = m.dateInput.Update(msg)
 				default:
 					m.input, cmd = m.input.Update(msg)
@@ -359,9 +368,13 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Add):
 		m.mode = inputMode
+		m.editField = 0
 		m.input.Placeholder = "What needs doing?"
 		m.input.Prompt = "> "
 		m.input.SetValue("")
+		m.dateInput.SetValue("")
+		m.dateInput.Placeholder = m.datePlaceholder + " (empty = floating)"
+		m.bodyTextarea.SetValue("")
 		return m, m.input.Focus()
 
 	case key.Matches(msg, m.keys.Toggle):
@@ -476,34 +489,82 @@ func (m Model) updateFilterMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
-// updateInputMode handles key events while typing todo text.
+// updateInputMode handles key events in the 4-field add form (title, date, body, template).
 func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch {
+	case key.Matches(msg, m.keys.Save):
+		// Ctrl+D saves from any field
+		return m.saveAdd()
+
 	case key.Matches(msg, m.keys.Confirm):
-		text := strings.TrimSpace(m.input.Value())
-		if text == "" {
-			// Don't add empty todos -- stay in input mode
+		// Body field uses Enter for newlines
+		if m.editField == 2 {
+			var cmd tea.Cmd
+			m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
+			return m, cmd
+		}
+		// Template field forwards Enter (Phase 25 will open picker)
+		if m.editField == 3 {
 			return m, nil
 		}
-		m.store.Add(text, "")
-		m.mode = normalMode
-		m.input.Blur()
-		m.input.SetValue("")
-		return m, nil
+		// Title/Date: Enter saves
+		return m.saveAdd()
 
 	case key.Matches(msg, m.keys.SwitchField):
+		// Cycle: title(0) -> date(1) -> body(2) -> template(3) -> title(0)
+		switch m.editField {
+		case 0:
+			m.editField = 1
+			m.input.Blur()
+			return m, m.dateInput.Focus()
+		case 1:
+			m.editField = 2
+			m.dateInput.Blur()
+			return m, m.bodyTextarea.Focus()
+		case 2:
+			m.editField = 3
+			m.bodyTextarea.Blur()
+			return m, m.templateInput.Focus()
+		case 3:
+			m.editField = 0
+			m.templateInput.Blur()
+			return m, m.input.Focus()
+		}
 		return m, nil
 
 	case key.Matches(msg, m.keys.Cancel):
+		if m.editField == 2 || m.editField == 3 {
+			// Esc in body/template goes back to title field instead of cancelling
+			m.editField = 0
+			m.bodyTextarea.Blur()
+			m.templateInput.Blur()
+			return m, m.input.Focus()
+		}
+		// Esc in title/date cancels entirely
 		m.mode = normalMode
 		m.input.Blur()
+		m.dateInput.Blur()
+		m.bodyTextarea.Blur()
+		m.templateInput.Blur()
 		m.input.SetValue("")
+		m.dateInput.SetValue("")
+		m.bodyTextarea.SetValue("")
+		m.editField = 0
 		return m, nil
 	}
 
-	// Forward key events to the focused input
+	// Forward key events to the focused field
 	var cmd tea.Cmd
-	m.input, cmd = m.input.Update(msg)
+	switch m.editField {
+	case 0:
+		m.input, cmd = m.input.Update(msg)
+	case 1:
+		m.dateInput, cmd = m.dateInput.Update(msg)
+	case 2:
+		m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
+	case 3:
+		m.templateInput, cmd = m.templateInput.Update(msg)
+	}
 	return m, cmd
 }
 
@@ -613,6 +674,47 @@ func (m Model) saveEdit() (Model, tea.Cmd) {
 	if m.cursor >= len(newSelectable) {
 		m.cursor = max(0, len(newSelectable)-1)
 	}
+	return m, nil
+}
+
+// saveAdd persists a new todo from the 4-field add form and returns to normal mode.
+func (m Model) saveAdd() (Model, tea.Cmd) {
+	text := strings.TrimSpace(m.input.Value())
+	if text == "" {
+		return m, nil
+	}
+
+	date := strings.TrimSpace(m.dateInput.Value())
+	isoDate := ""
+	if date != "" {
+		var err error
+		isoDate, err = config.ParseUserDate(date, m.dateLayout)
+		if err != nil {
+			// Invalid date -- focus date field
+			m.editField = 1
+			m.input.Blur()
+			m.bodyTextarea.Blur()
+			m.templateInput.Blur()
+			return m, m.dateInput.Focus()
+		}
+	}
+
+	todo := m.store.Add(text, isoDate)
+
+	body := m.bodyTextarea.Value()
+	if strings.TrimSpace(body) != "" {
+		m.store.UpdateBody(todo.ID, body)
+	}
+
+	m.mode = normalMode
+	m.input.Blur()
+	m.dateInput.Blur()
+	m.bodyTextarea.Blur()
+	m.templateInput.Blur()
+	m.input.SetValue("")
+	m.dateInput.SetValue("")
+	m.bodyTextarea.SetValue("")
+	m.editField = 0
 	return m, nil
 }
 
