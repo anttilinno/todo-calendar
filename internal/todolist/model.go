@@ -158,23 +158,45 @@ func (m Model) IsInputting() bool {
 // HelpBindings returns a short list of context-appropriate key bindings for the help bar.
 // In normal mode, shows max 5 most-used keys (HELP-01).
 func (m Model) HelpBindings() []key.Binding {
-	if m.mode != normalMode {
+	switch m.mode {
+	case inputMode:
+		if m.addingDated {
+			return []key.Binding{m.keys.Confirm, m.keys.Cancel, m.keys.SwitchField}
+		}
+		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
+	case dateInputMode:
+		return []key.Binding{m.keys.Confirm, m.keys.Cancel, m.keys.SwitchField}
+	case editTextMode, editDateMode:
+		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
+	case normalMode:
+		return []key.Binding{m.keys.Add, m.keys.Toggle, m.keys.Delete, m.keys.Edit, m.keys.Filter}
+	default:
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	}
-	return []key.Binding{m.keys.Add, m.keys.Toggle, m.keys.Delete, m.keys.Edit, m.keys.Filter}
 }
 
 // AllHelpBindings returns all key bindings for the expanded help view.
 // In non-normal modes, still returns only Confirm/Cancel (HELP-02).
 func (m Model) AllHelpBindings() []key.Binding {
-	if m.mode != normalMode {
+	switch m.mode {
+	case inputMode:
+		if m.addingDated {
+			return []key.Binding{m.keys.Confirm, m.keys.Cancel, m.keys.SwitchField}
+		}
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
-	}
-	return []key.Binding{
-		m.keys.Up, m.keys.Down, m.keys.MoveUp, m.keys.MoveDown,
-		m.keys.Add, m.keys.AddDated, m.keys.Edit, m.keys.EditDate,
-		m.keys.Toggle, m.keys.Delete, m.keys.Filter,
-		m.keys.Preview, m.keys.OpenEditor, m.keys.TemplateUse, m.keys.TemplateCreate,
+	case dateInputMode:
+		return []key.Binding{m.keys.Confirm, m.keys.Cancel, m.keys.SwitchField}
+	case editTextMode, editDateMode:
+		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
+	case normalMode:
+		return []key.Binding{
+			m.keys.Up, m.keys.Down, m.keys.MoveUp, m.keys.MoveDown,
+			m.keys.Add, m.keys.AddDated, m.keys.Edit, m.keys.EditDate,
+			m.keys.Toggle, m.keys.Delete, m.keys.Filter,
+			m.keys.Preview, m.keys.OpenEditor, m.keys.TemplateUse, m.keys.TemplateCreate,
+		}
+	default:
+		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	}
 }
 
@@ -261,11 +283,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		return m, nil
-
 	case tea.KeyMsg:
 		if !m.focused {
 			return m, nil
@@ -798,6 +815,60 @@ func (m Model) updateTemplateContentMode(msg tea.Msg) (Model, tea.Cmd) {
 
 // View renders the todo list pane content.
 func (m Model) View() string {
+	switch m.mode {
+	case inputMode, dateInputMode, editTextMode, editDateMode:
+		return m.editView()
+	default:
+		return m.normalView()
+	}
+}
+
+// editView renders a vertically centered full-pane form for add/edit modes.
+func (m Model) editView() string {
+	var b strings.Builder
+
+	// Heading
+	title := "Add Todo"
+	if m.mode == editTextMode || m.mode == editDateMode {
+		title = "Edit Todo"
+	}
+	b.WriteString(m.styles.EditTitle.Render(title))
+	b.WriteString("\n\n")
+
+	// Field(s)
+	switch m.mode {
+	case editDateMode:
+		// Single date field
+		b.WriteString(m.styles.FieldLabel.Render("Date"))
+		b.WriteString("\n")
+		b.WriteString(m.input.View())
+		b.WriteString("\n\n")
+	default:
+		// Title field (inputMode, dateInputMode, editTextMode)
+		b.WriteString(m.styles.FieldLabel.Render("Title"))
+		b.WriteString("\n")
+		b.WriteString(m.input.View())
+		b.WriteString("\n\n")
+	}
+
+	// Minimal help hint
+	b.WriteString(m.styles.EditHint.Render("Enter confirm | Esc cancel"))
+
+	// Vertical centering
+	content := b.String()
+	if m.height > 0 {
+		lines := strings.Count(content, "\n") + 1
+		topPad := (m.height - lines) / 3
+		if topPad > 0 {
+			content = strings.Repeat("\n", topPad) + content
+		}
+	}
+
+	return content
+}
+
+// normalView renders the standard todo list with headers, items, and inline controls.
+func (m Model) normalView() string {
 	items := m.visibleItems()
 	selectable := selectableIndices(items)
 
@@ -872,13 +943,12 @@ func (m Model) View() string {
 		b.WriteString("\n")
 		b.WriteString(m.input.View())
 
-	case normalMode:
-		// No extra UI in normal mode
-
-	default:
-		// inputMode, dateInputMode, editTextMode, editDateMode, filterMode
+	case filterMode:
 		b.WriteString("\n")
 		b.WriteString(m.input.View())
+
+	case normalMode:
+		// No extra UI in normal mode
 	}
 
 	return b.String()
