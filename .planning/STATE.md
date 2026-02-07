@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-02-07)
 ## Current Position
 
 Phase: 22 of 22 (Auto-Creation & Schedule UI)
-Plan: 1 of 2
+Plan: 2 of 4
 Status: In progress
-Last activity: 2026-02-07 -- Completed 22-01-PLAN.md
+Last activity: 2026-02-07 -- Completed 22-02-PLAN.md
 
-Progress: [█████████████████████████████████████] 37/38 plans
+Progress: [█████████████████████████████████████░░] 38/40 plans
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 37 (through 22-01)
+- Total plans completed: 38 (through 22-02)
 - Average duration: 2 min
 - Total execution time: ~1.5 hours
 
@@ -41,6 +41,8 @@ See PROJECT.md Key Decisions table for complete log.
 - AddScheduledTodo uses date as both display date and schedule_date dedup key
 - Template body executed once per schedule (not per date) for efficiency since defaults are constant
 - fakeStore in test implements full TodoStore interface with stubs for unused methods
+- Schedule suffix placed outside SelectedName style so it stays dimmed on cursor line
+- ordinalSuffix handles 11th/12th/13th teens as special cases
 
 ### Pending Todos
 
@@ -52,6 +54,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-07T13:14:43Z
-Stopped at: Completed 22-01-PLAN.md
+Last session: 2026-02-07T13:16:00Z
+Stopped at: Completed 22-02-PLAN.md
 Resume file: None
