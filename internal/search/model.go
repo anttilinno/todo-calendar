@@ -181,9 +181,6 @@ func (m Model) View() string {
 		}
 	}
 
-	b.WriteString("\n")
-	b.WriteString(m.styles.Hint.Render("  j/k navigate  |  enter jump to month  |  esc close"))
-
 	content := b.String()
 
 	// Center vertically if we have height information.

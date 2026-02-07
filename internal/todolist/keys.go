@@ -13,7 +13,6 @@ type KeyMap struct {
 	Toggle         key.Binding
 	Delete         key.Binding
 	Edit           key.Binding
-	EditDate       key.Binding
 	Filter         key.Binding
 	Preview        key.Binding
 	OpenEditor     key.Binding
@@ -22,17 +21,18 @@ type KeyMap struct {
 	Confirm        key.Binding
 	Cancel         key.Binding
 	SwitchField    key.Binding
+	Save           key.Binding
 }
 
 // ShortHelp returns key bindings for the short help view.
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.MoveUp, k.MoveDown, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.EditDate, k.Filter, k.Preview, k.OpenEditor, k.TemplateUse, k.TemplateCreate, k.SwitchField}
+	return []key.Binding{k.Up, k.Down, k.MoveUp, k.MoveDown, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.Filter, k.Preview, k.OpenEditor, k.TemplateUse, k.TemplateCreate, k.SwitchField}
 }
 
 // FullHelp returns key bindings for the full help view.
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Up, k.Down, k.MoveUp, k.MoveDown, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.EditDate, k.Filter, k.Preview, k.OpenEditor, k.TemplateUse, k.TemplateCreate, k.SwitchField},
+		{k.Up, k.Down, k.MoveUp, k.MoveDown, k.Add, k.AddDated, k.Toggle, k.Delete, k.Edit, k.Filter, k.Preview, k.OpenEditor, k.TemplateUse, k.TemplateCreate, k.SwitchField},
 	}
 }
 
@@ -75,10 +75,6 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("e"),
 			key.WithHelp("e", "edit"),
 		),
-		EditDate: key.NewBinding(
-			key.WithKeys("E"),
-			key.WithHelp("E", "edit date"),
-		),
 		Filter: key.NewBinding(
 			key.WithKeys("/"),
 			key.WithHelp("/", "filter"),
@@ -110,6 +106,10 @@ func DefaultKeyMap() KeyMap {
 		SwitchField: key.NewBinding(
 			key.WithKeys("tab"),
 			key.WithHelp("tab", "switch field"),
+		),
+		Save: key.NewBinding(
+			key.WithKeys("ctrl+d"),
+			key.WithHelp("ctrl+d", "save"),
 		),
 	}
 }

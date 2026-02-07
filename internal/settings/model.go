@@ -185,9 +185,6 @@ func (m Model) View() string {
 		}
 	}
 
-	b.WriteString("\n")
-	b.WriteString(m.styles.Hint.Render("  enter save  |  esc cancel  |  <-/-> change value"))
-
 	content := b.String()
 
 	// Center vertically if we have height information.
