@@ -191,8 +191,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 18-01-PLAN.md — Full-pane edit infrastructure and single-field views
-- [ ] 18-02-PLAN.md — Simultaneous two-field dated-add flow
+- [x] 18-01: Full-pane edit infrastructure and single-field views
+- [x] 18-02: Simultaneous two-field dated-add flow
 
 #### Phase 19: Pre-Built Templates
 **Goal**: Users have useful markdown templates available from first launch without needing to create their own
@@ -229,5 +229,5 @@ Plans:
 | 15. Markdown Templates | v1.4 | 3/3 | Complete | 2026-02-06 |
 | 16. External Editor | v1.4 | 1/1 | Complete | 2026-02-06 |
 | 17. Visual Polish & Help | v1.5 | 2/2 | Complete | 2026-02-07 |
-| 18. Full-Pane Editing | v1.5 | 0/2 | Planned | - |
+| 18. Full-Pane Editing | v1.5 | 2/2 | Complete | 2026-02-07 |
 | 19. Pre-Built Templates | v1.5 | 0/? | Not started | - |
