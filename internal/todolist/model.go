@@ -158,7 +158,10 @@ func (m Model) IsInputting() bool {
 func (m Model) HelpBindings() []key.Binding {
 	switch m.mode {
 	case inputMode:
-		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
+		if m.editField == 2 || m.editField == 3 {
+			return []key.Binding{m.keys.SwitchField, m.keys.Save, m.keys.Cancel}
+		}
+		return []key.Binding{m.keys.SwitchField, m.keys.Confirm, m.keys.Cancel}
 	case editMode:
 		if m.editField == 2 {
 			return []key.Binding{m.keys.SwitchField, m.keys.Save, m.keys.Cancel}
@@ -178,7 +181,10 @@ func (m Model) HelpBindings() []key.Binding {
 func (m Model) AllHelpBindings() []key.Binding {
 	switch m.mode {
 	case inputMode:
-		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
+		if m.editField == 2 || m.editField == 3 {
+			return []key.Binding{m.keys.SwitchField, m.keys.Save, m.keys.Cancel}
+		}
+		return []key.Binding{m.keys.SwitchField, m.keys.Confirm, m.keys.Cancel}
 	case editMode:
 		if m.editField == 2 {
 			return []key.Binding{m.keys.SwitchField, m.keys.Save, m.keys.Cancel}
@@ -834,16 +840,28 @@ func (m Model) editView() string {
 		b.WriteString("\n\n")
 
 	case inputMode:
-		// Single title field for regular add
+		// Four fields: Title, Date, Body, Template
 		b.WriteString(m.styles.FieldLabel.Render("Title"))
 		b.WriteString("\n")
 		b.WriteString(m.input.View())
 		b.WriteString("\n\n")
+		b.WriteString(m.styles.FieldLabel.Render("Date"))
+		b.WriteString("\n")
+		b.WriteString(m.dateInput.View())
+		b.WriteString("\n\n")
+		b.WriteString(m.styles.FieldLabel.Render("Body"))
+		b.WriteString("\n")
+		b.WriteString(m.bodyTextarea.View())
+		b.WriteString("\n\n")
+		b.WriteString(m.styles.FieldLabel.Render("Template"))
+		b.WriteString("\n")
+		b.WriteString(m.templateInput.View())
+		b.WriteString("\n")
 	}
 
 	// Vertical centering (skip for modes with textareas)
 	content := b.String()
-	if m.height > 0 && m.mode != editMode && m.mode != templateContentMode {
+	if m.height > 0 && m.mode != editMode && m.mode != inputMode && m.mode != templateContentMode {
 		lines := strings.Count(content, "\n") + 1
 		topPad := (m.height - lines) / 3
 		if topPad > 0 {
