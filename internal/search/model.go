@@ -2,6 +2,7 @@ package search
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/antti/todo-calendar/internal/config"
+	"github.com/antti/todo-calendar/internal/fuzzy"
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
 )
@@ -30,6 +32,7 @@ type Model struct {
 	results    []store.Todo
 	cursor     int
 	store      store.TodoStore
+	allTodos   []store.Todo
 	dateLayout string
 	width      int
 	height     int
@@ -47,6 +50,7 @@ func New(s store.TodoStore, t theme.Theme, cfg config.Config) Model {
 	return Model{
 		input:      ti,
 		store:      s,
+		allTodos:   s.Todos(),
 		dateLayout: cfg.DateLayout(),
 		keys:       DefaultKeyMap(),
 		styles:     NewStyles(t),
@@ -114,7 +118,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	// Forward to textinput and update results
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(msg)
-	m.results = m.store.SearchTodos(m.input.Value())
+	m.results = m.fuzzySearch(m.input.Value())
 	// Clamp cursor
 	if m.cursor >= len(m.results) {
 		m.cursor = len(m.results) - 1
@@ -193,6 +197,38 @@ func (m Model) View() string {
 	}
 
 	return content
+}
+
+// fuzzySearch filters allTodos by fuzzy match and sorts by score (best first).
+func (m Model) fuzzySearch(query string) []store.Todo {
+	if query == "" {
+		return nil
+	}
+
+	type scored struct {
+		todo  store.Todo
+		score int
+	}
+
+	var matches []scored
+	for _, t := range m.allTodos {
+		if matched, score := fuzzy.Match(query, t.Text); matched {
+			matches = append(matches, scored{todo: t, score: score})
+		}
+	}
+
+	sort.Slice(matches, func(i, j int) bool {
+		if matches[i].score != matches[j].score {
+			return matches[i].score > matches[j].score
+		}
+		return matches[i].todo.Date > matches[j].todo.Date
+	})
+
+	results := make([]store.Todo, len(matches))
+	for i, m := range matches {
+		results[i] = m.todo
+	}
+	return results
 }
 
 // HelpBindings returns search-specific key bindings for help bar display.

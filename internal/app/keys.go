@@ -40,12 +40,12 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("s", "settings"),
 		),
 		Search: key.NewBinding(
-			key.WithKeys("ctrl+f"),
-			key.WithHelp("C-f", "search"),
+			key.WithKeys("/"),
+			key.WithHelp("/", "search"),
 		),
 		Templates: key.NewBinding(
-			key.WithKeys("M"),
-			key.WithHelp("M", "templates"),
+			key.WithKeys("t"),
+			key.WithHelp("t", "templates"),
 		),
 		Help: key.NewBinding(
 			key.WithKeys("?"),

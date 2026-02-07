@@ -21,6 +21,7 @@ type viewMode int
 
 const (
 	listMode              viewMode = iota
+	createMode
 	renameMode
 	scheduleMode
 	placeholderDefaultsMode
@@ -109,6 +110,8 @@ func (m *Model) SetTheme(t theme.Theme) {
 // HelpBindings returns overlay-specific key bindings for help bar display.
 func (m Model) HelpBindings() []key.Binding {
 	switch m.mode {
+	case createMode:
+		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	case renameMode:
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	case scheduleMode:
@@ -120,7 +123,7 @@ func (m Model) HelpBindings() []key.Binding {
 	case placeholderDefaultsMode:
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	default:
-		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Delete, m.keys.Rename, m.keys.Edit, m.keys.Schedule, m.keys.Cancel}
+		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Create, m.keys.Delete, m.keys.Rename, m.keys.Edit, m.keys.Schedule, m.keys.Cancel}
 	}
 }
 
@@ -156,6 +159,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		switch m.mode {
 		case listMode:
 			return m.updateListMode(msg)
+		case createMode:
+			return m.updateCreateMode(msg)
 		case renameMode:
 			return m.updateRenameMode(msg)
 		case scheduleMode:
@@ -187,6 +192,14 @@ func (m Model) updateListMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if m.cursor > 0 {
 			m.cursor--
 		}
+		return m, nil
+
+	case key.Matches(msg, m.keys.Create):
+		m.mode = createMode
+		m.input.SetValue("")
+		m.input.Placeholder = "Template name"
+		m.input.Focus()
+		m.err = ""
 		return m, nil
 
 	case key.Matches(msg, m.keys.Delete):
@@ -265,6 +278,39 @@ func (m Model) updateListMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// updateCreateMode handles key messages in create mode.
+func (m Model) updateCreateMode(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.Cancel):
+		m.mode = listMode
+		m.err = ""
+		m.input.Blur()
+		return m, nil
+
+	case key.Matches(msg, m.keys.Confirm):
+		name := strings.TrimSpace(m.input.Value())
+		if name == "" {
+			return m, nil
+		}
+
+		t, err := m.store.AddTemplate(name, "")
+		if err != nil {
+			m.err = "Name already exists"
+			return m, nil
+		}
+
+		m.mode = listMode
+		m.err = ""
+		m.input.Blur()
+		m.RefreshTemplates()
+		return m, func() tea.Msg { return EditTemplateMsg{Template: t} }
+	}
+
+	var cmd tea.Cmd
+	m.input, cmd = m.input.Update(msg)
+	return m, cmd
 }
 
 // updateRenameMode handles key messages in rename mode.
@@ -511,8 +557,19 @@ func (m Model) View() string {
 	b.WriteString(title)
 	b.WriteString("\n\n")
 
-	if len(m.templates) == 0 {
-		b.WriteString(m.styles.Empty.Render("(no templates)"))
+	if len(m.templates) == 0 && m.mode != createMode {
+		b.WriteString(m.styles.Empty.Render("(no templates — press 'a' to create)"))
+		return m.verticalCenter(b.String())
+	}
+	if len(m.templates) == 0 && m.mode == createMode {
+		b.WriteString(m.styles.SchedulePrompt.Render("New template:"))
+		b.WriteString("\n")
+		b.WriteString(m.input.View())
+		b.WriteString("\n")
+		if m.err != "" {
+			b.WriteString(m.styles.Error.Render("  " + m.err))
+			b.WriteString("\n")
+		}
 		return m.verticalCenter(b.String())
 	}
 
@@ -546,6 +603,14 @@ func (m Model) View() string {
 			line := "  " + t.Name
 			b.WriteString(m.styles.TemplateName.Render(line) + styledSuffix)
 		}
+		b.WriteString("\n")
+	}
+
+	if m.mode == createMode {
+		b.WriteString("\n")
+		b.WriteString(m.styles.SchedulePrompt.Render("New template:"))
+		b.WriteString("\n")
+		b.WriteString(m.input.View())
 		b.WriteString("\n")
 	}
 
