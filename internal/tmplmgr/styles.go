@@ -12,9 +12,10 @@ type Styles struct {
 	SelectedName lipgloss.Style
 	Separator    lipgloss.Style
 	Content      lipgloss.Style
-	Hint         lipgloss.Style
-	Error        lipgloss.Style
-	Empty        lipgloss.Style
+	Hint            lipgloss.Style
+	Error           lipgloss.Style
+	Empty           lipgloss.Style
+	ScheduleSuffix  lipgloss.Style
 }
 
 // NewStyles builds template management styles from the given theme.
@@ -26,7 +27,8 @@ func NewStyles(t theme.Theme) Styles {
 		Separator:    lipgloss.NewStyle().Foreground(t.MutedFg),
 		Content:      lipgloss.NewStyle().Foreground(t.NormalFg),
 		Hint:         lipgloss.NewStyle().Foreground(t.MutedFg),
-		Error:        lipgloss.NewStyle().Foreground(t.HolidayFg),
-		Empty:        lipgloss.NewStyle().Foreground(t.MutedFg),
+		Error:           lipgloss.NewStyle().Foreground(t.HolidayFg),
+		Empty:           lipgloss.NewStyle().Foreground(t.MutedFg),
+		ScheduleSuffix:  lipgloss.NewStyle().Foreground(t.MutedFg),
 	}
 }
