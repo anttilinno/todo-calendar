@@ -29,10 +29,10 @@ Requirements for UX Polish milestone. Each maps to roadmap phases.
 
 ### Pre-Built Templates
 
-- [ ] **TMPL-01**: App ships with 3-4 general templates (e.g., meeting notes, checklist, daily plan)
-- [ ] **TMPL-02**: App ships with 3-4 dev templates (e.g., bug report, feature spec, PR checklist)
-- [ ] **TMPL-03**: Pre-built templates are available on first launch (seeded into DB)
-- [ ] **TMPL-04**: User can delete pre-built templates (not forced)
+- [x] **TMPL-01**: App ships with 3-4 general templates (e.g., meeting notes, checklist, daily plan)
+- [x] **TMPL-02**: App ships with 3-4 dev templates (e.g., bug report, feature spec, PR checklist)
+- [x] **TMPL-03**: Pre-built templates are available on first launch (seeded into DB)
+- [x] **TMPL-04**: User can delete pre-built templates (not forced)
 
 ## v2 Candidates
 
@@ -62,10 +62,10 @@ Requirements for UX Polish milestone. Each maps to roadmap phases.
 | HELP-01 | Phase 17 | Complete |
 | HELP-02 | Phase 17 | Complete |
 | HELP-03 | Phase 17 | Complete |
-| TMPL-01 | Phase 19 | Pending |
-| TMPL-02 | Phase 19 | Pending |
-| TMPL-03 | Phase 19 | Pending |
-| TMPL-04 | Phase 19 | Pending |
+| TMPL-01 | Phase 19 | Complete |
+| TMPL-02 | Phase 19 | Complete |
+| TMPL-03 | Phase 19 | Complete |
+| TMPL-04 | Phase 19 | Complete |
 
 **Coverage:**
 - v1.5 requirements: 15 total
@@ -74,4 +74,4 @@ Requirements for UX Polish milestone. Each maps to roadmap phases.
 
 ---
 *Requirements defined: 2026-02-07*
-*Last updated: 2026-02-07 after Phase 18 completion*
+*Last updated: 2026-02-07 after Phase 19 completion*
