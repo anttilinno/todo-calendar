@@ -280,6 +280,31 @@ func (s *SQLiteStore) IncompleteTodosPerDay(year int, month time.Month) map[int]
 	return counts
 }
 
+// TotalTodosPerDay returns a map from day-of-month to count of all todos
+// (both done and not done) for the specified year and month.
+func (s *SQLiteStore) TotalTodosPerDay(year int, month time.Month) map[int]int {
+	start := fmt.Sprintf("%04d-%02d-01", year, month)
+	end := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Format(dateFormat)
+
+	rows, err := s.db.Query(
+		"SELECT CAST(substr(date, 9, 2) AS INTEGER) AS day, COUNT(*) FROM todos WHERE date >= ? AND date <= ? GROUP BY day",
+		start, end,
+	)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	counts := make(map[int]int)
+	for rows.Next() {
+		var day, count int
+		if err := rows.Scan(&day, &count); err == nil {
+			counts[day] = count
+		}
+	}
+	return counts
+}
+
 // TodoCountsByMonth returns pending and completed counts per month across
 // all dated todos, sorted chronologically.
 func (s *SQLiteStore) TodoCountsByMonth() []MonthCount {

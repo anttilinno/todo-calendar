@@ -22,6 +22,7 @@ type TodoStore interface {
 	TodosForMonth(year int, month time.Month) []Todo
 	FloatingTodos() []Todo
 	IncompleteTodosPerDay(year int, month time.Month) map[int]int
+	TotalTodosPerDay(year int, month time.Month) map[int]int
 	TodoCountsByMonth() []MonthCount
 	FloatingTodoCounts() FloatingCount
 	UpdateBody(id int, body string)
@@ -248,6 +249,23 @@ func (s *Store) IncompleteTodosPerDay(year int, month time.Month) map[int]int {
 	counts := make(map[int]int)
 	for _, t := range s.data.Todos {
 		if t.Done || !t.InMonth(year, month) {
+			continue
+		}
+		d, err := time.Parse(dateFormat, t.Date)
+		if err != nil {
+			continue
+		}
+		counts[d.Day()]++
+	}
+	return counts
+}
+
+// TotalTodosPerDay returns a map from day-of-month to count of all todos
+// (both done and not done) for the specified year and month.
+func (s *Store) TotalTodosPerDay(year int, month time.Month) map[int]int {
+	counts := make(map[int]int)
+	for _, t := range s.data.Todos {
+		if !t.InMonth(year, month) {
 			continue
 		}
 		d, err := time.Parse(dateFormat, t.Date)

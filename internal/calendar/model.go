@@ -44,6 +44,7 @@ type Model struct {
 	today       time.Time
 	holidays    map[int]bool
 	indicators  map[int]int
+	totals      map[int]int
 	provider    *holidays.Provider
 	store       store.TodoStore
 	keys        KeyMap
@@ -65,6 +66,7 @@ func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t the
 		today:       now,
 		holidays:    provider.HolidaysInMonth(y, m),
 		indicators:  s.IncompleteTodosPerDay(y, m),
+		totals:      s.TotalTodosPerDay(y, m),
 		provider:    provider,
 		store:       s,
 		keys:        DefaultKeyMap(),
@@ -95,6 +97,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 			m.holidays = m.provider.HolidaysInMonth(m.year, m.month)
 			m.indicators = m.store.IncompleteTodosPerDay(m.year, m.month)
+			m.totals = m.store.TotalTodosPerDay(m.year, m.month)
 
 		case key.Matches(msg, m.keys.PrevMonth):
 			if m.viewMode == WeekView {
@@ -110,6 +113,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 			m.holidays = m.provider.HolidaysInMonth(m.year, m.month)
 			m.indicators = m.store.IncompleteTodosPerDay(m.year, m.month)
+			m.totals = m.store.TotalTodosPerDay(m.year, m.month)
 
 		case key.Matches(msg, m.keys.NextMonth):
 			if m.viewMode == WeekView {
@@ -125,6 +129,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 			m.holidays = m.provider.HolidaysInMonth(m.year, m.month)
 			m.indicators = m.store.IncompleteTodosPerDay(m.year, m.month)
+			m.totals = m.store.TotalTodosPerDay(m.year, m.month)
 		}
 
 	case tea.WindowSizeMsg:
@@ -148,7 +153,7 @@ func (m Model) View() string {
 		todayDay = now.Day()
 	}
 
-	grid := RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.styles)
+	grid := RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.totals, m.styles)
 	return grid + m.renderOverview()
 }
 
@@ -200,6 +205,7 @@ func (m Model) renderOverview() string {
 // Call this after todo mutations to keep the calendar display in sync.
 func (m *Model) RefreshIndicators() {
 	m.indicators = m.store.IncompleteTodosPerDay(m.year, m.month)
+	m.totals = m.store.TotalTodosPerDay(m.year, m.month)
 }
 
 // SetFocused sets whether this pane is focused.
@@ -253,4 +259,5 @@ func (m *Model) SetYearMonth(year int, month time.Month) {
 	m.month = month
 	m.holidays = m.provider.HolidaysInMonth(year, month)
 	m.indicators = m.store.IncompleteTodosPerDay(year, month)
+	m.totals = m.store.TotalTodosPerDay(year, month)
 }
