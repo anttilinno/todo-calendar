@@ -9,9 +9,9 @@ Requirements for UX Polish milestone. Each maps to roadmap phases.
 
 ### Visual Overhaul
 
-- [ ] **VIS-01**: Todo items have increased vertical spacing between them for easier scanning
-- [ ] **VIS-02**: Section headers (month name, "Floating") are visually distinct from items (separator line, padding, or stronger styling)
-- [ ] **VIS-03**: Dates and status indicators have clear visual differentiation from todo text (color, alignment, or positioning)
+- [x] **VIS-01**: Todo items have increased vertical spacing between them for easier scanning
+- [x] **VIS-02**: Section headers (month name, "Floating") are visually distinct from items (separator line, padding, or stronger styling)
+- [x] **VIS-03**: Dates and status indicators have clear visual differentiation from todo text (color, alignment, or positioning)
 
 ### Full-Pane Editing
 
@@ -23,9 +23,9 @@ Requirements for UX Polish milestone. Each maps to roadmap phases.
 
 ### Mode-Aware Help Bar
 
-- [ ] **HELP-01**: Normal mode shows max 5 most-used keys (e.g., a/add, x/done, d/delete, e/edit, ?/more)
-- [ ] **HELP-02**: Input modes show only Enter/Esc
-- [ ] **HELP-03**: Expanded help (via ?) shows full keybinding list
+- [x] **HELP-01**: Normal mode shows max 5 most-used keys (e.g., a/add, x/done, d/delete, e/edit, ?/more)
+- [x] **HELP-02**: Input modes show only Enter/Esc
+- [x] **HELP-03**: Expanded help (via ?) shows full keybinding list
 
 ### Pre-Built Templates
 
@@ -51,17 +51,17 @@ Requirements for UX Polish milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VIS-01 | Phase 17 | Pending |
-| VIS-02 | Phase 17 | Pending |
-| VIS-03 | Phase 17 | Pending |
+| VIS-01 | Phase 17 | Complete |
+| VIS-02 | Phase 17 | Complete |
+| VIS-03 | Phase 17 | Complete |
 | EDIT-01 | Phase 18 | Pending |
 | EDIT-02 | Phase 18 | Pending |
 | EDIT-03 | Phase 18 | Pending |
 | EDIT-04 | Phase 18 | Pending |
 | EDIT-05 | Phase 18 | Pending |
-| HELP-01 | Phase 17 | Pending |
-| HELP-02 | Phase 17 | Pending |
-| HELP-03 | Phase 17 | Pending |
+| HELP-01 | Phase 17 | Complete |
+| HELP-02 | Phase 17 | Complete |
+| HELP-03 | Phase 17 | Complete |
 | TMPL-01 | Phase 19 | Pending |
 | TMPL-02 | Phase 19 | Pending |
 | TMPL-03 | Phase 19 | Pending |
@@ -74,4 +74,4 @@ Requirements for UX Polish milestone. Each maps to roadmap phases.
 
 ---
 *Requirements defined: 2026-02-07*
-*Last updated: 2026-02-07 after roadmap creation*
+*Last updated: 2026-02-07 after Phase 17 completion*
