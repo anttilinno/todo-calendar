@@ -7,7 +7,7 @@
 - ✅ **v1.2 Reorder & Settings** - Phases 7-9 (shipped 2026-02-06)
 - ✅ **v1.3 Views & Usability** - Phases 10-13 (shipped 2026-02-06)
 - ✅ **v1.4 Data & Editing** - Phases 14-16 (shipped 2026-02-06)
-- 🚧 **v1.5 UX Polish** - Phases 17-19 (in progress)
+- ✅ **v1.5 UX Polish** - Phases 17-19 (shipped 2026-02-07)
 
 ## Phases
 
@@ -159,54 +159,33 @@ Plans:
 
 </details>
 
-### 🚧 v1.5 UX Polish (In Progress)
+<details>
+<summary>✅ v1.5 UX Polish (Phases 17-19) - SHIPPED 2026-02-07</summary>
 
-**Milestone Goal:** Improve visual clarity, input ergonomics, help discoverability, and out-of-box template experience
-
-#### Phase 17: Visual Polish & Help
+### Phase 17: Visual Polish & Help
 **Goal**: The todo pane is easy to scan and the help bar shows only what matters for the current mode
-**Depends on**: Phase 16 (builds on existing todolist and help rendering)
-**Requirements**: VIS-01, VIS-02, VIS-03, HELP-01, HELP-02, HELP-03
-**Success Criteria** (what must be TRUE):
-  1. Todo items have visible breathing room -- vertical spacing separates individual items
-  2. Section headers (month name, "Floating") stand apart from todo items through separators, padding, or stronger styling
-  3. Dates and completion status are visually distinct from todo text (not just inline plaintext)
-  4. Normal mode help bar shows at most 5 key bindings instead of the full list
-  5. Pressing ? in normal mode reveals the complete keybinding list; input modes show only Enter/Esc
 **Plans**: 2 plans
 
 Plans:
 - [x] 17-01: Todo pane visual polish (spacing, separators, styled checkboxes)
 - [x] 17-02: Mode-aware help bar with ? toggle and dynamic height
 
-#### Phase 18: Full-Pane Editing
+### Phase 18: Full-Pane Editing
 **Goal**: Adding and editing todos uses a clean, focused full-pane layout instead of cramped inline inputs
-**Depends on**: Phase 17 (VIS layout settled before EDIT takes over the pane)
-**Requirements**: EDIT-01, EDIT-02, EDIT-03, EDIT-04, EDIT-05
-**Success Criteria** (what must be TRUE):
-  1. Pressing "a" to add a todo replaces the todo list with a full-pane input showing a prominent title field
-  2. Adding a dated todo shows both title and date fields with clear labels in the full pane
-  3. Editing an existing todo (title or date) uses the same full-pane layout with the current value pre-filled
-  4. The full-pane edit view shows only minimal contextual help (Enter to confirm, Esc to cancel, Tab to switch fields)
 **Plans**: 2 plans
 
 Plans:
 - [x] 18-01: Full-pane edit infrastructure and single-field views
 - [x] 18-02: Simultaneous two-field dated-add flow
 
-#### Phase 19: Pre-Built Templates
+### Phase 19: Pre-Built Templates
 **Goal**: Users have useful markdown templates available from first launch without needing to create their own
-**Depends on**: Phase 16 (uses existing template infrastructure)
-**Requirements**: TMPL-01, TMPL-02, TMPL-03, TMPL-04
-**Success Criteria** (what must be TRUE):
-  1. First launch (empty DB) seeds 6-8 templates covering general and dev use cases
-  2. General templates include practical items like meeting notes, checklist, and daily plan
-  3. Dev templates include practical items like bug report, feature spec, and PR checklist
-  4. Users can delete any pre-built template -- none are locked or force-retained
 **Plans**: 1 plan
 
 Plans:
 - [x] 19-01: Seed 7 pre-built templates via version-3 migration
+
+</details>
 
 ## Progress
 

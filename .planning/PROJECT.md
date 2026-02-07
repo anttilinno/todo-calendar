@@ -45,14 +45,14 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - Markdown todo bodies with glamour-rendered preview overlay — v1.4
 - Reusable markdown templates with {{.Variable}} placeholder prompting — v1.4
 - External editor integration ($VISUAL/$EDITOR/vi fallback) — v1.4
+- Todo pane visual overhaul with styled checkboxes, section separators, and vertical spacing — v1.5
+- Full-pane editing for add/edit todo with dual-field dated-add and Tab switching — v1.5
+- Mode-aware help bar showing 5 keys in normal mode, full list via ? toggle — v1.5
+- 7 pre-built markdown templates (3 general + 4 dev) seeded on first launch — v1.5
 
 ### Active
 
-**v1.5 UX Polish:**
-- [ ] Todo pane visual overhaul — better spacing and visual hierarchy between sections, dates, status
-- [ ] Full-pane editing — add/edit todo takes over the right pane with clean layout and minimal help
-- [ ] Mode-aware help bar — show only 3-5 relevant keys per mode instead of all 15
-- [ ] Pre-built templates — ship general purpose + dev-focused templates by default
+(None — planning next milestone)
 
 ### v2 Candidates
 
@@ -74,7 +74,7 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - **Holidays:** rickar/cal/v2 with 11-country registry (de, dk, ee, es, fi, fr, gb, it, no, se, us)
 - **Config:** TOML at ~/.config/todo-calendar/config.toml (BurntSushi/toml v1.6.0)
 - **Storage:** SQLite at ~/.config/todo-calendar/todos.db (modernc.org/sqlite, pure Go, WAL mode)
-- **Codebase:** 4,670 lines of Go across ~30 source files
+- **Codebase:** 5,209 lines of Go across 33 source files
 - **Architecture:** Elm Architecture (Bubble Tea), pure rendering functions, constructor DI, TodoStore interface
 
 ## Constraints
@@ -117,6 +117,10 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 | Glamour for markdown rendering | Charmbracelet ecosystem, theme-matched light/dark styles | ✓ Good — clean terminal markdown |
 | editing bool flag + View() empty guard | Prevents Bubble Tea alt-screen teardown leak to scrollback | ✓ Good — clean editor lifecycle |
 | $VISUAL → $EDITOR → vi fallback | POSIX standard editor resolution chain | ✓ Good — works on all Unix systems |
+| Styled checkboxes independent from text | Accent [ ], green [x], strikethrough only on text | ✓ Good — clean visual separation |
+| Mode-branched View() with editView()/normalView() | Clean separation of edit vs list rendering | ✓ Good — each mode fully owns the pane |
+| SetSize(w,h) replacing WindowSizeMsg | Todolist gets dimensions from parent, not global messages | ✓ Good — cleaner ownership |
+| Migration-based template seeding (PRAGMA user_version) | Run-once, idempotent, no runtime checks | ✓ Good — follows existing migration pattern |
 
 ## Known Tech Debt
 
@@ -124,4 +128,4 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - JSON Store template methods are stubs (return error/nil/no-op)
 
 ---
-*Last updated: 2026-02-07 after v1.5 milestone start*
+*Last updated: 2026-02-07 after v1.5 milestone*
