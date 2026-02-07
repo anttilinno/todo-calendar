@@ -15,11 +15,11 @@ Requirements for UX Polish milestone. Each maps to roadmap phases.
 
 ### Full-Pane Editing
 
-- [ ] **EDIT-01**: Adding a todo (title input) takes over the full right pane with centered/prominent input field
-- [ ] **EDIT-02**: Adding a dated todo (title + date input) uses the full right pane with clear field labels
-- [ ] **EDIT-03**: Editing a todo title uses the full right pane layout
-- [ ] **EDIT-04**: Editing a todo date uses the full right pane layout
-- [ ] **EDIT-05**: Full-pane edit mode shows only minimal help (Enter/Esc/Tab)
+- [x] **EDIT-01**: Adding a todo (title input) takes over the full right pane with centered/prominent input field
+- [x] **EDIT-02**: Adding a dated todo (title + date input) uses the full right pane with clear field labels
+- [x] **EDIT-03**: Editing a todo title uses the full right pane layout
+- [x] **EDIT-04**: Editing a todo date uses the full right pane layout
+- [x] **EDIT-05**: Full-pane edit mode shows only minimal help (Enter/Esc/Tab)
 
 ### Mode-Aware Help Bar
 
@@ -54,11 +54,11 @@ Requirements for UX Polish milestone. Each maps to roadmap phases.
 | VIS-01 | Phase 17 | Complete |
 | VIS-02 | Phase 17 | Complete |
 | VIS-03 | Phase 17 | Complete |
-| EDIT-01 | Phase 18 | Pending |
-| EDIT-02 | Phase 18 | Pending |
-| EDIT-03 | Phase 18 | Pending |
-| EDIT-04 | Phase 18 | Pending |
-| EDIT-05 | Phase 18 | Pending |
+| EDIT-01 | Phase 18 | Complete |
+| EDIT-02 | Phase 18 | Complete |
+| EDIT-03 | Phase 18 | Complete |
+| EDIT-04 | Phase 18 | Complete |
+| EDIT-05 | Phase 18 | Complete |
 | HELP-01 | Phase 17 | Complete |
 | HELP-02 | Phase 17 | Complete |
 | HELP-03 | Phase 17 | Complete |
@@ -74,4 +74,4 @@ Requirements for UX Polish milestone. Each maps to roadmap phases.
 
 ---
 *Requirements defined: 2026-02-07*
-*Last updated: 2026-02-07 after Phase 17 completion*
+*Last updated: 2026-02-07 after Phase 18 completion*
