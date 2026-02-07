@@ -1063,6 +1063,11 @@ func (m Model) renderTodo(b *strings.Builder, t *store.Todo, selected bool) {
 		b.WriteString(" " + m.styles.BodyIndicator.Render("[+]"))
 	}
 
+	// Recurring indicator (after body indicator, before date)
+	if t.ScheduleID > 0 {
+		b.WriteString(" " + m.styles.RecurringIndicator.Render("[R]"))
+	}
+
 	// Date (after text, not affected by completed styling)
 	if t.HasDate() {
 		b.WriteString(" " + m.styles.Date.Render(config.FormatDate(t.Date, m.dateLayout)))

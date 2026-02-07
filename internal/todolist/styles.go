@@ -12,8 +12,9 @@ type Styles struct {
 	Cursor        lipgloss.Style
 	Date          lipgloss.Style
 	Empty         lipgloss.Style
-	BodyIndicator lipgloss.Style
-	Separator     lipgloss.Style
+	BodyIndicator      lipgloss.Style
+	RecurringIndicator lipgloss.Style
+	Separator          lipgloss.Style
 	Checkbox      lipgloss.Style
 	CheckboxDone  lipgloss.Style
 	EditTitle     lipgloss.Style
@@ -29,8 +30,9 @@ func NewStyles(t theme.Theme) Styles {
 		Cursor:        lipgloss.NewStyle().Foreground(t.AccentFg),
 		Date:          lipgloss.NewStyle().Foreground(t.MutedFg),
 		Empty:         lipgloss.NewStyle().Foreground(t.EmptyFg),
-		BodyIndicator: lipgloss.NewStyle().Foreground(t.MutedFg),
-		Separator:     lipgloss.NewStyle().Foreground(t.MutedFg),
+		BodyIndicator:      lipgloss.NewStyle().Foreground(t.MutedFg),
+		RecurringIndicator: lipgloss.NewStyle().Foreground(t.MutedFg),
+		Separator:          lipgloss.NewStyle().Foreground(t.MutedFg),
 		Checkbox:      lipgloss.NewStyle().Foreground(t.AccentFg),
 		CheckboxDone:  lipgloss.NewStyle().Foreground(t.CompletedCountFg),
 		EditTitle:     lipgloss.NewStyle().Bold(true).Foreground(t.AccentFg),
