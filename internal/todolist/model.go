@@ -970,7 +970,8 @@ func (m Model) normalView() string {
 			}
 			b.WriteString(m.styles.SectionHeader.Render(item.label))
 			b.WriteString("\n")
-			b.WriteString(m.styles.Separator.Render("──────────"))
+			sep := strings.Repeat("─", len(item.label))
+			b.WriteString(m.styles.Separator.Render(sep))
 			b.WriteString("\n")
 
 		case emptyItem:
@@ -981,7 +982,6 @@ func (m Model) normalView() string {
 			isSelected := selectableIdx < len(selectable) && selectableIdx == m.cursor && m.focused
 			m.renderTodo(&b, item.todo, isSelected)
 			selectableIdx++
-			b.WriteString("\n") // VIS-01: breathing room between items
 		}
 	}
 
