@@ -238,12 +238,13 @@ Plans:
   5. When scheduling a template with placeholders, the user is prompted to fill default values once; auto-created todos use these stored defaults
 **New/Modified files**: NEW internal/recurring/generate.go + generate_test.go, MOD main.go (AutoCreate call), MOD internal/tmplmgr/model.go (schedule modes), MOD internal/todolist/model.go ([R] indicator)
 **Risk**: HIGH -- integrates phases 20 and 21, schedule picker adds multiple sub-modes, placeholder defaults need a prompting sub-flow
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
 - [ ] 22-01-PLAN.md -- AutoCreate engine TDD (generate scheduled todos with dedup and placeholder fill)
 - [ ] 22-02-PLAN.md -- Visual indicators ([R] on todos, schedule suffix on templates)
-- [ ] 22-03-PLAN.md -- Schedule picker UI with cadence cycling, weekday toggling, and placeholder defaults
+- [ ] 22-03-PLAN.md -- Schedule picker UI with cadence cycling and weekday/monthly input
+- [ ] 22-04-PLAN.md -- Placeholder defaults prompting at schedule creation
 
 ## Requirement Coverage
 
@@ -299,4 +300,4 @@ Strict chain: each phase depends on the previous. Phase 20 is standalone value (
 | 19. Pre-Built Templates | v1.5 | 1/1 | Complete | 2026-02-07 |
 | 20. Template Management Overlay | v1.6 | 2/2 | Complete | 2026-02-07 |
 | 21. Schedule Schema & CRUD | v1.6 | 2/2 | Complete | 2026-02-07 |
-| 22. Auto-Creation & Schedule UI | v1.6 | 0/3 | Not started | - |
+| 22. Auto-Creation & Schedule UI | v1.6 | 0/4 | Not started | - |
