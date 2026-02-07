@@ -43,12 +43,6 @@ type Schedule struct {
 	CreatedAt          string
 }
 
-// Data is the top-level JSON envelope persisted to disk.
-type Data struct {
-	NextID int    `json:"next_id"`
-	Todos  []Todo `json:"todos"`
-}
-
 // HasDate reports whether the todo has a date assigned.
 func (t Todo) HasDate() bool {
 	return t.Date != ""
