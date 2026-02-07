@@ -1,12 +1,14 @@
 package tmplmgr
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/antti/todo-calendar/internal/recurring"
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
 )
@@ -234,17 +236,23 @@ func (m Model) View() string {
 
 	for i := 0; i < visible; i++ {
 		t := m.templates[i]
+		suffix := m.scheduleLabel(t.ID)
+		styledSuffix := ""
+		if suffix != "" {
+			styledSuffix = " " + m.styles.ScheduleSuffix.Render(suffix)
+		}
+
 		if i == m.cursor {
 			if m.mode == renameMode {
 				b.WriteString("> ")
 				b.WriteString(m.input.View())
 			} else {
 				line := "> " + t.Name
-				b.WriteString(m.styles.SelectedName.Render(line))
+				b.WriteString(m.styles.SelectedName.Render(line) + styledSuffix)
 			}
 		} else {
 			line := "  " + t.Name
-			b.WriteString(m.styles.TemplateName.Render(line))
+			b.WriteString(m.styles.TemplateName.Render(line) + styledSuffix)
 		}
 		b.WriteString("\n")
 	}
@@ -284,6 +292,64 @@ func (m Model) View() string {
 	}
 
 	return m.verticalCenter(b.String())
+}
+
+// scheduleLabel returns a display suffix for the schedule attached to the
+// given template, e.g. "(daily)", "(Mon/Wed/Fri)", "(15th of month)".
+// Returns "" if no schedule is attached.
+func (m Model) scheduleLabel(templateID int) string {
+	schedules := m.store.ListSchedulesForTemplate(templateID)
+	if len(schedules) == 0 {
+		return ""
+	}
+	sched := schedules[0]
+
+	// Build rule string: cadenceType alone or cadenceType:cadenceValue.
+	ruleStr := sched.CadenceType
+	if sched.CadenceValue != "" {
+		ruleStr += ":" + sched.CadenceValue
+	}
+
+	rule, err := recurring.ParseRule(ruleStr)
+	if err != nil {
+		// Fallback: show raw cadence type.
+		return "(" + sched.CadenceType + ")"
+	}
+
+	switch rule.Type {
+	case "daily":
+		return "(daily)"
+	case "weekdays":
+		return "(weekdays)"
+	case "weekly":
+		dayLabels := make([]string, len(rule.Days))
+		for i, d := range rule.Days {
+			// Capitalize first letter: "mon" -> "Mon"
+			dayLabels[i] = strings.ToUpper(d[:1]) + d[1:]
+		}
+		return "(" + strings.Join(dayLabels, "/") + ")"
+	case "monthly":
+		return fmt.Sprintf("(%d%s of month)", rule.DayOfMonth, ordinalSuffix(rule.DayOfMonth))
+	default:
+		return "(" + sched.CadenceType + ")"
+	}
+}
+
+// ordinalSuffix returns the English ordinal suffix for a number (st, nd, rd, th).
+func ordinalSuffix(n int) string {
+	if n >= 11 && n <= 13 {
+		return "th"
+	}
+	switch n % 10 {
+	case 1:
+		return "st"
+	case 2:
+		return "nd"
+	case 3:
+		return "rd"
+	default:
+		return "th"
+	}
 }
 
 // verticalCenter centers the content vertically within the available height.
