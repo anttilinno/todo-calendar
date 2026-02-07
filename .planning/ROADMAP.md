@@ -16,7 +16,7 @@
 - Decimal phases (23.1, 24.1): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 23: Cleanup & Calendar Polish** - Remove dead code, fix today indicator, update docs
-- [ ] **Phase 24: Unified Add Form** - Single `a` key opens full-pane add form with title/date/body fields
+- [x] **Phase 24: Unified Add Form** - Single `a` key opens full-pane add form with title/date/body fields
 - [ ] **Phase 25: Template Picker Integration** - Template field in add form with pre-fill and editing
 
 ## Phase Details
@@ -49,7 +49,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 24-01-PLAN.md -- Extend inputMode to 4-field form with Tab cycling, save logic, view rendering, and help bindings
+- [x] 24-01-PLAN.md -- Extend inputMode to 4-field form with Tab cycling, save logic, view rendering, and help bindings
 
 ### Phase 25: Template Picker Integration
 **Goal**: User can select a template from within the add form to pre-fill title and body, then edit before saving
@@ -72,5 +72,5 @@ Phases execute in numeric order: 23 -> 24 -> 25
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 23. Cleanup & Calendar Polish | v1.7 | 2/2 | ✓ Complete | 2026-02-07 |
-| 24. Unified Add Form | v1.7 | 0/1 | Not started | - |
+| 24. Unified Add Form | v1.7 | 1/1 | ✓ Complete | 2026-02-07 |
 | 25. Template Picker Integration | v1.7 | 0/TBD | Not started | - |
