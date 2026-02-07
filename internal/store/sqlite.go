@@ -106,6 +106,40 @@ func (s *SQLiteStore) migrate() error {
 		}
 	}
 
+	if version < 4 {
+		if _, err := s.db.Exec(`CREATE TABLE IF NOT EXISTS schedules (
+			id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+			template_id          INTEGER NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+			cadence_type         TEXT    NOT NULL,
+			cadence_value        TEXT    NOT NULL DEFAULT '',
+			placeholder_defaults TEXT    NOT NULL DEFAULT '{}',
+			created_at           TEXT    NOT NULL
+		)`); err != nil {
+			return fmt.Errorf("create schedules table: %w", err)
+		}
+		if _, err := s.db.Exec(`CREATE INDEX IF NOT EXISTS idx_schedules_template ON schedules(template_id)`); err != nil {
+			return fmt.Errorf("create schedules template index: %w", err)
+		}
+		if _, err := s.db.Exec(`PRAGMA user_version = 4`); err != nil {
+			return fmt.Errorf("set user_version: %w", err)
+		}
+	}
+
+	if version < 5 {
+		if _, err := s.db.Exec(`ALTER TABLE todos ADD COLUMN schedule_id INTEGER REFERENCES schedules(id) ON DELETE SET NULL`); err != nil {
+			return fmt.Errorf("add schedule_id column: %w", err)
+		}
+		if _, err := s.db.Exec(`ALTER TABLE todos ADD COLUMN schedule_date TEXT`); err != nil {
+			return fmt.Errorf("add schedule_date column: %w", err)
+		}
+		if _, err := s.db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_todos_schedule_dedup ON todos(schedule_id, schedule_date)`); err != nil {
+			return fmt.Errorf("create schedule dedup index: %w", err)
+		}
+		if _, err := s.db.Exec(`PRAGMA user_version = 5`); err != nil {
+			return fmt.Errorf("set user_version: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -115,20 +149,28 @@ func (s *SQLiteStore) Close() error {
 }
 
 // todoColumns is the column list used in SELECT statements.
-const todoColumns = "id, text, body, date, done, created_at, sort_order"
+const todoColumns = "id, text, body, date, done, created_at, sort_order, schedule_id, schedule_date"
 
 // scanTodo scans a single todo row from the given scanner.
 func scanTodo(scanner interface{ Scan(...any) error }) (Todo, error) {
 	var t Todo
 	var date sql.NullString
 	var done int
-	err := scanner.Scan(&t.ID, &t.Text, &t.Body, &date, &done, &t.CreatedAt, &t.SortOrder)
+	var scheduleID sql.NullInt64
+	var scheduleDate sql.NullString
+	err := scanner.Scan(&t.ID, &t.Text, &t.Body, &date, &done, &t.CreatedAt, &t.SortOrder, &scheduleID, &scheduleDate)
 	if err != nil {
 		return Todo{}, err
 	}
 	t.Done = done != 0
 	if date.Valid {
 		t.Date = date.String
+	}
+	if scheduleID.Valid {
+		t.ScheduleID = int(scheduleID.Int64)
+	}
+	if scheduleDate.Valid {
+		t.ScheduleDate = scheduleDate.String
 	}
 	return t, nil
 }
@@ -471,35 +513,134 @@ func (s *SQLiteStore) Save() error {
 	return nil
 }
 
+// scanSchedule scans a single schedule row from the given scanner.
+func scanSchedule(scanner interface{ Scan(...any) error }) (Schedule, error) {
+	var sc Schedule
+	err := scanner.Scan(&sc.ID, &sc.TemplateID, &sc.CadenceType, &sc.CadenceValue, &sc.PlaceholderDefaults, &sc.CreatedAt)
+	if err != nil {
+		return Schedule{}, err
+	}
+	return sc, nil
+}
+
+// scanSchedules scans multiple rows into a slice of Schedule.
+func scanSchedules(rows *sql.Rows) ([]Schedule, error) {
+	var schedules []Schedule
+	for rows.Next() {
+		sc, err := scanSchedule(rows)
+		if err != nil {
+			return nil, err
+		}
+		schedules = append(schedules, sc)
+	}
+	return schedules, rows.Err()
+}
+
 // AddSchedule creates a new schedule linked to a template.
 func (s *SQLiteStore) AddSchedule(templateID int, cadenceType, cadenceValue, placeholderDefaults string) (Schedule, error) {
-	return Schedule{}, fmt.Errorf("not implemented")
+	createdAt := time.Now().Format(dateFormat)
+	result, err := s.db.Exec(
+		"INSERT INTO schedules (template_id, cadence_type, cadence_value, placeholder_defaults, created_at) VALUES (?, ?, ?, ?, ?)",
+		templateID, cadenceType, cadenceValue, placeholderDefaults, createdAt,
+	)
+	if err != nil {
+		return Schedule{}, fmt.Errorf("add schedule: %w", err)
+	}
+	id, _ := result.LastInsertId()
+	return Schedule{
+		ID:                 int(id),
+		TemplateID:         templateID,
+		CadenceType:        cadenceType,
+		CadenceValue:       cadenceValue,
+		PlaceholderDefaults: placeholderDefaults,
+		CreatedAt:          createdAt,
+	}, nil
 }
 
 // ListSchedules returns all schedules ordered by ID.
 func (s *SQLiteStore) ListSchedules() []Schedule {
-	return nil
+	rows, err := s.db.Query("SELECT id, template_id, cadence_type, cadence_value, placeholder_defaults, created_at FROM schedules ORDER BY id")
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	schedules, _ := scanSchedules(rows)
+	return schedules
 }
 
-// ListSchedulesForTemplate returns schedules for a given template.
+// ListSchedulesForTemplate returns schedules for a given template ordered by ID.
 func (s *SQLiteStore) ListSchedulesForTemplate(templateID int) []Schedule {
-	return nil
+	rows, err := s.db.Query(
+		"SELECT id, template_id, cadence_type, cadence_value, placeholder_defaults, created_at FROM schedules WHERE template_id = ? ORDER BY id",
+		templateID,
+	)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	schedules, _ := scanSchedules(rows)
+	return schedules
 }
 
 // DeleteSchedule removes a schedule by ID.
-func (s *SQLiteStore) DeleteSchedule(id int) {}
+func (s *SQLiteStore) DeleteSchedule(id int) {
+	s.db.Exec("DELETE FROM schedules WHERE id = ?", id)
+}
 
 // UpdateSchedule modifies the cadence and placeholder defaults of a schedule.
 func (s *SQLiteStore) UpdateSchedule(id int, cadenceType, cadenceValue, placeholderDefaults string) error {
-	return fmt.Errorf("not implemented")
+	_, err := s.db.Exec(
+		"UPDATE schedules SET cadence_type = ?, cadence_value = ?, placeholder_defaults = ? WHERE id = ?",
+		cadenceType, cadenceValue, placeholderDefaults, id,
+	)
+	if err != nil {
+		return fmt.Errorf("update schedule: %w", err)
+	}
+	return nil
 }
 
 // TodoExistsForSchedule checks if a todo already exists for a schedule and date.
 func (s *SQLiteStore) TodoExistsForSchedule(scheduleID int, date string) bool {
-	return false
+	var exists int
+	err := s.db.QueryRow(
+		"SELECT 1 FROM todos WHERE schedule_id = ? AND schedule_date = ? LIMIT 1",
+		scheduleID, date,
+	).Scan(&exists)
+	return err == nil
 }
 
-// AddScheduledTodo creates a todo linked to a schedule.
+// AddScheduledTodo creates a todo linked to a schedule with schedule_date set.
 func (s *SQLiteStore) AddScheduledTodo(text, date, body string, scheduleID int) Todo {
-	return Todo{}
+	createdAt := time.Now().Format(dateFormat)
+
+	// Compute next sort_order as MAX(sort_order) + 10.
+	var maxOrder int
+	_ = s.db.QueryRow("SELECT COALESCE(MAX(sort_order), 0) FROM todos").Scan(&maxOrder)
+	sortOrder := maxOrder + 10
+
+	var dateVal any
+	if date != "" {
+		dateVal = date
+	}
+
+	result, err := s.db.Exec(
+		"INSERT INTO todos (text, body, date, done, created_at, sort_order, schedule_id, schedule_date) VALUES (?, ?, ?, 0, ?, ?, ?, ?)",
+		text, body, dateVal, createdAt, sortOrder, scheduleID, date,
+	)
+	if err != nil {
+		return Todo{}
+	}
+
+	id, _ := result.LastInsertId()
+	return Todo{
+		ID:           int(id),
+		Text:         text,
+		Body:         body,
+		Date:         date,
+		Done:         false,
+		CreatedAt:    createdAt,
+		SortOrder:    sortOrder,
+		ScheduleID:   scheduleID,
+		ScheduleDate: date,
+	}
 }
