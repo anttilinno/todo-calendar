@@ -13,6 +13,7 @@ import (
 	"github.com/antti/todo-calendar/internal/config"
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
+	"github.com/antti/todo-calendar/internal/tmpl"
 )
 
 // PreviewMsg is emitted when the user wants to preview a todo's body.
@@ -76,6 +77,16 @@ type Model struct {
 	bodyTextarea  textarea.Model  // textarea for body editing in edit mode
 	editField     int             // 0 = title, 1 = date, 2 = body, 3 = template
 	templateInput textinput.Model // placeholder input for template field (Phase 25 adds picker)
+
+	// Template picker sub-state (within inputMode)
+	pickingTemplate         bool
+	pickerTemplates         []store.Template
+	pickerCursor            int
+	promptingPlaceholders   bool
+	pickerPlaceholderNames  []string
+	pickerPlaceholderIndex  int
+	pickerPlaceholderValues map[string]string
+	pickerSelectedTemplate  *store.Template
 
 	// Template workflow fields
 	pendingTemplateName string           // name for template being created
@@ -292,6 +303,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		if _, ok := msg.(tea.KeyMsg); !ok {
 			if _, ok := msg.(tea.WindowSizeMsg); !ok {
 				var cmd tea.Cmd
+				// During placeholder prompting, always forward to m.input
+				if m.promptingPlaceholders {
+					m.input, cmd = m.input.Update(msg)
+					return m, cmd
+				}
 				switch m.editField {
 				case 2:
 					m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
@@ -497,6 +513,14 @@ func (m Model) updateFilterMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 // updateInputMode handles key events in the 4-field add form (title, date, body, template).
 func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
+	// Template picker sub-states intercept all keys
+	if m.pickingTemplate {
+		return m.updateTemplatePicker(msg)
+	}
+	if m.promptingPlaceholders {
+		return m.updatePlaceholderPrompting(msg)
+	}
+
 	switch {
 	case key.Matches(msg, m.keys.Save):
 		// Ctrl+D saves from any field
@@ -509,8 +533,15 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
 			return m, cmd
 		}
-		// Template field forwards Enter (Phase 25 will open picker)
+		// Template field: Enter opens template picker
 		if m.editField == 3 {
+			templates := m.store.ListTemplates()
+			if len(templates) == 0 {
+				return m, nil // No templates available
+			}
+			m.pickingTemplate = true
+			m.pickerTemplates = templates
+			m.pickerCursor = 0
 			return m, nil
 		}
 		// Title/Date: Enter saves
@@ -544,6 +575,12 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.editField = 0
 			m.bodyTextarea.Blur()
 			m.templateInput.Blur()
+			m.pickingTemplate = false
+			m.promptingPlaceholders = false
+			m.pickerSelectedTemplate = nil
+			m.pickerTemplates = nil
+			m.pickerPlaceholderNames = nil
+			m.pickerPlaceholderValues = nil
 			return m, m.input.Focus()
 		}
 		// Esc in title/date cancels entirely
@@ -555,6 +592,13 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.input.SetValue("")
 		m.dateInput.SetValue("")
 		m.bodyTextarea.SetValue("")
+		m.templateInput.SetValue("")
+		m.pickingTemplate = false
+		m.promptingPlaceholders = false
+		m.pickerSelectedTemplate = nil
+		m.pickerTemplates = nil
+		m.pickerPlaceholderNames = nil
+		m.pickerPlaceholderValues = nil
 		m.editField = 0
 		return m, nil
 	}
@@ -720,6 +764,13 @@ func (m Model) saveAdd() (Model, tea.Cmd) {
 	m.input.SetValue("")
 	m.dateInput.SetValue("")
 	m.bodyTextarea.SetValue("")
+	m.templateInput.SetValue("")
+	m.pickingTemplate = false
+	m.promptingPlaceholders = false
+	m.pickerSelectedTemplate = nil
+	m.pickerTemplates = nil
+	m.pickerPlaceholderNames = nil
+	m.pickerPlaceholderValues = nil
 	m.editField = 0
 	return m, nil
 }
@@ -968,6 +1019,107 @@ func (m *Model) SetTheme(t theme.Theme) {
 func (m *Model) SetDateFormat(layout, placeholder string) {
 	m.dateLayout = layout
 	m.datePlaceholder = placeholder
+}
+
+// updateTemplatePicker handles key events in the template picker sub-state.
+func (m Model) updateTemplatePicker(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.Up):
+		if m.pickerCursor > 0 {
+			m.pickerCursor--
+		}
+		return m, nil
+
+	case key.Matches(msg, m.keys.Down):
+		if m.pickerCursor < len(m.pickerTemplates)-1 {
+			m.pickerCursor++
+		}
+		return m, nil
+
+	case key.Matches(msg, m.keys.Confirm):
+		selected := m.pickerTemplates[m.pickerCursor]
+		m.pickerSelectedTemplate = &selected
+		names, err := tmpl.ExtractPlaceholders(selected.Content)
+		if err != nil || len(names) == 0 {
+			// No placeholders -- render and pre-fill immediately
+			body, _ := tmpl.ExecuteTemplate(selected.Content, map[string]string{})
+			return m.prefillFromTemplate(&selected, body), m.input.Focus()
+		}
+		// Has placeholders -- enter prompting sub-state
+		m.promptingPlaceholders = true
+		m.pickingTemplate = false
+		m.pickerPlaceholderNames = names
+		m.pickerPlaceholderIndex = 0
+		m.pickerPlaceholderValues = make(map[string]string)
+		m.input.SetValue("")
+		m.input.Placeholder = names[0]
+		m.input.Prompt = names[0] + ": "
+		return m, m.input.Focus()
+
+	case key.Matches(msg, m.keys.Cancel):
+		m.pickingTemplate = false
+		m.pickerTemplates = nil
+		m.pickerCursor = 0
+		// Return to Template field (editField=3)
+		return m, m.templateInput.Focus()
+	}
+	return m, nil
+}
+
+// updatePlaceholderPrompting handles key events while prompting for template placeholder values.
+func (m Model) updatePlaceholderPrompting(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.Confirm):
+		value := strings.TrimSpace(m.input.Value())
+		m.pickerPlaceholderValues[m.pickerPlaceholderNames[m.pickerPlaceholderIndex]] = value
+		m.pickerPlaceholderIndex++
+		if m.pickerPlaceholderIndex < len(m.pickerPlaceholderNames) {
+			// More placeholders remain
+			name := m.pickerPlaceholderNames[m.pickerPlaceholderIndex]
+			m.input.Placeholder = name
+			m.input.Prompt = name + ": "
+			m.input.SetValue("")
+			return m, nil
+		}
+		// All placeholders filled -- render and pre-fill
+		body, _ := tmpl.ExecuteTemplate(
+			m.pickerSelectedTemplate.Content,
+			m.pickerPlaceholderValues,
+		)
+		return m.prefillFromTemplate(m.pickerSelectedTemplate, body), m.input.Focus()
+
+	case key.Matches(msg, m.keys.Cancel):
+		// Go back to template picker
+		m.promptingPlaceholders = false
+		m.pickingTemplate = true
+		m.input.Blur()
+		return m, nil
+	}
+
+	var cmd tea.Cmd
+	m.input, cmd = m.input.Update(msg)
+	return m, cmd
+}
+
+// prefillFromTemplate sets form fields from a selected template and returns to the title field.
+func (m Model) prefillFromTemplate(t *store.Template, renderedBody string) Model {
+	m.pickingTemplate = false
+	m.promptingPlaceholders = false
+	m.input.SetValue(t.Name)
+	m.input.Placeholder = "What needs doing?"
+	m.input.Prompt = "> "
+	m.input.CursorEnd()
+	m.bodyTextarea.SetValue(renderedBody)
+	m.templateInput.SetValue(t.Name)
+	m.editField = 0
+	// Clear picker state
+	m.pickerTemplates = nil
+	m.pickerCursor = 0
+	m.pickerSelectedTemplate = nil
+	m.pickerPlaceholderNames = nil
+	m.pickerPlaceholderIndex = 0
+	m.pickerPlaceholderValues = nil
+	return m
 }
 
 // clearTemplateState resets all template workflow fields.
