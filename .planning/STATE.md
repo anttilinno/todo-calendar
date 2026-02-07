@@ -4,17 +4,17 @@
 
 See: .planning/PROJECT.md (updated 2026-02-07)
 
-**Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** v1.7 Unified Add Flow & Polish
+**Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen
+**Current focus:** Phase 23 - Cleanup & Calendar Polish
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: --
-Status: Defining requirements
-Last activity: 2026-02-07 -- Milestone v1.7 started
+Phase: 23 (1 of 3 in v1.7)
+Plan: Not yet planned
+Status: Ready to plan
+Last activity: 2026-02-07 -- Roadmap created for v1.7 milestone
 
-Progress: [████████████████████████████████████████] 40/40 plans (v1.0-v1.6)
+Progress: [..........] 0% (v1.7)
 
 ## Performance Metrics
 
@@ -29,6 +29,8 @@ Progress: [███████████████████████
 
 See PROJECT.md Key Decisions table for complete log.
 
+- v1.7 roadmap: CLN-02 and ADD-07 both remove old keybindings; Phase 23 handles all removal, satisfying both requirements before Phase 24 starts
+
 ### Pending Todos
 
 None.
@@ -40,5 +42,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: v1.7 milestone started, defining requirements
+Stopped at: Roadmap created for v1.7 milestone (3 phases, 11 requirements mapped)
 Resume file: None
