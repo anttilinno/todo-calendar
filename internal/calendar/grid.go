@@ -22,7 +22,7 @@ const gridWidth = 34
 //   - holidays: map of day numbers that are holidays
 //   - mondayStart: if true, weeks start on Monday; otherwise Sunday
 //   - indicators: map of day numbers to count of incomplete todos (nil safe)
-func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mondayStart bool, indicators map[int]int, s Styles) string {
+func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mondayStart bool, indicators map[int]int, totals map[int]int, s Styles) string {
 	var b strings.Builder
 
 	// Title line: month and year, centered in grid width.
@@ -69,8 +69,10 @@ func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mo
 	// Day cells.
 	for day := 1; day <= daysInMonth; day++ {
 		// Format cell to 4 visible characters BEFORE styling.
+		hasPending := indicators[day] > 0
+		hasAllDone := !hasPending && totals[day] > 0
 		var cell string
-		if indicators[day] > 0 {
+		if hasPending || hasAllDone {
 			cell = fmt.Sprintf("[%2d]", day)
 		} else {
 			cell = fmt.Sprintf(" %2d ", day)
@@ -82,8 +84,10 @@ func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mo
 			cell = s.Today.Render(cell)
 		case holidays[day]:
 			cell = s.Holiday.Render(cell)
-		case indicators[day] > 0:
+		case hasPending:
 			cell = s.Indicator.Render(cell)
+		case hasAllDone:
+			cell = s.IndicatorDone.Render(cell)
 		default:
 			cell = s.Normal.Render(cell)
 		}
@@ -165,6 +169,7 @@ func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider,
 	}
 	holidayCache := make(map[monthKey]map[int]bool)
 	indicatorCache := make(map[monthKey]map[int]int)
+	totalsCache := make(map[monthKey]map[int]int)
 
 	getHolidays := func(y int, m time.Month) map[int]bool {
 		k := monthKey{y, m}
@@ -186,6 +191,16 @@ func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider,
 		return v
 	}
 
+	getTotals := func(y int, m time.Month) map[int]int {
+		k := monthKey{y, m}
+		if v, ok := totalsCache[k]; ok {
+			return v
+		}
+		v := st.TotalTodosPerDay(y, m)
+		totalsCache[k] = v
+		return v
+	}
+
 	// Day cells (single row of 7 days).
 	for i := 0; i < 7; i++ {
 		d := weekStart.AddDate(0, 0, i)
@@ -193,12 +208,15 @@ func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider,
 
 		hols := getHolidays(dy, dm)
 		inds := getIndicators(dy, dm)
+		tots := getTotals(dy, dm)
 
 		isToday := d.Year() == today.Year() && d.Month() == today.Month() && d.Day() == today.Day()
 
 		// Format cell to 4 visible characters.
+		hasPending := inds[dd] > 0
+		hasAllDone := !hasPending && tots[dd] > 0
 		var cell string
-		if inds[dd] > 0 {
+		if hasPending || hasAllDone {
 			cell = fmt.Sprintf("[%2d]", dd)
 		} else {
 			cell = fmt.Sprintf(" %2d ", dd)
@@ -210,8 +228,10 @@ func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider,
 			cell = s.Today.Render(cell)
 		case hols[dd]:
 			cell = s.Holiday.Render(cell)
-		case inds[dd] > 0:
+		case hasPending:
 			cell = s.Indicator.Render(cell)
+		case hasAllDone:
+			cell = s.IndicatorDone.Render(cell)
 		default:
 			cell = s.Normal.Render(cell)
 		}

@@ -13,6 +13,7 @@ type Styles struct {
 	Today          lipgloss.Style
 	Holiday        lipgloss.Style
 	Indicator      lipgloss.Style
+	IndicatorDone  lipgloss.Style
 	OverviewHeader    lipgloss.Style
 	OverviewCount     lipgloss.Style
 	OverviewActive    lipgloss.Style
@@ -29,6 +30,7 @@ func NewStyles(t theme.Theme) Styles {
 		Today:          lipgloss.NewStyle().Bold(true).Foreground(t.TodayFg).Background(t.TodayBg),
 		Holiday:        lipgloss.NewStyle().Foreground(t.HolidayFg),
 		Indicator:      lipgloss.NewStyle().Bold(true).Foreground(t.IndicatorFg),
+		IndicatorDone:  lipgloss.NewStyle().Foreground(t.CompletedCountFg),
 		OverviewHeader:    lipgloss.NewStyle().Bold(true).Foreground(t.AccentFg),
 		OverviewCount:     lipgloss.NewStyle().Foreground(t.MutedFg),
 		OverviewActive:    lipgloss.NewStyle().Bold(true).Foreground(t.NormalFg),
