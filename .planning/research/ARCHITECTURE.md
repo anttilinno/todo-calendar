@@ -1,598 +1,690 @@
-# Architecture Research: v1.4 Data & Editing
+# Architecture Research: v1.6 Template Management & Recurring Todos
 
-**Domain:** SQLite backend, markdown todo bodies, external editor integration
-**Researched:** 2026-02-06
-**Confidence:** HIGH for SQLite + editor integration (verified against Bubble Tea API docs and Go SQLite ecosystem); MEDIUM for markdown template design (pattern-based, not library-verified)
+**Domain:** Template management overlay, recurring schedule definitions, auto-creation of scheduled todos
+**Researched:** 2026-02-07
+**Confidence:** HIGH for integration patterns (verified against existing codebase); HIGH for schema design (established migration pattern); MEDIUM for rolling window algorithm (pattern-based, straightforward logic)
 
-## Current Architecture Summary
-
-The app follows Bubble Tea's Elm Architecture with clean component boundaries:
+## Current Architecture Summary (Post v1.5)
 
 ```
 main.go
   |
   app.Model (root orchestrator)
-  |-- calendar.Model   (left pane: grid + overview)
-  |-- todolist.Model   (right pane: todo list + input)
-  |-- settings.Model   (full-screen overlay when active)
-  |-- search.Model     (full-screen overlay when active)
+  |-- calendar.Model    (left pane: grid + overview)
+  |-- todolist.Model    (right pane: todo list + input modes)
+  |-- settings.Model    (full-screen overlay, showSettings bool)
+  |-- search.Model      (full-screen overlay, showSearch bool)
+  |-- preview.Model     (full-screen overlay, showPreview bool)
+  |-- editor            (external process, editing bool)
   |
-  store.Store          (pure data layer, JSON persistence)
-  config.Config        (TOML config, Save/Load)
-  theme.Theme          (14 semantic color roles)
-  holidays.Provider    (rickar/cal wrapper)
+  store.SQLiteStore     (TodoStore interface, SQLite with WAL)
+  config.Config         (TOML config, Save/Load)
+  theme.Theme           (14 semantic color roles)
+  holidays.Provider     (rickar/cal wrapper)
+  tmpl                  (ExtractPlaceholders, ExecuteTemplate)
 ```
 
-**Critical architectural facts for v1.4 planning:**
+**Critical facts for v1.6 planning:**
 
-1. **store.Store is a concrete struct**, not an interface. All components (calendar, todolist, search) hold `*store.Store` directly. Every mutation calls `s.Save()` which writes the entire JSON file atomically.
-2. **store.Todo struct** has 6 fields: `ID int`, `Text string`, `Date string`, `Done bool`, `CreatedAt string`, `SortOrder int`. No Body/Description field exists.
-3. **store.Data envelope** holds `NextID int` and `Todos []Todo` -- the entire dataset lives in memory.
-4. **All store queries are in-memory loops** over `s.data.Todos` (TodosForMonth, FloatingTodos, SearchTodos, etc.).
-5. **app.Model uses `tea.WithAltScreen()`** in main.go when creating the Program.
-6. **todolist.Model owns text input** via a single `textinput.Model` field, reused across modes (add, edit, filter, date).
+1. **TodoStore interface** has 17 methods including template operations: `AddTemplate`, `ListTemplates`, `FindTemplate`, `DeleteTemplate`. No `UpdateTemplate` or `RenameTemplate` method exists.
+2. **Template struct** (store/todo.go) has 4 fields: `ID int`, `Name string`, `Content string`, `CreatedAt string`. No schedule-related fields.
+3. **Templates table** (SQLite, version 2 migration) has schema: `id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, content TEXT NOT NULL, created_at TEXT NOT NULL`.
+4. **PRAGMA user_version** is currently at 3. Next migration is version 4.
+5. **Overlay pattern** is well-established: `showX bool` in app.Model, dedicated `updateX(msg)` routing method, `SetSize(w,h)`, `SetTheme(t)`, `HelpBindings()`, custom Msg types for close/actions.
+6. **Template workflow** in todolist.Model is comprehensive: `templateSelectMode`, `placeholderInputMode`, `templateNameMode`, `templateContentMode` -- these handle selection, placeholder prompting, and inline creation.
+7. **app.Init()** currently returns `nil` -- no startup commands run.
+8. **Todo.Body** stores template-rendered markdown. The link between a todo and the template it was created from is NOT tracked -- once created, the todo is independent.
 
 ---
 
-## SQLite Integration
+## Integration Architecture: Three New Capabilities
 
-### Why SQLite
+### Capability 1: Template Management Overlay
 
-The current JSON store loads the entire dataset into memory and rewrites the full file on every mutation. This works for <1000 todos but does not scale, does not support full-text search efficiently, and makes schema evolution painful. SQLite provides:
-- ACID transactions with WAL mode for crash safety
-- Indexed queries (by date, completion status, full-text search via FTS5)
-- Schema migrations for evolving the data model (adding Body field, tags, etc.)
-- The same single-file, no-server deployment model as JSON
+**What:** Full-screen overlay for listing, viewing, editing, renaming, and deleting templates. Currently, template management is buried inside todolist's inline modes (templateSelectMode, templateNameMode, templateContentMode). A dedicated overlay provides a proper management experience.
 
-### Library Choice: modernc.org/sqlite
+### Capability 2: Recurring Schedule Definitions
 
-**Recommendation: Use `modernc.org/sqlite` (pure Go, CGo-free).**
+**What:** Attach scheduling rules to templates. A schedule defines when a template should automatically create todos (e.g., "every weekday", "every Monday and Friday", "monthly on the 15th").
 
-Rationale:
-- **Cross-compilation:** No C compiler needed. The project currently has zero CGo dependencies (go.mod shows pure Go deps). Introducing CGo via `mattn/go-sqlite3` would complicate builds for all platforms.
-- **Performance is sufficient:** For a single-user desktop TUI with at most a few thousand todos, the 10-50% overhead of the pure Go transpilation vs native C SQLite is irrelevant. Benchmarks show sub-millisecond query times for datasets of this size.
-- **database/sql compatible:** Registers as driver name `"sqlite"`. Standard `sql.Open("sqlite", path)` works. All Go database tooling (migrations, testing) works unchanged.
-- **Actively maintained:** Published on pkg.go.dev, used by production projects (River queue, Watermill, etc.).
+### Capability 3: Auto-Creation Engine
 
-Import: `_ "modernc.org/sqlite"` for driver registration, then use `database/sql` throughout.
+**What:** On app launch, examine all schedules and create any missing todos for a rolling window (today + 7 days). Includes placeholder prompting for templates that have `{{.Variable}}` fields.
 
-### Components Modified
+---
 
-| Component | Change | Reason |
-|-----------|--------|--------|
-| `store/store.go` | Replace JSON read/write with `*sql.DB` operations | Core persistence swap |
-| `store/todo.go` | Add `Body string` field to Todo struct | Support markdown bodies |
-| `main.go` | Open SQLite DB, pass to store, handle migration | Initialization change |
-| `config/paths.go` | Add `DBPath()` function | New file path for `todos.db` |
+## Component Analysis: New vs Modified
 
-### Data Model Changes
+### New Package: `internal/tmplmgr/` (Template Manager Overlay)
 
-**Current JSON schema:**
-```json
-{
-  "next_id": 42,
-  "todos": [
-    {"id": 1, "text": "...", "date": "2026-01-15", "done": false, "created_at": "...", "sort_order": 10}
-  ]
+**Why a new package, not extending `internal/tmpl/`:** The existing `tmpl` package is a pure utility package (ExtractPlaceholders, ExecuteTemplate) with no TUI concerns. A management overlay is a full Bubble Tea component with Model/Update/View, keys, styles -- the same structure as `settings`, `search`, and `preview`. Mixing TUI model logic into a utility package violates the project's clean separation.
+
+**Why not extending `todolist/`:** The template management modes already in todolist (templateSelectMode, templateNameMode, etc.) are tightly coupled to the "create todo from template" workflow. A management overlay is a distinct user flow: browse all templates, view their content, edit content, rename, delete, manage schedules. Cramming this into todolist would bloat an already-large model (1104 lines) and mix management concerns with todo CRUD concerns.
+
+**Structure follows the established overlay pattern:**
+
+```go
+package tmplmgr
+
+type Model struct {
+    templates    []store.Template
+    cursor       int
+    viewMode     viewMode  // list, view, edit, rename
+    store        store.TodoStore
+    width, height int
+    keys         KeyMap
+    styles       Styles
+    input        textinput.Model
+    textarea     textarea.Model
 }
+
+// Messages emitted to app.Model
+type CloseMsg struct{}
+type TemplateUpdatedMsg struct{}  // signal to refresh if todolist caches templates
+
+func New(s store.TodoStore, t theme.Theme) Model { ... }
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) { ... }
+func (m Model) View() string { ... }
+func (m *Model) SetSize(w, h int) { ... }
+func (m *Model) SetTheme(t theme.Theme) { ... }
+func (m Model) HelpBindings() []key.Binding { ... }
 ```
 
-**Target SQLite schema (v1):**
-```sql
-CREATE TABLE IF NOT EXISTS todos (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    text       TEXT    NOT NULL,
-    body       TEXT    NOT NULL DEFAULT '',
-    date       TEXT,        -- YYYY-MM-DD or NULL for floating
-    done       INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT    NOT NULL,
-    sort_order INTEGER NOT NULL DEFAULT 0
-);
+**View modes within the overlay:**
 
-CREATE INDEX idx_todos_date ON todos(date);
-CREATE INDEX idx_todos_done ON todos(done);
+| Mode | View | Keys |
+|------|------|------|
+| `listMode` | Template list with cursor, name + preview | j/k navigate, enter view, e edit, r rename, d delete, n new, esc close |
+| `viewMode` | Full template content rendered as text | esc back to list |
+| `editMode` | Textarea with template content | Ctrl+D save, esc cancel |
+| `renameMode` | Text input for new name | enter confirm, esc cancel |
 
--- Schema version tracking
-CREATE TABLE IF NOT EXISTS schema_version (
-    version INTEGER NOT NULL
-);
-```
+### Modified: `app/model.go`
 
-**Key design decisions:**
-- `AUTOINCREMENT` replaces the manual `NextID` counter. SQLite handles ID generation.
-- `body` is a plain TEXT column (not stored as a separate file). Markdown is just text; storing it in-DB keeps the single-file deployment model and enables FTS5 search across bodies later.
-- `date` is nullable TEXT rather than empty string. SQL NULL semantics are cleaner for "no date" than empty string, and enable proper `WHERE date IS NULL` queries for floating todos.
-- `done` is INTEGER (0/1) since SQLite has no native boolean.
-- No separate migration library is needed initially. A simple version-check table (`schema_version`) with hand-written `ALTER TABLE` statements is sufficient for a single-user desktop app. Introduce goose/golang-migrate only if migration complexity grows beyond 3-4 schema versions.
-
-### Migration Strategy: JSON to SQLite
-
-**One-time migration at startup, keeping JSON as backup:**
-
-```
-1. Check if todos.db exists
-2. If not, check if todos.json exists
-3. If JSON exists:
-   a. Create todos.db with schema v1
-   b. Read JSON, insert all todos into SQLite (in a transaction)
-   c. Rename todos.json -> todos.json.backup
-4. If neither exists, create fresh todos.db with schema v1
-5. If todos.db exists, check schema_version and run any pending migrations
-```
-
-**Rationale for rename-not-delete:** Users who encounter issues can restore the backup. The migration is one-way; the app never writes JSON again after migration.
-
-**Transaction safety:** The entire JSON import must happen in a single transaction. If it fails partway, the transaction rolls back and the JSON file is untouched.
-
-### Store Refactoring Strategy
-
-**Phase 1: Extract interface, keep JSON implementation.**
-
-Define a `store.TodoStore` interface matching the current method set:
+Add template management overlay routing, following the exact pattern of settings/search/preview:
 
 ```go
-type TodoStore interface {
-    Add(text string, date string) Todo
-    Toggle(id int)
-    Delete(id int)
-    Find(id int) *Todo
-    Update(id int, text string, date string)
-    Todos() []Todo
-    TodosForMonth(year int, month time.Month) []Todo
-    FloatingTodos() []Todo
-    IncompleteTodosPerDay(year int, month time.Month) map[int]int
-    TodoCountsByMonth() []MonthCount
-    FloatingTodoCounts() FloatingCount
-    SwapOrder(id1, id2 int)
-    SearchTodos(query string) []Todo
-    EnsureSortOrder()
-    Save() error
-}
-```
-
-All consumers (`calendar.Model`, `todolist.Model`, `search.Model`, `app.Model`) change from `*store.Store` to `store.TodoStore`. This is a mechanical refactor -- change the field type, verify it compiles. No behavioral change.
-
-**Phase 2: Implement SQLite backend.**
-
-Create `store.SQLiteStore` implementing `TodoStore`. The JSON `Store` remains as a fallback/reference. The constructor in `main.go` decides which to instantiate.
-
-**Why interface-first:** Extracting the interface before writing SQLite code means every consumer is already decoupled. The SQLite implementation can be developed and tested independently. It also enables a `store.MemoryStore` for testing.
-
-### SQLite Pragmas for Desktop TUI
-
-```sql
-PRAGMA journal_mode = WAL;
-PRAGMA synchronous = NORMAL;
-PRAGMA foreign_keys = ON;
-PRAGMA busy_timeout = 5000;
-```
-
-- **WAL mode** prevents readers from blocking writers. Even though this is single-user, the TUI might query while a write transaction is in-flight (e.g., RefreshIndicators called during Add).
-- **synchronous = NORMAL** provides good crash safety without the performance cost of FULL. For a todo app, losing the last few milliseconds of data on power loss is acceptable.
-- **busy_timeout** prevents "database is locked" errors if operations overlap.
-
-### Save() Semantics Change
-
-Currently every mutation (Add, Toggle, Delete, etc.) calls `s.Save()` which rewrites the entire JSON file. With SQLite, each mutation is its own transaction -- there is no separate Save() step.
-
-**Options:**
-1. **Remove Save() from the interface.** Each mutation method commits its own transaction. Simplest, correct for SQLite. But callers that currently call Save() explicitly (like EnsureSortOrder) need adjustment.
-2. **Keep Save() as a no-op on SQLiteStore.** Maintains backward compatibility during transition. JSON store keeps its behavior. SQLiteStore treats Save() as a no-op since mutations auto-commit.
-
-**Recommendation:** Option 2 during transition, then remove Save() from the interface once JSON backend is dropped. This avoids a disruptive API change during the migration phase.
-
----
-
-## Markdown Todo Bodies
-
-### Concept
-
-Each todo gets an optional `body` field containing markdown text. The one-line `text` field remains as the title/summary displayed in the list. The `body` is viewed/edited through the external editor and optionally previewed in a detail pane.
-
-### Data Flow
-
-```
-User presses 'e' on a todo (or new keybinding like 'b' for body)
-  |
-  v
-todolist.Model emits OpenEditorMsg{TodoID: id}
-  |
-  v
-app.Model handles OpenEditorMsg:
-  1. Reads todo from store (gets current body)
-  2. Writes body to a temp file with markdown template
-  3. Returns tea.ExecProcess(exec.Command(editor, tempfile), callback)
-  |
-  v
-Bubble Tea suspends TUI, launches editor
-  |
-  v
-User edits markdown in external editor, saves, exits
-  |
-  v
-Callback fires -> EditorFinishedMsg{TodoID, TempPath, Err}
-  |
-  v
-app.Model handles EditorFinishedMsg:
-  1. Reads temp file content
-  2. Parses: extract title line + body (or just body if title unchanged)
-  3. Calls store.UpdateBody(id, body)
-  4. Removes temp file
-  5. TUI resumes rendering
-```
-
-### Markdown Template Format
-
-When opening a todo in the editor, write a temp file with this structure:
-
-```markdown
-# Buy groceries
-
-- [ ] Milk
-- [ ] Bread
-- [ ] Eggs
-
-Notes: Check the sale at Lidl this week.
-```
-
-The first `# heading` line is the todo title (`Text` field). Everything after is the body. This gives the user a natural editing experience -- they see and can edit the title in context.
-
-**Parsing on save:**
-1. Read the file content.
-2. Find the first line matching `^# (.+)$`. That becomes the new `Text`.
-3. Everything after the first heading line (trimmed) becomes the `Body`.
-4. If no heading is found, keep the original `Text` and treat the entire content as `Body`.
-
-**Why not YAML frontmatter:** Frontmatter (`---` delimiters) is a developer-oriented pattern. For a todo app used by non-technical users, a plain markdown file with a heading is more intuitive. The heading IS the title -- no parsing ceremony needed.
-
-### Components Modified
-
-| Component | Change | Reason |
-|-----------|--------|--------|
-| `store/todo.go` | Add `Body string` field | Store markdown body |
-| `store/store.go` or `store/sqlite.go` | Add `UpdateBody(id int, body string)` | Persist body changes |
-| `todolist/model.go` | Add keybinding to open body editor | Trigger editor flow |
-| `todolist/model.go` | Show body indicator (e.g., `[+]` icon) | Visual cue that body exists |
-| `app/model.go` | Handle `OpenEditorMsg`, `EditorFinishedMsg` | Orchestrate editor lifecycle |
-
-### New Components
-
-| Component | Purpose |
-|-----------|---------|
-| `internal/editor/editor.go` | `OpenEditor(todoID int, title string, body string) tea.Cmd` -- writes temp file, constructs exec.Command, returns `tea.ExecProcess` |
-| `internal/editor/parse.go` | `ParseMarkdown(content string) (title, body string)` -- extracts title from `# heading` and body from remainder |
-| `internal/editor/template.go` | `RenderTemplate(title, body string) string` -- builds the markdown file content |
-
-**Why a separate `editor` package:** The editor logic (temp file management, markdown parsing, $EDITOR resolution) is distinct from both the store and the TUI models. Keeping it in its own package prevents the todolist or app package from growing file-management concerns.
-
-### Body Display in TUI
-
-For v1.4, the body is primarily edited externally. In-TUI display options (in order of complexity):
-
-1. **Indicator only (simplest, recommended for v1.4):** Show `[+]` or a note icon next to todos that have a non-empty body. No inline rendering.
-2. **Preview pane:** When cursor is on a todo with a body, show a rendered preview below or beside the list. Use `charmbracelet/glamour` for markdown-to-ANSI rendering. This is a v1.5+ feature.
-3. **Inline expansion:** Toggle body visibility inline in the list. Most complex, layout-heavy. Defer to v2+.
-
-**Recommendation:** Start with indicator-only in v1.4. The external editor is the primary body interface. Glamour-based preview is a natural v1.5 differentiator.
-
----
-
-## External Editor Integration
-
-### Bubble Tea ExecProcess API
-
-The integration uses `tea.ExecProcess` which is stable in Bubble Tea v1.x (currently v1.3.10 per go.mod).
-
-```go
-func tea.ExecProcess(c *exec.Cmd, fn ExecCallback) Cmd
-type ExecCallback = func(error) Msg
-```
-
-`ExecProcess` suspends the TUI Program, yields the terminal to the external process, and resumes when the process exits. The callback converts the exit error into a Bubble Tea message.
-
-### Known Issue: Alt Screen Output Leak
-
-**This app uses `tea.WithAltScreen()`.** When `tea.ExecProcess` is called, Bubble Tea exits the alt screen, which triggers a final `View()` render that briefly appears on the normal screen before the editor opens.
-
-**Workaround (verified from Bubble Tea issue #424 and #431):**
-
-Add an `editing` state to `app.Model`. When `editing == true`, `View()` returns an empty string. This prevents the flash:
-
-```go
-// In app.Model:
 type Model struct {
     // ... existing fields
-    editing bool  // true while external editor is running
+    showTmplMgr  bool
+    tmplMgr      tmplmgr.Model
 }
-
-// In View():
-func (m Model) View() string {
-    if m.editing {
-        return ""  // suppress render during editor handoff
-    }
-    // ... normal rendering
-}
-
-// In Update(), handling the editor trigger:
-case OpenEditorMsg:
-    m.editing = true
-    return m, editor.Open(msg.TodoID, msg.Title, msg.Body)
-
-// In Update(), handling editor completion:
-case EditorFinishedMsg:
-    m.editing = false
-    // ... process result
 ```
 
-### $EDITOR Resolution
+**Integration points in app.Model:**
+
+1. **Key binding:** New key (recommend `m` for "manage templates") in app.KeyMap, handled when `!isInputting` and no overlay is active.
+2. **Message routing:** `tmplmgr.CloseMsg` handler sets `showTmplMgr = false`. Place it alongside `preview.CloseMsg` and `search.CloseMsg`.
+3. **Update routing:** `if m.showTmplMgr { return m.updateTmplMgr(msg) }` -- placed after showSettings, showPreview, showSearch checks.
+4. **View routing:** `if m.showTmplMgr { ... }` -- same pattern as other overlays.
+5. **Theme propagation:** Add `m.tmplMgr.SetTheme(t)` to `applyTheme()`.
+
+### Modified: `store/store.go` (TodoStore Interface)
+
+Add methods needed by the management overlay and scheduling:
 
 ```go
-func resolveEditor() string {
-    if e := os.Getenv("EDITOR"); e != "" {
-        return e
-    }
-    if e := os.Getenv("VISUAL"); e != "" {
-        return e
-    }
-    return "vi"  // POSIX fallback
-}
+// Template management additions
+UpdateTemplate(id int, name, content string) error
+// Note: name is separate from content to support rename-only operations
+
+// Schedule operations (new)
+AddSchedule(templateID int, rule string) (Schedule, error)
+ListSchedules() []Schedule
+ListSchedulesForTemplate(templateID int) []Schedule
+DeleteSchedule(id int)
+UpdateSchedule(id int, rule string) error
+TodoExistsForSchedule(scheduleID int, date string) bool
 ```
 
-Check `$EDITOR` first, then `$VISUAL`, then fall back to `vi` (not `vim` -- `vi` is POSIX-mandated and more universally available).
+**Why TodoExistsForSchedule:** The auto-creation engine needs to check whether a todo for a given schedule+date combination already exists before creating it. Without this, restarting the app would create duplicate todos.
 
-### Editor Integration Architecture
+### Modified: `store/sqlite.go`
 
-```
-todolist.Model                 app.Model                     editor package
-     |                              |                              |
-     |--OpenEditorMsg{id}---------->|                              |
-     |                              |--editor.Open(id,title,body)->|
-     |                              |   1. Write temp file         |
-     |                              |   2. Resolve $EDITOR         |
-     |                              |   3. exec.Command(editor,f)  |
-     |                              |<-tea.ExecProcess(cmd,cb)-----|
-     |                              |                              |
-     |                     [TUI suspended, editor runs]            |
-     |                              |                              |
-     |                              |<-EditorFinishedMsg{id,path}--|
-     |                              |   1. Read temp file          |
-     |                              |   2. Parse title + body      |
-     |                              |   3. store.Update + UpdateBody|
-     |                              |   4. Remove temp file        |
-     |                              |   5. m.editing = false       |
-```
+Implement the new interface methods. Add migration to version 4 (and possibly 5).
 
-### Message Types
+### Modified: `store/todo.go`
+
+Add new struct types:
 
 ```go
-// In todolist or a shared messages package:
-type OpenEditorMsg struct {
-    TodoID int
-}
-
-// In editor package:
-type EditorFinishedMsg struct {
-    TodoID   int
-    TempPath string
-    Err      error
+// Schedule represents a recurring rule attached to a template.
+type Schedule struct {
+    ID         int
+    TemplateID int
+    Rule       string  // serialized schedule rule (see below)
+    CreatedAt  string
 }
 ```
 
-**Message routing:** `OpenEditorMsg` is emitted by `todolist.Model` via a `tea.Cmd` (not directly -- it returns a command that produces the message). `app.Model` intercepts it in Update(), similar to how it handles `settings.SaveMsg` and `search.JumpMsg` today.
+### New: Auto-creation logic location
 
-### Temp File Management
+**Where should auto-creation run?**
+
+Three options analyzed:
+
+| Option | Location | Mechanism | Pros | Cons |
+|--------|----------|-----------|------|------|
+| A | `app.Init()` | Return `tea.Cmd` that runs auto-creation | Runs once at startup, idiomatic Bubble Tea | Blocks first render until complete |
+| B | `main.go` before `app.New()` | Direct function call | Simple, synchronous, clear ordering | Not in the Bubble Tea lifecycle |
+| C | Background goroutine via `tea.Cmd` | Async command in `app.Init()` | Non-blocking | Complexity, race conditions with store |
+
+**Recommendation: Option B -- run in `main.go` before `app.New()`.**
+
+Rationale:
+- Auto-creation is a data preparation step, not a UI interaction. It belongs in the startup sequence alongside config loading and store initialization.
+- The store is single-connection (`MaxOpenConns(1)`), so running auto-creation before the TUI starts avoids any concurrency concerns.
+- Templates with placeholders require user prompting, which is handled separately (see "Placeholder prompting for recurring todos" below).
+- The rolling window calculation is pure logic on a small dataset -- it completes in under 1ms. No need for async execution.
 
 ```go
-// Write temp file in the OS temp directory with a descriptive name
-func writeTempFile(title, body string) (string, error) {
-    f, err := os.CreateTemp("", "todo-calendar-*.md")
-    if err != nil {
-        return "", err
-    }
-    defer f.Close()
+// In main.go, after store initialization:
+s, err := store.NewSQLiteStore(dbPath)
+if err != nil { ... }
+defer s.Close()
 
-    content := RenderTemplate(title, body)
-    if _, err := f.WriteString(content); err != nil {
-        os.Remove(f.Name())
-        return "", err
-    }
-    return f.Name(), nil
-}
+// Auto-create scheduled todos for rolling window
+pending := recurring.GeneratePending(s, time.Now(), 7)
+// pending contains todos that need creation (some may need placeholder prompting)
+recurring.CreateSimpleTodos(s, pending.NoPlaceholders)
+// pending.NeedPrompting is passed to app.New() for UI prompting
 ```
 
-- Use `.md` extension so editors apply markdown syntax highlighting.
-- Use `os.CreateTemp` for safe temp file creation.
-- Clean up in the EditorFinishedMsg handler (not in a defer -- the file must persist while the editor has it open).
+Wait -- this creates a problem. Templates with placeholders need TUI interaction for prompting, but we are running before the TUI starts. Two approaches:
 
-### Components Modified
+**Approach A (recommended): Split auto-creation into two steps.**
+1. **Pre-TUI (main.go):** Create todos from templates with NO placeholders. These can be fully auto-created without user interaction.
+2. **Post-TUI-init (app.Init or first Update):** For templates WITH placeholders, show a prompting flow. Or simply skip placeholder prompting for auto-created recurring todos (use empty placeholder values).
 
-| Component | Change | Reason |
-|-----------|--------|--------|
-| `app/model.go` | Add `editing bool` field; handle `OpenEditorMsg` + `EditorFinishedMsg` | Orchestrate editor lifecycle |
-| `app/model.go` | `View()` returns empty string when `editing == true` | Alt screen output leak workaround |
-| `todolist/model.go` | Add keybinding (e.g., `b` for body) that emits `OpenEditorMsg` | User trigger |
-| `todolist/keys.go` | Add `EditBody` key binding | Key definition |
+**Approach B: Skip placeholder prompting entirely for recurring todos.**
+Recurring todos created from templates execute with empty placeholder values (which text/template handles via `missingkey=zero`). The user can fill in details via the external editor. This is simpler and arguably better UX -- the recurring todo is created as a reminder, and the user fills in specifics when they get to it.
 
-### New Components
+**Recommendation: Approach B.** Auto-created recurring todos use templates with empty placeholder values. The todo title comes from the template name or a configured title, and the body is the template content with blanks. User can edit via the external editor. This keeps auto-creation fully synchronous and pre-TUI.
 
-| Component | Purpose |
-|-----------|---------|
-| `internal/editor/editor.go` | `Open(todoID int, title, body string) tea.Cmd` -- orchestrates temp file + exec |
-| `internal/editor/parse.go` | `ParseMarkdown(content string) (title, body string)` |
-| `internal/editor/template.go` | `RenderTemplate(title, body string) string` |
+Revised startup:
+
+```go
+// In main.go, after store initialization:
+recurring.AutoCreate(s, time.Now(), 7)  // creates any missing scheduled todos
+```
 
 ---
 
-## Component Dependency Map (After v1.4)
+## Schema Design
+
+### Migration Version 4: Add schedules table
+
+```sql
+CREATE TABLE IF NOT EXISTS schedules (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    template_id INTEGER NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+    rule        TEXT    NOT NULL,
+    created_at  TEXT    NOT NULL
+);
+
+CREATE INDEX idx_schedules_template ON schedules(template_id);
+```
+
+**Key decisions:**
+
+- **Foreign key to templates with CASCADE delete:** When a template is deleted, its schedules are automatically removed. This prevents orphaned schedules. `foreign_keys(ON)` is already set in the SQLite DSN.
+- **`rule` is a TEXT column** storing a serialized schedule rule (see "Schedule Rule Format" below). A structured TEXT format is simpler than multiple columns (`frequency`, `day_of_week`, `day_of_month`, etc.) and more extensible.
+
+### Migration Version 5: Add schedule tracking to todos
+
+```sql
+ALTER TABLE todos ADD COLUMN schedule_id INTEGER REFERENCES schedules(id) ON DELETE SET NULL;
+ALTER TABLE todos ADD COLUMN schedule_date TEXT;
+
+CREATE INDEX idx_todos_schedule ON todos(schedule_id, schedule_date);
+```
+
+**Key decisions:**
+
+- **`schedule_id` nullable FK with SET NULL on delete:** When a schedule is deleted, existing todos created by it remain (they are valid todos) but lose the schedule link. This is the right behavior -- deleting a recurring rule should not delete already-created todos.
+- **`schedule_date` stores the logical date** the todo was created for (the date from the rolling window), not the creation timestamp. This is the deduplication key: `TodoExistsForSchedule(scheduleID, date)` checks `WHERE schedule_id = ? AND schedule_date = ?`.
+- **Why not a junction table:** A todo is created by at most one schedule on a specific date. The 1:1 relationship is cleanly modeled as columns on the todos table. A junction table adds complexity for no benefit.
+
+### Schedule Rule Format
+
+**Use a structured string format rather than cron expressions.**
+
+Cron is overkill and unfamiliar to most users. The supported recurrence patterns are simple enough for a custom format:
+
+```
+daily                       -- every day
+weekdays                    -- Mon-Fri
+weekly:mon,wed,fri          -- specific days of week
+monthly:15                  -- 15th of each month
+monthly:last                -- last day of each month
+```
+
+Serialization/deserialization is trivial:
+
+```go
+type ScheduleRule struct {
+    Type      string   // "daily", "weekdays", "weekly", "monthly"
+    Days      []string // for weekly: ["mon", "wed", "fri"]
+    DayOfMonth int     // for monthly: 1-31 or -1 for last
+}
+
+func ParseRule(s string) (ScheduleRule, error) { ... }
+func (r ScheduleRule) String() string { ... }
+func (r ScheduleRule) MatchesDate(d time.Time) bool { ... }
+```
+
+**Why not cron:** Cron expressions (`0 9 * * 1-5`) are powerful but opaque. The target user is someone managing personal todos in a terminal, not scheduling infrastructure jobs. "weekdays" and "weekly:mon,fri" are self-documenting. Cron is a v2 consideration if users demand complex schedules.
+
+---
+
+## Data Flow: Recurring Todo Auto-Creation
+
+### Startup Flow
 
 ```
 main.go
   |
-  +-- config.Load() -> config.Config
-  |     +-- config.DBPath() [NEW]
-  |
-  +-- store.NewSQLiteStore(dbPath) -> store.TodoStore [INTERFACE, NEW]
-  |     +-- JSON migration if needed
-  |     +-- Schema migration
-  |
-  +-- app.New(provider, mondayStart, store, theme, cfg) -> app.Model
-        |
-        +-- calendar.New(provider, mondayStart, store, theme)
-        |     store field type: store.TodoStore [CHANGED from *store.Store]
-        |
-        +-- todolist.New(store, theme)
-        |     store field type: store.TodoStore [CHANGED from *store.Store]
-        |     New keybinding: 'b' -> OpenEditorMsg
-        |
-        +-- search.New(store, theme, cfg)
-        |     store field type: store.TodoStore [CHANGED from *store.Store]
-        |
-        +-- settings.Model (unchanged)
-        |
-        +-- editor.Open(id, title, body) [NEW]
-              Returns tea.ExecProcess -> EditorFinishedMsg
+  1. config.Load()
+  2. store.NewSQLiteStore(dbPath)
+     |-- migrate() runs v4+v5 if needed
+  3. recurring.AutoCreate(store, time.Now(), 7)
+     |
+     |-- store.ListSchedules()
+     |   returns all schedules with their template_id and rule
+     |
+     |-- For each schedule:
+     |   |-- ParseRule(schedule.Rule)
+     |   |-- For each date in [today, today+7]:
+     |       |-- rule.MatchesDate(date)?
+     |       |   NO  -> skip
+     |       |   YES -> store.TodoExistsForSchedule(schedule.ID, date)?
+     |              |   YES -> skip (already created)
+     |              |   NO  -> Create todo:
+     |                    |-- store.FindTemplate(schedule.TemplateID)
+     |                    |-- tmpl.ExecuteTemplate(content, {})  // empty placeholders
+     |                    |-- store.AddWithSchedule(title, date, body, scheduleID, scheduleDate)
+     |
+  4. app.New(provider, mondayStart, store, theme, cfg)
+  5. tea.NewProgram(model).Run()
 ```
+
+### Template Management Flow
+
+```
+User presses 'm' (manage templates)
+  |
+  app.Model:
+    m.tmplMgr = tmplmgr.New(m.store, theme.ForName(m.cfg.Theme))
+    m.tmplMgr.SetSize(m.width, m.height)
+    m.showTmplMgr = true
+  |
+  tmplmgr.Model (overlay active):
+    |-- List view: shows all templates with names
+    |-- View mode: shows template content + attached schedules
+    |-- Edit mode: textarea for content editing
+    |-- Rename mode: text input for name change
+    |-- Schedule mode: add/remove recurring rules
+    |
+    On close:
+      emits tmplmgr.CloseMsg
+  |
+  app.Model:
+    m.showTmplMgr = false
+```
+
+### Schedule Attachment Flow (within tmplmgr overlay)
+
+```
+User on template list view, presses 'r' (recurring/schedule):
+  |
+  tmplmgr.Model enters scheduleMode:
+    |-- Shows existing schedules for this template
+    |-- 'a' to add new schedule:
+    |     Enters scheduleInputMode
+    |     Presents options: daily / weekdays / weekly / monthly
+    |     For weekly: prompts for day selection (toggle Mon-Sun)
+    |     For monthly: prompts for day number
+    |     Confirm creates schedule via store.AddSchedule()
+    |-- 'd' to delete selected schedule
+    |-- 'esc' back to template detail
+```
+
+---
+
+## Integration Points Detailed
+
+### 1. app.Model Overlay Routing
+
+The routing priority for overlays must be defined. Current order in `Update()`:
+
+```
+1. Settings-specific messages (ThemeChangedMsg, SaveMsg, CancelMsg) -- always
+2. search.JumpMsg, search.CloseMsg -- always
+3. preview.CloseMsg -- always
+4. todolist.PreviewMsg, todolist.OpenEditorMsg -- always
+5. editor.EditorFinishedMsg -- always
+6. if showSettings -> updateSettings(msg)
+7. if showPreview -> updatePreview(msg)
+8. if showSearch -> updateSearch(msg)
+9. Normal routing (key handling, pane routing)
+```
+
+**Template manager fits at position 6.5:**
+
+```
+6. if showSettings -> updateSettings(msg)
+7. if showTmplMgr -> updateTmplMgr(msg)    // NEW
+8. if showPreview -> updatePreview(msg)
+9. if showSearch -> updateSearch(msg)
+10. Normal routing
+```
+
+**Add tmplmgr.CloseMsg handling alongside other close messages:**
+
+```go
+case tmplmgr.CloseMsg:
+    m.showTmplMgr = false
+    return m, nil
+```
+
+### 2. TodoStore Interface Extension
+
+New methods needed (all added to interface, implemented in SQLiteStore, stubbed in JSON Store):
+
+```go
+// Template management
+UpdateTemplate(id int, name, content string) error
+
+// Schedule CRUD
+AddSchedule(templateID int, rule string) (Schedule, error)
+ListSchedules() []Schedule
+ListSchedulesForTemplate(templateID int) []Schedule
+DeleteSchedule(id int)
+UpdateSchedule(id int, rule string) error
+
+// Auto-creation support
+TodoExistsForSchedule(scheduleID int, date string) bool
+AddScheduledTodo(text, date, body string, scheduleID int, scheduleDate string) Todo
+```
+
+**Why `AddScheduledTodo` separate from `Add`:** The existing `Add(text, date)` method creates a plain todo. Scheduled todos need additional fields (`schedule_id`, `schedule_date`). Rather than changing the signature of `Add` (which would break all existing callers), a separate method is cleaner.
+
+### 3. Theme Propagation
+
+Add to `app.Model.applyTheme()`:
+
+```go
+m.tmplMgr.SetTheme(t)
+```
+
+This follows the established pattern used by all other overlay components.
+
+### 4. Help Bar Integration
+
+Add to `app.Model.currentHelpKeys()`:
+
+```go
+if m.showTmplMgr {
+    return helpKeyMap{bindings: m.tmplMgr.HelpBindings()}
+}
+```
+
+Place after `showPreview` check, before `showSearch` check.
+
+### 5. Window Resize Propagation
+
+Add `updateTmplMgr()` method to app.Model following the established pattern:
+
+```go
+func (m Model) updateTmplMgr(msg tea.Msg) (tea.Model, tea.Cmd) {
+    if wsm, ok := msg.(tea.WindowSizeMsg); ok {
+        m.width = wsm.Width
+        m.height = wsm.Height
+        m.ready = true
+        m.help.Width = wsm.Width
+        m.tmplMgr.SetSize(wsm.Width, wsm.Height)
+
+        var calCmd tea.Cmd
+        m.calendar, calCmd = m.calendar.Update(msg)
+        m.syncTodoSize()
+        return m, calCmd
+    }
+
+    var cmd tea.Cmd
+    m.tmplMgr, cmd = m.tmplMgr.Update(msg)
+    return m, cmd
+}
+```
+
+---
+
+## New Package: `internal/recurring/`
+
+**Purpose:** Schedule rule parsing, date matching logic, and auto-creation orchestration. This is pure business logic with no TUI concerns.
+
+```
+internal/recurring/
+    rule.go       -- ScheduleRule type, ParseRule, String, MatchesDate
+    generate.go   -- AutoCreate function, rolling window logic
+    rule_test.go  -- Unit tests for rule parsing and date matching
+    generate_test.go -- Unit tests for auto-creation logic
+```
+
+**Why separate from tmplmgr:** The auto-creation logic runs in `main.go` before the TUI starts. It has no TUI dependency. The `tmplmgr` package is a Bubble Tea component. Mixing them would create an unnecessary dependency chain.
+
+**Why separate from store:** The recurring logic uses the store but is not the store. It orchestrates reads (ListSchedules, FindTemplate, TodoExistsForSchedule) and writes (AddScheduledTodo). This is application logic, not persistence logic.
+
+### Rolling Window Algorithm
+
+```go
+func AutoCreate(s store.TodoStore, now time.Time, windowDays int) {
+    schedules := s.ListSchedules()
+    for _, sched := range schedules {
+        rule, err := ParseRule(sched.Rule)
+        if err != nil {
+            continue // skip malformed rules
+        }
+        tpl := s.FindTemplate(sched.TemplateID)
+        if tpl == nil {
+            continue // template was deleted but CASCADE didn't fire (shouldn't happen)
+        }
+
+        for d := 0; d < windowDays; d++ {
+            date := now.AddDate(0, 0, d)
+            dateStr := date.Format("2006-01-02")
+
+            if !rule.MatchesDate(date) {
+                continue
+            }
+            if s.TodoExistsForSchedule(sched.ID, dateStr) {
+                continue
+            }
+
+            // Execute template with empty placeholders
+            body, _ := tmpl.ExecuteTemplate(tpl.Content, map[string]string{})
+            title := tpl.Name // use template name as todo title
+            s.AddScheduledTodo(title, dateStr, body, sched.ID, dateStr)
+        }
+    }
+}
+```
+
+**Window size of 7 days:** Creates todos for today through 6 days from now. This means:
+- User sees upcoming scheduled todos when they navigate to those dates.
+- If the user does not open the app for a week, they get 7 days of catch-up on next launch.
+- Missing days beyond 7 are not retroactively created (this is intentional -- stale recurring todos for missed days are noise, not value).
+
+**Edge cases:**
+- Template deleted between schedule check and template lookup: `FindTemplate` returns nil, skip.
+- Schedule rule malformed: `ParseRule` returns error, skip. Log to stderr if desired.
+- App opened multiple times per day: `TodoExistsForSchedule` deduplicates -- no duplicates created.
+
+---
+
+## Relationship Between Templates and Recurring Todos
+
+```
+templates (1) --- (0..N) schedules (1) --- (0..N) todos
+    |                        |                      |
+    | has content +          | has rule string       | has schedule_id
+    | placeholders           | + template_id FK      | + schedule_date
+    |                        |                      | + body (rendered from template)
+```
+
+**Key design principle: Todos are independent after creation.**
+
+Once a recurring todo is created from a template, it is a regular todo. If the template content changes later, existing todos are NOT retroactively updated. This is the correct behavior because:
+1. The user may have already edited the todo body via the external editor.
+2. Retroactive updates would destroy user customizations.
+3. The template is a starting point, not a live binding.
+
+**Tracking lineage:** `schedule_id` on the todo tracks which schedule created it, not which template. This is for deduplication only. The user never sees this linkage in the UI.
 
 ---
 
 ## Suggested Build Order
 
-The three features have distinct dependency relationships. Build order should minimize risk and maximize testability at each step.
+The features have clear dependencies. Build order minimizes risk and ensures each step is independently testable.
 
-### Step 1: Extract Store Interface (no behavioral change)
+### Phase A: Template Management Overlay (Foundation)
 
-**What:** Define `store.TodoStore` interface. Change all consumers from `*store.Store` to `store.TodoStore`. Verify compilation. Run existing tests.
+**What:** Create `tmplmgr` package with full overlay UI. Add `UpdateTemplate` to store interface. Wire into app.Model.
 
-**Rationale:** This is a pure mechanical refactor. Zero behavioral change. But it is a prerequisite for Steps 2 and 3. Do it first so the rest of v1.4 builds cleanly on the abstraction.
+**Why first:** This is a standalone feature with no dependency on recurring/scheduling. It provides value immediately (users can manage templates in a proper UI instead of the cramped inline modes). It also establishes the UI infrastructure that the schedule management UI will be built into.
 
-**Risk:** Low. Interface extraction in Go is straightforward. The existing Store struct already satisfies the interface implicitly.
+**New/Modified:**
+- NEW: `internal/tmplmgr/model.go`, `keys.go`, `styles.go`
+- MOD: `store/store.go` (add `UpdateTemplate` to interface)
+- MOD: `store/sqlite.go` (implement `UpdateTemplate`)
+- MOD: `app/model.go` (add overlay routing, key binding)
+- MOD: `app/keys.go` (add template management key)
 
-**Files changed:** `store/store.go` (add interface), `app/model.go`, `calendar/model.go`, `todolist/model.go`, `search/model.go` (change field types).
+**Risk:** Low. Follows established overlay pattern exactly.
 
-### Step 2: SQLite Backend + Migration
+### Phase B: Schedule Schema + CRUD
 
-**What:** Implement `store.SQLiteStore` behind the `TodoStore` interface. Include JSON-to-SQLite migration. Wire into `main.go`.
+**What:** Add schedules table (migration v4), schedule tracking columns on todos (migration v5). Implement schedule CRUD in store. Create `internal/recurring/rule.go` with rule parsing and date matching.
 
-**Rationale:** This is the highest-risk item (new dependency, data migration, persistence change). Do it early so issues surface before building features on top.
+**Why second:** The schema and data layer must exist before either the UI for schedule management or the auto-creation engine can work. This phase is all backend -- no UI changes.
 
-**Dependencies:** Step 1 (interface must exist).
+**New/Modified:**
+- NEW: `internal/recurring/rule.go`, `rule_test.go`
+- MOD: `store/todo.go` (add Schedule struct, update Todo with schedule fields)
+- MOD: `store/store.go` (add schedule methods to interface)
+- MOD: `store/sqlite.go` (implement schedule methods, migrations v4+v5)
 
-**Substeps:**
-1. Add `modernc.org/sqlite` dependency
-2. Create `store/sqlite.go` with `NewSQLiteStore` constructor
-3. Implement schema creation (todos table, schema_version table)
-4. Implement all `TodoStore` methods via SQL queries
-5. Create `store/migrate.go` with JSON-to-SQLite migration logic
-6. Add `config.DBPath()` to `config/paths.go`
-7. Update `main.go` to use SQLite store
-8. Test: create fresh DB, migrate from JSON, verify all operations
+**Risk:** Medium. Schema migrations need careful testing. Rule parsing is straightforward but edge cases exist (e.g., monthly:31 on February).
 
-**Risk:** Medium. The SQL queries are straightforward but the migration needs careful testing. Key concern: ensuring `AUTOINCREMENT` IDs do not conflict with migrated IDs (use `INSERT` with explicit IDs during migration, then let autoincrement take over).
+### Phase C: Auto-Creation + Schedule UI
 
-### Step 3: Add Body Field to Todo + Store
+**What:** Implement `recurring.AutoCreate()` in `main.go` startup. Add schedule management UI to the `tmplmgr` overlay (new modes for viewing/adding/deleting schedules on a template).
 
-**What:** Add `Body string` to `store.Todo`. Add `UpdateBody(id int, body string)` to the interface and both implementations. Update SQLite schema (body column already in initial schema from Step 2; if doing incrementally, add `ALTER TABLE todos ADD COLUMN body TEXT NOT NULL DEFAULT ''`).
+**Why third:** Depends on both the overlay (Phase A) and the schema/CRUD (Phase B). This is where everything comes together.
 
-**Rationale:** The body field is needed before the editor can be useful. But it is a small change.
+**New/Modified:**
+- NEW: `internal/recurring/generate.go`, `generate_test.go`
+- MOD: `main.go` (add auto-creation call before app.New)
+- MOD: `internal/tmplmgr/model.go` (add schedule management modes)
 
-**Dependencies:** Step 2 (SQLite backend should be working).
-
-**Files changed:** `store/todo.go`, `store/sqlite.go`, interface definition.
-
-### Step 4: External Editor Integration
-
-**What:** Create `internal/editor/` package. Add `OpenEditorMsg` handling to `app.Model`. Add body-edit keybinding to `todolist.Model`. Implement the `editing` state and alt-screen workaround.
-
-**Rationale:** This is the user-facing feature that ties everything together. It depends on the body field (Step 3) and the store interface (Step 1). Build it last so the underlying data infrastructure is stable.
-
-**Dependencies:** Step 1 (interface), Step 3 (body field).
-
-**Substeps:**
-1. Create `editor/template.go` -- template rendering
-2. Create `editor/parse.go` -- markdown parsing (title extraction)
-3. Create `editor/editor.go` -- Open() function with ExecProcess
-4. Add `editing bool` to `app.Model`, update `View()` for alt-screen workaround
-5. Add `EditorFinishedMsg` handling to `app.Model.Update()`
-6. Add keybinding to `todolist.Model` for opening body editor
-7. Add body indicator (`[+]`) to `todolist.Model.renderTodo()`
-8. Test: manual testing required (editor integration cannot be unit tested easily)
-
-**Risk:** Medium. The ExecProcess API is well-documented and the pattern is established. The alt-screen workaround is the main gotcha, but it is well-understood. Parsing markdown is simple for the heading-extraction use case.
-
-### Step 5 (Optional, v1.4 stretch): Search Body Text
-
-**What:** Extend `SearchTodos` to also search the body field. In SQL: `WHERE text LIKE ? OR body LIKE ?`. For FTS5, create a virtual table.
-
-**Rationale:** Once bodies exist, users will expect search to find content in them. But basic `LIKE` search works for v1.4; FTS5 is a v1.5 optimization.
+**Risk:** Medium. The auto-creation algorithm is simple but the schedule UI adds more modes to the overlay. Integration testing (does a scheduled todo actually appear on the calendar?) requires end-to-end verification.
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Storing Bodies as Separate Files
+### Anti-Pattern 1: Storing Schedules as Cron Strings
 
-**What:** Storing each todo's body as a separate `.md` file in a directory.
+**What:** Using full cron syntax (`0 9 * * 1-5`) for schedule rules.
 
-**Why bad:** Breaks the single-file deployment model. Introduces file-system sync issues (what if the DB references a body file that was deleted?). Complicates backup/migration. The database IS the single source of truth.
+**Why bad:** Cron is powerful but opaque for this use case. The supported recurrence types (daily, weekdays, specific weekdays, monthly) are simple enough to warrant a custom format that is human-readable. Cron also has no standard Go library that doesn't pull in significant dependencies.
 
-**Instead:** Store body as a TEXT column in SQLite. Markdown is just text. Even 10,000 todos with 1KB bodies each is only 10MB -- trivial for SQLite.
+**Instead:** Use the custom rule format (`daily`, `weekdays`, `weekly:mon,fri`, `monthly:15`). It is self-documenting, trivial to parse, and covers all v1.6 use cases. Complex cadences like "every 2nd Tuesday" are explicitly out of scope (v2 candidate per PROJECT.md).
 
-### Anti-Pattern 2: Using an ORM
+### Anti-Pattern 2: Live-Binding Todos to Templates
 
-**What:** Introducing GORM or ent for the SQLite backend.
+**What:** Making todos maintain a live link to their source template, automatically updating when the template changes.
 
-**Why bad:** Massive dependency for 1 table with 7 columns. ORMs add complexity, hide SQL, and make debugging harder. The queries for this app are simple SELECTs, INSERTs, and UPDATEs.
+**Why bad:** Destroys user edits. If a user creates a recurring todo from "Daily Plan" template and then customizes the body via the external editor, a template change would overwrite their work. Also introduces synchronization complexity (when to sync? on view? on edit?).
 
-**Instead:** Use `database/sql` directly with hand-written SQL. It is clear, debuggable, and has zero dependencies beyond the driver.
+**Instead:** Todos are independent after creation. The template is a stamp, not a link. `schedule_id` exists for deduplication only.
 
-### Anti-Pattern 3: Running Editor in a Goroutine
+### Anti-Pattern 3: Retroactive Todo Creation for Missed Days
 
-**What:** Launching the editor in a background goroutine while the TUI continues running.
+**What:** When the app is opened after being closed for 2 weeks, creating recurring todos for all 14 missed days.
 
-**Why bad:** The editor and the TUI both need stdin/stdout. They cannot share the terminal. This will cause garbled output and input corruption.
+**Why bad:** Creates a flood of stale todos that are no longer relevant. A "Daily Plan" todo for 10 days ago is noise, not value. The user did not open the app; they presumably had a different workflow those days.
 
-**Instead:** Use `tea.ExecProcess` which properly suspends the TUI, yields the terminal, and resumes when the editor exits.
+**Instead:** Use a rolling window from today forward only (7 days). Do NOT create todos for past days. If the user needs to catch up, they can manually create todos. The rolling window is a prospective tool, not a retroactive one.
 
-### Anti-Pattern 4: Complex Migration Framework for 1 Table
+### Anti-Pattern 4: Putting Auto-Creation in app.Init()
 
-**What:** Pulling in pressly/goose or golang-migrate for schema migrations.
+**What:** Running auto-creation as a `tea.Cmd` from `app.Init()`.
 
-**Why bad:** Overkill for a single-table desktop app. These tools are designed for multi-service, multi-developer, multi-environment setups. They add dependencies and complexity.
+**Why bad:** Mixes data preparation with TUI lifecycle. Creates timing complexity (what if the user navigates before auto-creation completes?). The store is single-connection, so concurrent access from a background command and the render loop could cause "database is locked" errors.
 
-**Instead:** Use a `schema_version` table and hand-written migration functions. When the app opens the DB, it checks the version and applies any needed migrations sequentially. This is simple, transparent, and sufficient for a single-user app that will have at most 5-10 schema versions over its lifetime.
+**Instead:** Run auto-creation synchronously in `main.go` before the TUI starts. It completes in under 1ms for reasonable schedule counts. The TUI sees a fully prepared dataset from frame one.
 
-### Anti-Pattern 5: Breaking the Store Interface with SQLite-Specific Methods
+### Anti-Pattern 5: Adding Schedule Fields to the Template Struct
 
-**What:** Adding methods like `Query()` or `Exec()` to the store interface that expose SQLite internals.
+**What:** Putting `ScheduleRule`, `ScheduleDays`, etc. directly on the Template struct.
 
-**Why bad:** Leaks implementation details. Makes it impossible to swap backends (e.g., for testing with an in-memory store).
+**Why bad:** Conflates two concerns (template content and recurrence rules). A template can have zero or multiple schedules (e.g., "Daily Plan" might recur on weekdays AND monthly on the 1st as a "Monthly Plan" variant). Embedding schedule in template limits to 1:1.
 
-**Instead:** Keep the interface in terms of domain operations (Add, Toggle, Search, etc.). If a consumer needs a new capability, add a domain-level method to the interface, not a raw SQL escape hatch.
+**Instead:** Separate `schedules` table with `template_id` FK. Clean 1:N relationship. Each schedule has its own rule, ID, and lifecycle.
+
+### Anti-Pattern 6: Rebuilding Template Select in the Overlay
+
+**What:** Duplicating the template selection UI that already exists in todolist.Model.
+
+**Why bad:** The todolist template workflow (select template -> fill placeholders -> create todo) is a distinct user flow from template management. Combining them in one place creates confusion about intent (am I creating a todo or managing templates?).
+
+**Instead:** Keep both entry points: `t` in todolist for "use template to create todo" and `m` in app for "manage templates and schedules". They serve different purposes.
 
 ---
 
-## Scalability Considerations
+## Component Dependency Map (After v1.6)
 
-| Concern | Current (JSON) | After v1.4 (SQLite) |
-|---------|----------------|----------------------|
-| Load time (1000 todos) | ~5ms (parse JSON) | ~1ms (DB open, no full load) |
-| Single mutation | ~10ms (rewrite full file) | <1ms (single row INSERT/UPDATE) |
-| Search (1000 todos) | ~1ms (in-memory loop) | ~1ms (LIKE query; <0.5ms with FTS5) |
-| File size (1000 todos) | ~200KB JSON | ~150KB SQLite |
-| Concurrent safety | None (single writer assumed) | WAL mode handles read/write overlap |
-| Schema evolution | Manual JSON migration | ALTER TABLE + version tracking |
-| Crash recovery | Atomic rename (good) | WAL + journal (better) |
+```
+main.go
+  |
+  +-- config.Load() -> config.Config
+  |
+  +-- store.NewSQLiteStore(dbPath) -> store.TodoStore
+  |     +-- migrate() runs v4 (schedules table), v5 (todo schedule columns)
+  |
+  +-- recurring.AutoCreate(store, time.Now(), 7)              [NEW]
+  |     +-- store.ListSchedules()
+  |     +-- recurring.ParseRule()
+  |     +-- store.FindTemplate()
+  |     +-- tmpl.ExecuteTemplate()
+  |     +-- store.TodoExistsForSchedule()
+  |     +-- store.AddScheduledTodo()
+  |
+  +-- app.New(provider, mondayStart, store, theme, cfg) -> app.Model
+        |
+        +-- calendar.Model     (unchanged)
+        +-- todolist.Model     (unchanged -- existing template workflow stays)
+        +-- settings.Model     (unchanged)
+        +-- search.Model       (unchanged)
+        +-- preview.Model      (unchanged)
+        +-- tmplmgr.Model      [NEW -- template management overlay]
+        |     +-- store.TodoStore (ListTemplates, UpdateTemplate, DeleteTemplate)
+        |     +-- store.TodoStore (ListSchedulesForTemplate, AddSchedule, DeleteSchedule)
+        |
+        +-- recurring package  [NEW -- used only in main.go, not in app.Model]
+```
 
 ---
 
 ## Sources
 
-- [Bubble Tea ExecProcess API](https://pkg.go.dev/github.com/charmbracelet/bubbletea) -- HIGH confidence, official Go package docs
-- [Bubble Tea exec example](https://github.com/charmbracelet/bubbletea/blob/main/examples/exec/main.go) -- HIGH confidence, official example
-- [Bubble Tea alt-screen + ExecProcess issue #424](https://github.com/charmbracelet/bubbletea/discussions/424) -- HIGH confidence, maintainer-confirmed workaround
-- [Bubble Tea ExecProcess output leak issue #431](https://github.com/charmbracelet/bubbletea/issues/431) -- HIGH confidence, confirmed bug
-- [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) -- HIGH confidence, official package docs
-- [Go SQLite benchmarks](https://github.com/cvilsmeier/go-sqlite-bench) -- MEDIUM confidence, community benchmarks
-- [SQLite WAL mode](https://sqlite.org/wal.html) -- HIGH confidence, official SQLite docs
-- [Go Repository Pattern](https://threedots.tech/post/repository-pattern-in-go/) -- MEDIUM confidence, well-regarded blog
-- [charmbracelet/glamour](https://github.com/charmbracelet/glamour) -- HIGH confidence, official repo (for future body preview)
+- Codebase analysis: `internal/app/model.go` (overlay routing pattern) -- HIGH confidence, direct inspection
+- Codebase analysis: `internal/settings/model.go` (overlay component pattern) -- HIGH confidence, direct inspection
+- Codebase analysis: `internal/store/sqlite.go` (migration pattern, PRAGMA user_version) -- HIGH confidence, direct inspection
+- Codebase analysis: `internal/store/store.go` (TodoStore interface, current method set) -- HIGH confidence, direct inspection
+- Codebase analysis: `internal/todolist/model.go` (template workflow modes) -- HIGH confidence, direct inspection
+- Codebase analysis: `internal/tmpl/tmpl.go` (ExtractPlaceholders, ExecuteTemplate) -- HIGH confidence, direct inspection
+- Codebase analysis: `internal/store/todo.go` (Template struct, Todo struct) -- HIGH confidence, direct inspection
+- Codebase analysis: `main.go` (startup sequence, Init returns nil) -- HIGH confidence, direct inspection
+- PROJECT.md: Active requirements and v2 candidates -- HIGH confidence, project specification
+- SQLite foreign key documentation (sqlite.org/foreignkeys.html) -- HIGH confidence for CASCADE behavior

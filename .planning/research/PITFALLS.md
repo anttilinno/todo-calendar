@@ -1,442 +1,416 @@
-# Pitfalls Research: v1.4 Data & Editing
+# Pitfalls Research: v1.6 Template Management & Recurring Todos
 
-**Domain:** TUI Calendar v1.4 -- SQLite backend, markdown todo bodies, external editor integration
-**Researched:** 2026-02-06
-**Confidence:** HIGH (pitfalls derived from codebase analysis + verified library documentation + community issue reports)
+**Domain:** TUI Calendar v1.6 -- Template management overlay, recurring schedules, auto-creation on launch
+**Researched:** 2026-02-07
+**Confidence:** HIGH (pitfalls derived from codebase analysis, SQLite date function documentation, and recurring task design patterns)
 
-This document covers pitfalls specific to ADDING SQLite persistence, markdown template bodies, and external editor integration to the existing Go Bubble Tea TUI app (3,263 LOC, 13 completed phases).
+This document covers pitfalls specific to ADDING template management (edit/delete/rename) and recurring todo scheduling to the existing Go Bubble Tea TUI app (5,209 LOC, 16 completed phases, SQLite backend at PRAGMA user_version 3).
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Store Interface Extraction Breaks Existing Callers
+These cause data corruption, duplicate creation, or require schema redesigns if not addressed upfront.
 
-**What goes wrong:** The current `Store` is a concrete struct pointer (`*store.Store`) threaded through `app.New()`, `todolist.New()`, `search.New()`, and `calendar.Model`. Replacing JSON with SQLite requires changing the Store internals, but every consumer depends directly on the concrete type. If the SQLite store has a different method signature (e.g., methods now return `error` where before they silently called `Save()`), every call site must be updated simultaneously. This creates a massive, error-prone changeover with no incremental testing.
+### Pitfall 1: Duplicate Todo Creation on Repeated App Launch
 
-**Why it happens:** The existing store methods (`Add`, `Toggle`, `Delete`, `Update`, `SwapOrder`) call `s.Save()` internally and swallow the error. With SQLite, each operation becomes a database call that can fail (locked, full disk, schema error). The natural impulse is to make methods return `error`, but this changes the interface for all 6+ callers across 4 packages.
+**What goes wrong:** The "auto-create scheduled todos on app launch for rolling 7-day window" feature creates duplicate todos every time the user launches the app. If the user opens the app three times on Monday, they get three copies of every recurring todo for that day.
 
-**How to avoid:**
-- Extract a `Store` interface BEFORE changing the backend. The interface should match the current concrete API exactly -- methods that don't return errors continue not returning errors. The SQLite implementation can log or handle errors internally during the transition.
-- Alternatively, keep the current API contract (no returned errors) for the SQLite store too. A personal desktop SQLite database on a local filesystem should virtually never fail. Log errors rather than propagating them up to the TUI layer, which has no meaningful way to display them anyway.
-- Do NOT attempt to add error returns to the store methods and simultaneously swap to SQLite. These are two separate changes.
+**Why it happens:** The naive implementation is: "On startup, iterate over schedules, check if today/tomorrow/.../+6 matches a schedule, call `store.Add()` for each match." There is no mechanism to know whether a todo has already been created for a given schedule+date pair.
 
-**Warning signs:**
-- Store method signatures change (adding `error` returns) in the same commit that adds SQLite
-- Compile errors in 4+ packages during the migration
-- Tests for existing features break because of interface changes, not SQLite bugs
+**Consequences:** The user's todo list fills with duplicates. Once created, there is no programmatic way to distinguish "real" manually-created todos from auto-created ones, making cleanup impossible without manual deletion.
 
-**Recovery cost:** MEDIUM -- requires touching every call site. If done after SQLite is already integrated, you cannot tell whether bugs are from the interface change or the backend change.
+**Prevention:**
 
-**Phase to address:** Phase 14 (Database Backend). Extract interface first, then swap implementation.
+1. **Track creation with a ledger table.** Add a `schedule_instances` (or `recurring_log`) table:
+   ```sql
+   CREATE TABLE schedule_instances (
+       schedule_id INTEGER NOT NULL REFERENCES schedules(id) ON DELETE CASCADE,
+       date        TEXT NOT NULL,
+       todo_id     INTEGER NOT NULL REFERENCES todos(id) ON DELETE SET NULL,
+       created_at  TEXT NOT NULL,
+       PRIMARY KEY (schedule_id, date)
+   );
+   ```
+   Before creating a todo for schedule S on date D, check `SELECT 1 FROM schedule_instances WHERE schedule_id = ? AND date = ?`. If a row exists, skip. The PRIMARY KEY constraint makes this naturally idempotent.
 
----
+2. **Alternatively, stamp created todos.** Add a `schedule_id` and `scheduled_date` column to the `todos` table, then check for existing rows before inserting. This is simpler (one table instead of two) but mixes recurring metadata into the todo model, which every consumer then has to understand.
 
-### Pitfall 2: JSON-to-SQLite Migration Loses Data or Runs Repeatedly
-
-**What goes wrong:** The auto-migration (read existing `todos.json`, write to SQLite, optionally rename/delete JSON) either: (a) silently loses data if the JSON has fields the SQLite schema doesn't expect, (b) runs on every startup instead of once because the "already migrated" flag is unreliable, or (c) creates duplicate todos if the migration is interrupted mid-way and re-run.
-
-**Why it happens:** The current JSON envelope (`Data{NextID, Todos}`) is simple, but edge cases exist: what if `todos.json` contains a todo with `SortOrder: 0` (legacy data -- the `EnsureSortOrder()` method already handles this)? What if `CreatedAt` is empty (older entries before that field was added)? The migration must handle ALL historical variations of the JSON format, not just the current schema.
-
-**How to avoid:**
-- Migration must be idempotent. Check if the SQLite database already has data (a schema version table, or simply `SELECT COUNT(*) FROM todos`). If data exists, skip migration.
-- Preserve the original `todos.json` file as `todos.json.bak` after successful migration. Never delete it during migration. Let users manually clean up.
-- Use a transaction for the entire migration: BEGIN, insert all todos, COMMIT. If anything fails, ROLLBACK and fall back to JSON mode. Never leave the user with neither working backend.
-- Handle the `NextID` value explicitly. SQLite autoincrement and the JSON `NextID` are different ID schemes. Either seed the SQLite autoincrement to `NextID` or use the existing integer IDs as explicit values (not autoincrement).
-- Run `EnsureSortOrder()` equivalent during migration, not after, so migrated data is clean.
+**Recommendation:** Use the ledger table approach (option 1). It keeps the `todos` table clean and unchanged, allows ON DELETE CASCADE to clean up when a schedule is removed, and the PRIMARY KEY constraint prevents duplicates at the database level.
 
 **Warning signs:**
-- Migration code does not check whether SQLite already has data
-- No transaction wrapping the migration inserts
-- `todos.json` deleted before SQLite write is confirmed
-- `NextID` from JSON not carried over, causing ID collisions with existing references
+- Auto-creation code uses `store.Add()` without checking for prior creation
+- No new table or column to track which schedule+date pairs have been materialized
+- Tests only run the creation logic once instead of testing idempotency
 
-**Recovery cost:** HIGH -- data loss is irrecoverable if the JSON backup was deleted. Duplicate data requires manual dedup.
+**Detection:** Run the app twice in the same terminal session. If any todo appears twice, the deduplication is broken.
 
-**Phase to address:** Phase 14 (Database Backend). Migration logic is the highest-risk code in the entire milestone.
+**Phase to address:** The phase that implements auto-creation logic (likely the scheduling/auto-create phase). Must be designed before the first line of creation code.
 
 ---
 
-### Pitfall 3: SQLite Connection Misconfiguration Causes "Database Is Locked" on Single-User Desktop App
+### Pitfall 2: "Monthly on the 31st" and Other Calendar Day Edge Cases
 
-**What goes wrong:** Go's `database/sql` package uses a connection pool by default. With SQLite (a file-level lock database), multiple connections from the pool attempt concurrent access and produce `SQLITE_BUSY` / "database is locked" errors. This manifests as random, non-reproducible save failures -- a todo toggle works 99% of the time but occasionally silently fails.
+**What goes wrong:** A schedule configured as "monthly on the 31st" produces no todos in February (28/29 days), April (30 days), June (30 days), September (30 days), and November (30 days). The user sets up a recurring todo expecting it monthly and it silently skips 5 months per year.
 
-**Why it happens:** The default `database/sql` pool has unlimited `MaxOpenConns`. For PostgreSQL or MySQL this is fine (server handles concurrency). For SQLite, the database file itself IS the server. Multiple goroutines opening connections trigger file-level lock contention. Even with WAL mode, write contention from multiple connections in the same process is problematic.
+**Why it happens:** The code does a simple check like `if today.Day() == schedule.DayOfMonth` which fails for months shorter than the scheduled day. Similarly, "monthly on the 29th" fails in non-leap-year February.
 
-**How to avoid:**
-- Set `db.SetMaxOpenConns(1)` for a single-user desktop app. This eliminates lock contention entirely. SQLite operations are fast enough that serialized access through one connection has no perceptible latency for a personal todo app.
-- Set `db.SetMaxIdleConns(1)` and `db.SetConnMaxLifetime(0)` (infinite) to keep that one connection alive.
-- Enable WAL mode via pragma: `PRAGMA journal_mode=WAL` -- this allows concurrent reads even with a single writer, useful if future features add background queries.
-- Set `PRAGMA busy_timeout=5000` as a safety net, even with single-connection config.
-- Set `PRAGMA foreign_keys=ON` explicitly (SQLite defaults to OFF for backward compatibility).
-- These pragmas must be run on EVERY new connection. Use a connection-init hook or run them immediately after `sql.Open()`.
+**Consequences:** Recurring todos silently fail to appear. The user does not notice until they miss a task. There is no error, no warning -- just a missing todo.
+
+**Prevention:**
+
+1. **Clamp to last day of month.** When evaluating whether a schedule should fire for a given date, if the schedule's day-of-month exceeds the number of days in the target month, treat it as the last day. So "monthly on the 31st" fires on Feb 28/29, Apr 30, etc. This matches how most calendar applications (Google Calendar, Apple Calendar) handle this case.
+
+2. **Document the clamping behavior.** When the user sets up a "monthly on 31st" schedule, the UI should indicate "fires on the last day of months with fewer than 31 days" or similar.
+
+3. **Implementation pattern:**
+   ```go
+   func shouldFireOnDate(schedule Schedule, date time.Time) bool {
+       if schedule.Type != Monthly {
+           // ... handle other types
+       }
+       lastDay := daysInMonth(date.Year(), date.Month())
+       targetDay := schedule.DayOfMonth
+       if targetDay > lastDay {
+           targetDay = lastDay
+       }
+       return date.Day() == targetDay
+   }
+   ```
+
+4. **Do NOT use SQLite's date arithmetic for this.** SQLite's `+N months` modifier has a "ceiling" default that wraps overflow into the next month (Jan 31 + 1 month = Mar 03 in non-leap years), which is the opposite of what you want. Use Go's own date logic.
 
 **Warning signs:**
-- `sql.Open()` called without `SetMaxOpenConns(1)`
-- Pragmas set only once at startup instead of per-connection
-- Intermittent "database is locked" errors during rapid todo toggling
-- `_journal_mode` or `_busy_timeout` not in the DSN or connection setup
+- Schedule evaluation uses `==` on day-of-month without bounds checking
+- No test cases for February, April, June, September, November with day 29/30/31
+- Using SQLite `date()` function with `+1 month` for schedule generation
 
-**Recovery cost:** LOW -- configuration fix, no data impact. But the intermittent nature makes it hard to diagnose.
+**Detection:** Create a "monthly on 31st" schedule and check what happens in February.
 
-**Phase to address:** Phase 14 (Database Backend). Set connection config as the very first thing after `sql.Open()`.
+**Phase to address:** The phase that implements schedule matching/evaluation logic. Must include explicit test cases for short months.
 
 ---
 
-### Pitfall 4: tea.ExecProcess Leaks View Content to Terminal
+### Pitfall 3: Template Deletion Orphans Active Schedules
 
-**What goes wrong:** When using `tea.ExecProcess` to launch `$EDITOR`, Bubble Tea exits the alternate screen buffer before the editor starts. During this transition, the `View()` function renders one final frame to the NORMAL terminal buffer (not the alternate screen). The entire TUI layout (calendar, todos, help bar) appears as garbled text in the regular terminal, persisting even after the editor closes and the TUI resumes.
+**What goes wrong:** User creates a template "Daily Standup", attaches a recurring schedule, then deletes the template from the template management overlay. The schedule row still references the deleted template ID. Next app launch, the auto-creation code tries to find the template to materialize it, gets a nil/error, and either crashes or silently creates empty todos.
 
-**Why it happens:** This is a known Bubble Tea behavior ([GitHub Issue #431](https://github.com/charmbracelet/bubbletea/issues/431), [Discussion #424](https://github.com/charmbracelet/bubbletea/discussions/424)). When `ExecProcess` is called, the framework does a final render during alternate screen teardown. Since the app uses `tea.WithAltScreen()` (line 42 of `main.go`), this transition leaks the current `View()` output to stdout.
+**Why it happens:** The existing `DeleteTemplate` method does a simple `DELETE FROM templates WHERE id = ?` with no awareness of related data. The current codebase has `foreign_keys(ON)` in the DSN (verified in `sqlite.go` line 29), so foreign key constraints will enforce referential integrity -- but only if the schema actually declares the foreign key relationship.
 
-**How to avoid:**
-- Set an `editing` boolean flag on the model BEFORE returning the `tea.ExecProcess` command. In `View()`, check this flag and return an empty string (or minimal "Editing..." text):
-  ```
-  if m.editing {
-      return ""
-  }
-  ```
-- After the editor exits (in the `editorFinishedMsg` handler), set `m.editing = false` to restore normal rendering.
-- This is the same pattern documented in the official exec example (`m.quitting` flag). It is not optional -- without it, every editor launch produces visual garbage.
+**Consequences:** If FK constraints are properly declared with ON DELETE CASCADE, deleting a template auto-removes its schedules (safe but potentially surprising). If FK constraints are NOT declared (just an integer column), orphaned schedule rows cause runtime errors or ghost todos. If the code catches the nil template and skips, the user sees a schedule in the schedule list that does nothing -- confusing.
+
+**Prevention:**
+
+1. **Declare the FK relationship with ON DELETE CASCADE in the schedules table schema:**
+   ```sql
+   CREATE TABLE schedules (
+       id          INTEGER PRIMARY KEY AUTOINCREMENT,
+       template_id INTEGER NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+       ...
+   );
+   ```
+   This ensures deleting a template automatically removes its schedules. The app already has `_pragma=foreign_keys(ON)` in the DSN, so this will work.
+
+2. **Warn the user on delete.** In the template management overlay, when deleting a template that has associated schedules, show a confirmation or at minimum a visual indicator that schedules will also be removed.
+
+3. **Also cascade to the schedule_instances ledger.** If a schedule is deleted (via cascade from template deletion), the ledger entries should also cascade-delete so that re-creating the same template+schedule does not think instances already exist.
 
 **Warning signs:**
-- No state flag checked in `View()` before `ExecProcess` returns
-- TUI content appears in terminal scrollback after editor closes
-- Testing only with non-altscreen mode (where the bug doesn't manifest)
+- The `schedules` table uses `template_id INTEGER NOT NULL` without a REFERENCES clause
+- Template deletion does not check for or mention schedules
+- No test for: create template, add schedule, delete template, verify schedule gone
 
-**Recovery cost:** LOW -- adding a flag and View guard is a small change. But if discovered late, users have already seen the broken behavior.
+**Detection:** Delete a template that has a schedule. Check `SELECT * FROM schedules` directly -- orphaned rows mean the FK is not working.
 
-**Phase to address:** Phase 16 (External Editor). Must be in the initial implementation, not a follow-up fix.
+**Phase to address:** The schema migration phase. The FK must be in the CREATE TABLE DDL, not added as an afterthought.
 
 ---
 
-### Pitfall 5: Temp File for Editor Has Wrong Extension, Breaking Syntax Highlighting
+### Pitfall 4: Placeholder Prompting Blocks Batch Auto-Creation
 
-**What goes wrong:** The external editor workflow writes the todo's markdown body to a temp file, opens the editor, then reads it back. If the temp file is created with `os.CreateTemp("", "todo-*.tmp")`, editors like vim/neovim detect filetype from the extension. A `.tmp` extension means no markdown syntax highlighting, no spell checking, and no markdown-specific keybindings. Users editing a markdown body see plain text with no formatting aids.
+**What goes wrong:** The "auto-create on launch for rolling 7-day window" feature creates multiple todos at once (potentially 7+ days times N schedules). If any of those templates have unfilled placeholders, the system needs to prompt the user for values. But the TUI has not even rendered yet -- the user is seeing "Initializing..." while the startup code tries to do interactive prompting.
 
-**Why it happens:** `os.CreateTemp` generates random filenames with the provided pattern. The `*` is replaced with random characters, so `"todo-*.tmp"` produces `todo-abc123.tmp`. Vim/neovim use the extension for filetype detection. The `.tmp` extension maps to no known filetype.
+**Why it happens:** The existing placeholder workflow (in `todolist/model.go`) is deeply embedded in the TUI's mode state machine (`placeholderInputMode`). It prompts one placeholder at a time using the text input. This works for one-shot manual template usage but breaks completely when batch-creating N todos on startup before the TUI event loop is running.
 
-**How to avoid:**
-- Use `.md` as the extension in the temp file pattern: `os.CreateTemp("", "todo-*.md")`. This gives vim/neovim the `markdown` filetype automatically.
-- Alternatively, pass `+set ft=markdown` as a vim/neovim argument, but this is editor-specific and breaks for other editors (nano, micro, emacs). The `.md` extension approach works universally.
-- Clean up the temp file after reading it back. Use `defer os.Remove(tmpFile.Name())` -- but be aware this runs even if the editor fails to launch. That's fine; the file should be cleaned up regardless.
+**Consequences:** Either (a) the startup hangs waiting for user input that cannot be shown, (b) todos are created with empty placeholder values making the body useless, or (c) placeholder prompting is skipped entirely, defeating the purpose.
+
+**Prevention:**
+
+1. **Separate the two creation paths.** Templates without placeholders can be auto-created silently on startup (the body content is fully determined). Templates WITH placeholders should either:
+   - **Queue for prompting after TUI launch.** Store a list of "pending placeholder prompts" and present them to the user after the main view renders, one at a time.
+   - **Pre-fill with date-based defaults.** For auto-created recurring todos, substitute `{{.Date}}` with the scheduled date automatically. Only prompt for genuinely user-specific values.
+
+2. **Design the schedule schema to support pre-filled values.** Allow the user to fill in placeholder values when setting up the schedule (not at creation time). Store these as JSON in the schedule row:
+   ```sql
+   CREATE TABLE schedules (
+       ...
+       placeholder_values TEXT NOT NULL DEFAULT '{}',  -- JSON: {"Topic": "Standup", "Date": "auto"}
+       ...
+   );
+   ```
+   When auto-creating, use these stored values. The "Daily Plan" template has zero placeholders and needs no values. The "Meeting Notes" template could have `{"Topic": "Standup"}` pre-filled and `{"Date": "auto"}` meaning substitute the scheduled date.
+
+3. **"auto" date placeholder.** Since recurring todos are date-bound by nature, the `{{.Date}}` placeholder can be auto-filled with the target date. This eliminates the most common placeholder case without user interaction.
+
+**Recommendation:** Option 2 (pre-fill at schedule setup time) is the cleanest. It means auto-creation is always non-interactive. The user fills in placeholders once when creating the schedule, not on every occurrence.
 
 **Warning signs:**
-- Temp file pattern uses `.tmp` or no extension
-- Editor opens with plain text mode when editing markdown content
-- No `defer os.Remove()` for the temp file
+- Auto-creation code calls into the TUI's placeholder prompting flow
+- No distinction between "templates with placeholders" and "templates without placeholders" in the scheduling logic
+- Startup code blocks on user input
 
-**Recovery cost:** LOW -- one-line fix to the temp file pattern. But poor UX if users don't get syntax highlighting for their markdown.
+**Detection:** Create a schedule using a template with placeholders (e.g., "Meeting Notes" with `{{.Topic}}` and `{{.Date}}`). Restart the app and check what the created todo's body contains.
 
-**Phase to address:** Phase 16 (External Editor). Use `.md` extension from the start.
+**Phase to address:** Must be designed in the schedule setup phase. The placeholder values must be captured when the user creates the schedule, not when the todo is materialized.
 
 ---
 
-### Pitfall 6: Adding "Body" Field to Todo Struct Breaks JSON Backward Compatibility
+## Moderate Pitfalls
 
-**What goes wrong:** Phase 15 adds a `Body string` field to the `Todo` struct for markdown content. If the SQLite migration (Phase 14) has already replaced JSON, this isn't a JSON problem. But if Phase 14 and 15 are developed concurrently or Phase 14 is delayed, the new field in the struct changes JSON serialization. Existing `todos.json` files without a `body` field deserialize with `Body: ""` (correct), but if `omitempty` is NOT on the json tag, re-serialized JSON includes `"body": ""` for every todo, bloating the file. If `omitempty` IS used, round-trip works but is cosmetically different.
+These cause technical debt, confusing UX, or require rework but are recoverable.
 
-**Why it happens:** Phase ordering matters. Phase 15 depends on Phase 14 (the roadmap says so). But developers sometimes work on features in parallel or re-order phases. If `Body` is added to the struct while JSON persistence still exists, the JSON format changes.
+### Pitfall 5: TodoStore Interface Grows Unwieldy
 
-**How to avoid:**
-- Enforce phase ordering strictly. Phase 14 (SQLite) MUST ship before Phase 15 (markdown bodies) begins. The SQLite schema can include the `body TEXT DEFAULT ''` column from the start, making the later addition seamless.
-- If phases DO overlap: add `Body string \`json:"body,omitempty"\`` with `omitempty` to maintain JSON backward compatibility during the transition window.
-- The SQLite schema should define the `body` column in Phase 14 even though Phase 15 populates it. This avoids a schema migration between phases.
+**What goes wrong:** Adding schedule CRUD (CreateSchedule, ListSchedules, UpdateSchedule, DeleteSchedule, ListSchedulesForTemplate, MaterializeScheduledTodos, etc.) to the existing `TodoStore` interface bloats it from 17 methods to 25+. The JSON Store (which still exists in the codebase as a compile-time interface check) needs stub implementations for every new method, even though it will never support schedules.
+
+**Why it happens:** The existing `TodoStore` interface already includes template methods (`AddTemplate`, `ListTemplates`, `FindTemplate`, `DeleteTemplate`). The natural impulse is to keep adding schedule methods to the same interface.
+
+**Prevention:**
+
+1. **Consider a separate ScheduleStore interface** for schedule-specific operations. The auto-creation logic only needs ScheduleStore, not the full TodoStore. This follows the Interface Segregation Principle.
+
+2. **Alternatively, accept the growth.** For a personal-use app with one real implementation (SQLite), a single interface with 25 methods is not a maintainability crisis. Just add the JSON Store stubs and move on. Do not over-engineer.
+
+3. **If keeping one interface:** Group the new methods logically in the interface definition with comments separating todo, template, and schedule method groups.
+
+**Recommendation:** Keep the single `TodoStore` interface and add stubs to the JSON Store. This app has one real backend. The interface segregation principle matters less when there is only one consumer of each method group and one implementation.
 
 **Warning signs:**
-- `Body` field added to Todo struct while JSON store is still in use
-- No `omitempty` json tag on the Body field
-- SQLite schema created without a `body` column, requiring ALTER TABLE later
+- Spending more time on interface design than on the actual schedule logic
+- Creating multiple interfaces that only one type implements
 
-**Recovery cost:** LOW if caught during development. MEDIUM if users have already serialized todos with the broken format.
-
-**Phase to address:** Phase 14 design (include body column in schema) and Phase 15 implementation.
+**Phase to address:** The schema/store phase. Decide the interface strategy before implementing.
 
 ---
 
-## Integration Pitfalls
+### Pitfall 6: Schedule Table Schema Missing Key Fields
 
-### Integration Pitfall 1: Store.Save() Calls Embedded in Every Mutation Don't Map to SQLite
+**What goes wrong:** The schedule schema is designed without enough fields, requiring a migration in a later phase. Common missing fields: `enabled` (to pause without deleting), `last_created_date` (to track what has been materialized), `created_at` (for audit), or `name` (to identify the schedule independently of the template name).
 
-**What goes wrong:** The current store calls `s.Save()` (full JSON write) inside every mutation: `Add()`, `Toggle()`, `Delete()`, `Update()`, `SwapOrder()`. With SQLite, each mutation is an individual SQL statement (INSERT, UPDATE, DELETE). There's no equivalent of "write the whole file." If a developer naively wraps each SQL call in a transaction, every mutation is its own transaction -- correct but slow for batch operations. Conversely, if mutations are grouped in a transaction that gets interrupted (user hits Ctrl+C mid-batch), partial writes occur.
+**Why it happens:** The initial design focuses on the happy path (create schedule, it fires, todos appear) and does not consider the management lifecycle (pause, resume, view history, debug why something did or did not fire).
 
-**Why it happens:** The JSON store has a simple mental model: mutate in-memory, then flush to disk. SQLite has a different model: each SQL statement is immediately durable (with WAL). The `Save()` pattern has no equivalent.
+**Prevention:** Include these fields from the start in the schema:
 
-**How to avoid:**
-- Remove the `Save()` method from the SQLite store. Each mutation method (Add, Toggle, Delete, Update, SwapOrder) directly executes its SQL statement and returns. There is no "flush" step.
-- For the migration insert (bulk operation), use an explicit transaction. For normal CRUD, individual statements are fine -- SQLite autocommit handles durability.
-- Do NOT carry over the `s.data.Todos` in-memory slice pattern. The SQLite store should query the database for every read, not maintain an in-memory cache. For a personal todo app (hundreds of todos at most), this eliminates cache-invalidation bugs with zero perceptible performance cost.
+```sql
+CREATE TABLE schedules (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    template_id        INTEGER NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+    schedule_type      TEXT NOT NULL,          -- 'daily', 'weekdays', 'weekly', 'monthly'
+    schedule_value     TEXT NOT NULL DEFAULT '', -- e.g., '1,3,5' for Mon/Wed/Fri, '15' for monthly
+    placeholder_values TEXT NOT NULL DEFAULT '{}',
+    enabled            INTEGER NOT NULL DEFAULT 1,
+    created_at         TEXT NOT NULL
+);
+```
+
+The `schedule_instances` ledger (from Pitfall 1) replaces the need for `last_created_date` since you can query `MAX(date) FROM schedule_instances WHERE schedule_id = ?`.
 
 **Warning signs:**
-- SQLite store maintains an in-memory `[]Todo` alongside the database
-- A `Save()` method exists on the SQLite store that writes the in-memory slice to SQLite
-- Reads come from memory instead of the database
-- Data inconsistencies between in-memory state and database
+- Schema has only id, template_id, and a type field
+- No way to pause a schedule without deleting and recreating it
+- Adding columns via ALTER TABLE in later phases
 
-**Recovery cost:** MEDIUM -- requires rethinking the store's read pattern if the in-memory cache is already integrated.
-
-**Phase to address:** Phase 14 (Database Backend). Design the store as query-on-read from the start.
+**Phase to address:** The schema migration phase. Design the full schema upfront.
 
 ---
 
-### Integration Pitfall 2: EnsureSortOrder Migration Semantics in SQLite
+### Pitfall 7: Template Rename Breaks UNIQUE Constraint Silently
 
-**What goes wrong:** The current JSON store has `EnsureSortOrder()` which runs at load time to backfill `SortOrder` for legacy todos. In a SQLite backend, this logic needs to be a one-time schema migration, not a per-startup operation. If `EnsureSortOrder()` runs on every startup against SQLite, it performs an unnecessary UPDATE on every todo every time the app launches.
+**What goes wrong:** The templates table has `name TEXT NOT NULL UNIQUE` (from the v1.4 migration). If the user renames a template to a name that already exists, the SQLite UPDATE fails with a UNIQUE constraint violation. If the error is swallowed (as the existing store code tends to do -- see `Toggle`, `Delete`, etc. which ignore errors), the rename silently fails and the user thinks it worked.
 
-**Why it happens:** The current code calls `EnsureSortOrder()` in `NewStore()` (line 36 of `store.go`). It's harmless for JSON (cheap in-memory loop) but wasteful for SQLite (N UPDATE statements).
+**Why it happens:** The existing store pattern is to silently ignore errors from `db.Exec()`. This works fine for most operations but is dangerous for operations with constraints.
 
-**How to avoid:**
-- Perform the SortOrder backfill as part of the JSON-to-SQLite migration. During migration, if a todo has `SortOrder == 0`, assign `(row_index + 1) * 10` before inserting into SQLite.
-- Do NOT call `EnsureSortOrder()` on the SQLite store. Instead, make `SortOrder` NOT NULL DEFAULT in the schema with a reasonable value. New todos get `MAX(sort_order) + 10` via SQL, matching the current Go logic.
-- If you choose to keep `EnsureSortOrder()` for safety, gate it behind a version check: only run if the database is at schema version 1 (initial migration).
+**Prevention:**
+
+1. **Return an error from the rename method.** Unlike Toggle/Delete, rename can fail in a user-actionable way (pick a different name). The new `UpdateTemplate(id int, name, content string) error` method should return the error.
+
+2. **Check for duplicates in the UI layer before calling the store.** Query `ListTemplates()`, check if any other template has the target name. This gives a better user experience (inline error message) than a database error.
+
+3. **Show an error message in the overlay** when the rename fails due to duplicate name. The existing overlay pattern (settings, search) supports rendering error states.
 
 **Warning signs:**
-- `EnsureSortOrder()` still called in the SQLite store constructor
-- EXPLAIN shows full table scans on every app startup
-- SortOrder column is nullable in the schema
+- `UpdateTemplate` does not return an error
+- No test for renaming to a duplicate name
+- The overlay has no error display mechanism
 
-**Recovery cost:** LOW -- removing the call is trivial. But unnecessary database writes on startup are wasteful.
-
-**Phase to address:** Phase 14 (Database Backend).
+**Phase to address:** The template management overlay phase.
 
 ---
 
-### Integration Pitfall 3: Markdown Body Rendering Conflicts With Fixed-Width Pane Layout
+### Pitfall 8: Overlay State Leaks When Switching Between Template Management and Schedule Setup
 
-**What goes wrong:** The todo list pane has a calculated width: `todoInnerWidth := m.width - calendarInnerWidth - (frameH * 2)`. Rendering markdown in this space using a library like Glamour produces output that may exceed this width (long lines, wide code blocks, table rendering). If the rendered markdown is wider than the pane, lipgloss layout breaks -- text wraps awkwardly, columns misalign, or content overflows into the calendar pane.
+**What goes wrong:** The template management overlay lets the user view/edit/delete templates. Adding a schedule to a template requires a sub-flow (select recurrence type, configure days, optionally fill placeholders). If this sub-flow is implemented as a mode within the overlay, switching between "viewing template list" and "editing schedule for template X" corrupts state (wrong template selected, schedule partially configured, cursor position lost).
 
-**Why it happens:** Glamour renders markdown to a specified width, but certain elements (code blocks, long URLs, pre-formatted text) may resist wrapping. The todo list pane is already the flexible-width pane (it absorbs whatever space the calendar doesn't use), but on narrow terminals (80 columns), the todo pane is only ~34 characters wide after the calendar takes its 38.
+**Why it happens:** The existing `todolist/model.go` already has 10 modes in its mode enum. Adding template management as another overlay (like settings/search/preview) with its own internal modes creates nested state machines. The Bubble Tea model is a value type -- every Update returns a new copy. If the overlay's internal state is not properly initialized and cleared, stale data persists.
 
-**How to avoid:**
-- Pass the pane width to the markdown renderer: `glamour.RenderWithEnvironmentConfig(body, glamour.WithWordWrap(todoInnerWidth))`.
-- For Phase 15 (markdown templates), the initial display in the todo LIST can remain single-line (title only). Only show the full rendered markdown body in a detail/preview view or when editing. This sidesteps the rendering-in-narrow-pane problem entirely for the list view.
-- If a full markdown preview IS shown inline, truncate to a fixed number of lines (e.g., 3-line preview) with a "..." indicator.
+**Prevention:**
+
+1. **Follow the established overlay pattern.** Settings, search, and preview are all separate packages with their own Model, Update, View, and a closing message type. Template management should follow this exact pattern: `internal/templates/model.go` with its own state machine.
+
+2. **Use explicit sub-modes within the template overlay.** The overlay should have clear modes: `listMode`, `editMode`, `scheduleSetupMode`, `confirmDeleteMode`. Each mode transition should fully initialize the target mode's state.
+
+3. **Create fresh overlay state on open.** Follow the search overlay pattern (`search.New()` called on Ctrl+F) where a fresh model is created each time the overlay opens. Never reuse stale overlay state.
 
 **Warning signs:**
-- Markdown rendered at full terminal width instead of pane width
-- Long markdown lines cause the todo pane to overflow
-- No width parameter passed to the markdown renderer
-- Narrow terminal (80 cols) test shows broken layout
+- Template management shares state with the todolist model instead of being its own package
+- Mode transitions that only set `m.mode = newMode` without initializing mode-specific fields
+- Stale cursor positions or selected templates after closing and reopening the overlay
 
-**Recovery cost:** LOW -- passing width to renderer is a one-parameter fix. But discovering it requires testing at various terminal sizes.
-
-**Phase to address:** Phase 15 (Markdown Templates). Decide the display strategy during planning.
+**Phase to address:** The template management overlay phase. Architectural decision about overlay vs. inline must be made first.
 
 ---
 
-### Integration Pitfall 4: External Editor Workflow Does Not Refresh Store State
+### Pitfall 9: Rolling Window Creates Todos Too Far in the Future
 
-**What goes wrong:** The editor writes the modified markdown body to a temp file. After the editor exits, the app reads the temp file and calls `store.Update()`. But if the store is SQLite with query-on-read semantics, other parts of the app may have stale cached data. More subtly, if the todolist model has a `cursor` pointing at index 3 and the body update changes the todo's sort-relevant properties (it shouldn't, but might), the cursor points at the wrong item after refresh.
+**What goes wrong:** The "rolling 7-day window" creates todos for days the user has not navigated to yet. The user opens the app on Monday and suddenly sees 7 new recurring todos spanning Monday through Sunday. This clutters the current view and creates cognitive overload, especially if multiple schedules are active.
 
-**Why it happens:** The `editorFinishedMsg` handler reads the temp file and updates the store, but the todo list's `visibleItems()` re-queries the store on every `View()` call (assuming SQLite query-on-read), so it should be fine. The real danger is with in-memory cache designs (Integration Pitfall 1) where the cache is stale after a direct database update.
+**Why it happens:** A 7-day window seemed reasonable in theory, but in practice it means the user is always looking at pre-created tasks they cannot act on yet (Wednesday's standup on Monday morning).
 
-**How to avoid:**
-- If using query-on-read (recommended), the `View()` cycle after `editorFinishedMsg` automatically shows fresh data. No explicit refresh needed.
-- Also call `m.calendar.RefreshIndicators()` after the editor update, as the existing pattern does for all store mutations (line 181 of `app/model.go`).
-- The `editorFinishedMsg` handler should: (1) read temp file, (2) call store.UpdateBody(), (3) remove temp file, (4) set `m.editing = false`, (5) return nil cmd. Keep this sequence simple and synchronous.
+**Prevention:**
+
+1. **Start with today + 1 day (or just today).** Only create todos for today and tomorrow. The user opens the app, sees today's recurring todos, and tomorrow's as a heads-up. This is sufficient for a personal todo app.
+
+2. **Make the window configurable.** Default to 1 day, allow the user to increase via config/settings if they want weekly pre-creation.
+
+3. **Create on-demand as the user navigates months.** Instead of pre-creating for a fixed window, materialize recurring todos when the user navigates to a month that has schedules. This avoids the "startup burst" entirely. However, this means todos only exist after the user views the month, which is fine for a personal app.
+
+**Recommendation:** Start with "today only" creation on app launch. Expand to a configurable window only if the user requests it. Simpler is better for a personal tool.
 
 **Warning signs:**
-- Calendar indicators not refreshing after editor save
-- Todo list showing old body content after editor save (cache not invalidated)
-- Temp file not cleaned up on editor error
+- User opens app and sees a wall of new recurring todos
+- Todos for future days cannot be acted on meaningfully
+- The creation burst takes noticeable time on startup
 
-**Recovery cost:** LOW -- adding a refresh call is trivial. But stale data display is confusing to users.
-
-**Phase to address:** Phase 16 (External Editor).
+**Phase to address:** The auto-creation phase. The window size is a UX decision that should be validated early.
 
 ---
 
-### Integration Pitfall 5: $EDITOR Environment Variable Handling Edge Cases
+### Pitfall 10: Weekday Schedule Mishandles time.Weekday Numbering
 
-**What goes wrong:** The app reads `$EDITOR` to determine which editor to launch. But: (a) `$EDITOR` is empty on many systems (especially macOS default), (b) `$EDITOR` can contain arguments (e.g., `EDITOR="code --wait"`), (c) `$EDITOR` can point to a GUI editor that doesn't block the terminal (VS Code without `--wait`, Sublime Text). If the editor returns immediately (GUI editor without wait flag), the app reads the temp file before the user has finished editing -- saving empty or stale content.
+**What goes wrong:** Go's `time.Weekday` uses Sunday=0, Monday=1, ..., Saturday=6. The user selects "Monday, Wednesday, Friday" in the UI and the code stores `1,3,5`. But the UI display maps these to different days depending on whether the developer assumed 0-indexed or 1-indexed, or ISO weekday numbering (Monday=1, ..., Sunday=7).
 
-**Why it happens:** `exec.Command(os.Getenv("EDITOR"), tmpFile)` works only if `$EDITOR` is a single executable name with no arguments. If it's `"vim"`, fine. If it's `"code --wait"`, `exec.Command` treats the entire string as the executable name and fails. If `$EDITOR` is unset and the app defaults to `"vi"`, it fails on systems without `vi` installed.
+**Why it happens:** Three common weekday numbering schemes exist:
+- Go's `time.Weekday`: Sunday=0, Monday=1, ..., Saturday=6
+- ISO 8601: Monday=1, Tuesday=2, ..., Sunday=7
+- Cron-style: Sunday=0, Monday=1, ..., Saturday=6 (same as Go but sometimes Sunday=7 too)
 
-**How to avoid:**
-- Check `$EDITOR`, then `$VISUAL`, then fall back to a sensible default (`"vi"` on Unix).
-- Split `$EDITOR` on spaces to separate the command from arguments. Use the first token as the executable and append the rest as arguments before the filename:
-  ```
-  parts := strings.Fields(os.Getenv("EDITOR"))
-  args := append(parts[1:], tmpFile)
-  cmd := exec.Command(parts[0], args...)
-  ```
-- This handles `EDITOR="vim"`, `EDITOR="code --wait"`, and `EDITOR="nvim -u NONE"`.
-- For the non-blocking GUI editor case: document that `$EDITOR` should be a terminal editor or a GUI editor with a wait flag. This is a user configuration issue, not a bug to solve. The same limitation applies to `git commit`, `crontab -e`, and every other tool that uses `$EDITOR`.
+If the UI presents days in Monday-first order (matching the app's `first_day_of_week` config) but stores Go weekday numbers, the mapping gets confused. Especially since this app supports both Sunday-start and Monday-start weeks.
+
+**Prevention:**
+
+1. **Store Go `time.Weekday` integer values directly** (0-6). This is what the schedule evaluation code will use (`time.Now().Weekday()`), so the storage format matches the runtime check exactly.
+
+2. **In the UI, map display order to storage values explicitly.** If the user's week starts on Monday, display Mon/Tue/Wed/Thu/Fri/Sat/Sun but store 1/2/3/4/5/6/0. Do not assume display order equals storage order.
+
+3. **Write explicit tests** for: Sunday=0 schedule when week starts on Monday, Saturday=6 schedule when week starts on Sunday, "weekdays" (Mon-Fri = 1,2,3,4,5) preset.
 
 **Warning signs:**
-- `exec.Command(editor, file)` where `editor` is the raw `$EDITOR` string
-- No fallback when `$EDITOR` is empty
-- Editor launches but app reads the file back immediately (before user saves)
-- `$EDITOR` with spaces in the path (Windows-style paths) not handled
+- Schedule stores day names as strings ("Monday") instead of integers
+- No mapping layer between display order and storage order
+- Off-by-one in weekday selection when `first_day_of_week` changes
 
-**Recovery cost:** LOW -- string splitting fix. But empty-$EDITOR crashes are bad first-run experience.
-
-**Phase to address:** Phase 16 (External Editor).
+**Phase to address:** The schedule setup UI phase. The weekday mapping must account for the existing `first_day_of_week` configuration.
 
 ---
 
-## "Looks Done But Isn't" Patterns
+## Minor Pitfalls
 
-These are bugs that pass initial manual testing but fail under real-world conditions.
+These are annoyances or polish issues, not architectural problems.
 
-### Pattern 1: SQLite Database Path Not Created
+### Pitfall 11: Template Edit Loses Unsaved Changes on Accidental Escape
 
-**What looks done:** SQLite store opens successfully in tests using `:memory:` or a path in the current directory.
+**What goes wrong:** User is editing a template's content in the template management overlay, accidentally presses Escape, and all changes are lost with no confirmation.
 
-**What's actually wrong:** In production, the database path is in `~/.config/todo-calendar/todos.db`. If the directory doesn't exist (first-time user), `sql.Open()` with `modernc.org/sqlite` does NOT create intermediate directories -- it creates the file but only if the parent directory exists. The current JSON store has `os.MkdirAll(dir, 0755)` in `Save()` (line 63 of `store.go`). The SQLite equivalent must also ensure the directory exists before opening.
+**Prevention:** Follow the settings overlay pattern which has save/cancel semantics. Store original values and offer a "discard changes?" confirmation if the content has been modified.
 
-**How to detect:** Test with a fresh user profile (empty `~/.config/`). The app should create `~/.config/todo-calendar/` and then `todos.db` inside it.
-
-**Phase to address:** Phase 14.
+**Phase to address:** Template management overlay phase.
 
 ---
 
-### Pattern 2: Migration Succeeds But IDs Don't Match
+### Pitfall 12: Schedule Display in Template List Obscures Template Content
 
-**What looks done:** All todos appear in SQLite after migration. Counts match.
+**What goes wrong:** The template management overlay shows template names and content previews. Adding schedule information (recurrence type, enabled/disabled) to each row makes the list too dense to read in a terminal.
 
-**What's actually wrong:** SQLite autoincrement starts at 1. The JSON store has `NextID` which may be 47 (after 46 todos, some deleted). If the migration uses autoincrement, new SQLite IDs are 1-N, not the original IDs. Any external references to todo IDs (none currently, but future features like markdown links `[see todo #12]`) would break. More immediately, the `editingID` field in the todolist model (line 58) stores the todo ID during editing -- if editing starts before migration and finishes after, the ID is wrong.
+**Prevention:** Show schedules as a detail view when a template is selected (cursor on it), not inline in the list. Use the existing pattern from search results where the selected item shows expanded details.
 
-**How to detect:** After migration, verify that `SELECT id FROM todos` matches the original JSON IDs exactly. Verify that `Find(originalID)` returns the correct todo.
-
-**Phase to address:** Phase 14. Use explicit ID values in INSERT, not autoincrement.
+**Phase to address:** Template management overlay phase.
 
 ---
 
-### Pattern 3: Editor Returns Error But File Was Actually Saved
+### Pitfall 13: Migration Version Gap Creates Confusion
 
-**What looks done:** Error handling checks `editorFinishedMsg.err` and shows an error if non-nil.
+**What goes wrong:** The current schema is at PRAGMA user_version = 3. If this milestone adds multiple migrations (e.g., 4 for schedules table, 5 for schedule_instances table), and a future developer (or the user's pre-existing DB) misses one, the sequential `if version < N` pattern might apply later migrations without earlier ones.
 
-**What's actually wrong:** Some editors return non-zero exit codes for valid reasons (vim returns 1 if the user quit with `:cq`, which means "quit without saving" -- but neovim may return 1 for certain plugin errors even if the file was saved). If the error handler skips reading the file on ANY error, legitimate saves are lost. Conversely, if the error handler always reads the file regardless of error, a `:cq` quit (intentional discard) saves content the user wanted to discard.
+**Prevention:** This is already handled correctly by the existing migration pattern -- the `if version < N` blocks in `migrate()` run sequentially and each increments the version. As long as new migrations follow the same pattern, this is safe. Just ensure all DDL for a single migration is in one `if version < N` block, not split across multiple blocks.
 
-**How to detect:** Test with `:wq` (save and quit), `:q!` (quit without saving, but file was already written), and `:cq` (quit with error, file unchanged). The app should save the file content in all cases EXCEPT when the file content is unchanged (no user edits).
+**Warning signs:**
+- Two separate `if version < N` blocks that both need to succeed for the schema to be consistent
+- DDL for related tables (schedules + schedule_instances) split across different migration versions
 
-**Recommended approach:** Compare file content before and after editor. If content changed, save it -- regardless of exit code. If content is identical to what was written, skip the save. This handles both "normal save" and "intentional discard" correctly.
+**Recommendation:** Put the entire schedule schema (schedules table, schedule_instances table, indexes) in a single migration block (`if version < 4`).
 
-**Phase to address:** Phase 16.
-
----
-
-### Pattern 4: Markdown Template Placeholders in User Content
-
-**What looks done:** Templates with `{{date}}` and `{{title}}` placeholders work correctly.
-
-**What's actually wrong:** If a user creates a todo with text containing `{{` or `}}` (literal curly braces), and that text is later processed through the template engine, Go's `text/template` attempts to parse it as a template action. This produces either parse errors or unexpected output. For example, a todo titled "Configure {{nginx}}" would fail template parsing.
-
-**How to detect:** Create a todo with `{{` in its title or body, then apply any template operation that processes the text.
-
-**How to avoid:** Template expansion should only happen at todo CREATION time (when filling in a template). Once a todo body is populated, it is plain markdown -- never re-processed through the template engine. Store the expanded result, not the template + data.
-
-**Phase to address:** Phase 15.
+**Phase to address:** The schema migration phase.
 
 ---
 
-### Pattern 5: Concurrent TUI State During Editor Execution
+## Phase-Specific Warnings
 
-**What looks done:** Editor launches, user edits, editor closes, TUI resumes.
-
-**What's actually wrong:** While the editor is running, the Bubble Tea program is "paused" but the terminal can still receive signals. If the user resizes the terminal while the editor is open, the `WindowSizeMsg` is received when the TUI resumes. If the model's `editing` flag prevents normal `View()` rendering but NOT normal `Update()` processing, the window size message updates `m.width` and `m.height` correctly. This is actually fine. BUT: if the editing flag also prevents `Update()` from processing, the resize message is lost and the TUI renders at the wrong size after resuming.
-
-**How to detect:** Open editor, resize terminal while editor is open, close editor. The TUI should render at the new size.
-
-**How to avoid:** The `editing` flag should only affect `View()` (return empty string). Do NOT block `Update()` processing -- let `WindowSizeMsg` and other messages update the model state normally.
-
-**Phase to address:** Phase 16.
-
----
-
-### Pattern 6: SQLite PRAGMA Settings Lost on Connection Reconnect
-
-**What looks done:** Pragmas set after `sql.Open()` work correctly during the session.
-
-**What's actually wrong:** Go's `database/sql` pool may close and reopen connections transparently. PRAGMAs like `journal_mode=WAL` are persistent (they survive reconnection) but `busy_timeout`, `foreign_keys`, and `synchronous` are per-connection settings. If the pool closes the idle connection and opens a new one, these pragmas revert to defaults. With `MaxOpenConns(1)` and `MaxIdleConns(1)` and `ConnMaxLifetime(0)`, the connection should stay alive forever -- but this depends on correct pool configuration.
-
-**How to detect:** Set a long `ConnMaxLifetime` (e.g., 1 hour), wait past it, then perform an operation. Check if `foreign_keys` is still ON.
-
-**How to avoid:**
-- Use `db.Conn(ctx)` to get a dedicated connection and keep it for the app's lifetime. Or:
-- Use a connection-init hook (`sql.Register` a driver wrapper that runs PRAGMAs on new connections). For `modernc.org/sqlite`, you can append pragmas to the DSN: `file:path/todos.db?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(ON)`.
-- The DSN approach is the simplest and most reliable.
-
-**Phase to address:** Phase 14.
+| Phase Topic | Likely Pitfall | Mitigation | Severity |
+|-------------|---------------|------------|----------|
+| Schema migration | FK not declared, orphaned schedules | Always use REFERENCES with ON DELETE CASCADE | Critical |
+| Schema migration | Incomplete schema, missing enabled/placeholder_values fields | Design full schema upfront per Pitfall 6 | Moderate |
+| Schema migration | Split migrations for related tables | Single migration block for all schedule DDL | Minor |
+| Template management overlay | State leaks between modes | Separate package following settings/search pattern | Moderate |
+| Template management overlay | Rename to duplicate name silently fails | Return error, show in UI | Moderate |
+| Template management overlay | Unsaved edit loss on Escape | Confirm discard if modified | Minor |
+| Schedule setup UI | Weekday numbering mismatch | Store Go time.Weekday values, explicit display mapping | Moderate |
+| Schedule setup UI | Placeholder values not captured upfront | Pre-fill at schedule creation time | Critical |
+| Schedule evaluation | Monthly day > days-in-month | Clamp to last day of month | Critical |
+| Schedule evaluation | Weekday off-by-one | Test all 7 days with both week-start settings | Moderate |
+| Auto-creation logic | Duplicate todos on re-launch | Ledger table with PRIMARY KEY(schedule_id, date) | Critical |
+| Auto-creation logic | Too many future todos created | Start with today-only, expand if needed | Moderate |
+| TodoStore interface | Interface bloat | Accept it for single-backend app, add stubs | Moderate |
 
 ---
 
-### Pattern 7: Body Field Displayed in Single-Line Todo List View
+## Integration Risks with Existing System
 
-**What looks done:** Todo body field exists and can be edited via external editor.
+### Risk 1: Existing Template Deletion Path Needs Schedule Awareness
 
-**What's actually wrong:** The `renderTodo()` function in `todolist/model.go` (line 546) renders each todo as a single line: `[x] Todo text 2026-02-06`. After adding the `Body` field, if the body is naively included in this rendering, a multi-line markdown body explodes the single-line layout. Each todo could be 20+ lines, making the list unusable for navigation.
+The current `DeleteTemplate` in `sqlite.go` (line 455-457) does a bare `DELETE FROM templates WHERE id = ?`. Once schedules reference templates via FK, this delete will either cascade (if FK is declared) or fail (if FK constraint is violated). The existing template deletion in `templateSelectMode` (todolist/model.go line 759-773) calls `m.store.DeleteTemplate()` without any schedule awareness.
 
-**How to detect:** Add a todo with a multi-line body. The todo list should remain navigable with single-line items.
+**Mitigation:** If ON DELETE CASCADE is used, the existing code works correctly without changes -- deleting a template auto-removes its schedules. This is the path of least disruption. Just make sure the FK is declared in the schema.
 
-**How to avoid:** The todo list renders ONLY the `Text` (title) field, never the `Body`. The body is shown in a detail view, a preview pane, or only when editing in the external editor. The list view should show a body indicator (e.g., a small icon or `[...]` suffix) to signal that a body exists, without rendering the body itself.
+### Risk 2: TodoStore Interface Must Add Methods for Both Implementations
 
-**Phase to address:** Phase 15 design. Decide the body display strategy before implementation.
+Every new method added to `TodoStore` must also be stubbed in the JSON `Store` (store.go). Currently there are 4 template stubs (lines 202-217). Schedule methods will need similar stubs. This is mechanical but easy to forget, causing a compile error.
 
----
+**Mitigation:** Run `go build ./...` after every interface change. The compile-time check `var _ TodoStore = (*Store)(nil)` on line 40 of store.go will catch missing implementations immediately.
 
-## Phase-Specific Pitfall Summary
+### Risk 3: App Startup Sequence Needs Schedule Processing Hook
 
-| Phase | Pitfall | Severity | Prevention |
-|-------|---------|----------|------------|
-| 14: Database | Store interface extraction (#1) | MEDIUM | Extract interface first, then swap backend |
-| 14: Database | Migration data loss (#2) | HIGH | Transaction-wrap migration, keep JSON backup |
-| 14: Database | Connection pool misconfiguration (#3) | MEDIUM | `MaxOpenConns(1)`, WAL mode, busy_timeout |
-| 14: Database | Database path not created (Pattern 1) | LOW | `os.MkdirAll` before `sql.Open` |
-| 14: Database | ID mismatch after migration (Pattern 2) | MEDIUM | Use explicit IDs, not autoincrement |
-| 14: Database | Save() pattern doesn't map to SQL (Integration #1) | MEDIUM | Query-on-read, no in-memory cache |
-| 14: Database | EnsureSortOrder on every startup (Integration #2) | LOW | One-time migration, not per-startup |
-| 14: Database | Pragmas lost on reconnect (Pattern 6) | LOW | Set pragmas via DSN string |
-| 14: Database | Body column in schema (Pitfall #6) | LOW | Include `body TEXT DEFAULT ''` in initial schema |
-| 15: Templates | Template placeholders in user content (Pattern 4) | MEDIUM | Expand templates once at creation, store result |
-| 15: Templates | Markdown rendering width (Integration #3) | LOW | Pass pane width to renderer; title-only in list view |
-| 15: Templates | Body in list view (Pattern 7) | LOW | Render title only in list; body in detail/editor |
-| 15: Templates | JSON backward compat (#6) | LOW | Enforce phase ordering; SQLite before bodies |
-| 16: Editor | View content leak (#4) | MEDIUM | `editing` flag, return empty View |
-| 16: Editor | Wrong temp file extension (#5) | LOW | Use `.md` extension pattern |
-| 16: Editor | $EDITOR edge cases (Integration #5) | LOW | Split on spaces, check $VISUAL, fallback |
-| 16: Editor | Store refresh after edit (Integration #4) | LOW | RefreshIndicators() in editorFinishedMsg handler |
-| 16: Editor | Editor exit code ambiguity (Pattern 3) | LOW | Compare content before/after, ignore exit code |
-| 16: Editor | Terminal resize during edit (Pattern 5) | LOW | Only guard View(), not Update() |
+The current `main.go` startup is: config -> provider -> DB path -> SQLiteStore -> theme -> app.New -> tea.Run. There is no hook between "store is ready" and "TUI starts" where schedule materialization can run. The auto-creation logic needs to execute after the store is open but before (or immediately after) the TUI event loop starts.
+
+**Mitigation:** Add the auto-creation call in `main.go` between `NewSQLiteStore()` and `app.New()`. This keeps it synchronous and simple. If the creation takes noticeable time (unlikely for a personal app), it can be moved to `Init()` as a Cmd.
 
 ---
 
 ## Sources
 
-**Codebase analysis (HIGH confidence -- primary source):**
-- `internal/store/store.go` -- Save() pattern, mutation methods, EnsureSortOrder
-- `internal/store/todo.go` -- Todo struct, Data envelope, JSON tags
-- `internal/app/model.go` -- WithAltScreen usage, overlay pattern, message routing
-- `internal/todolist/model.go` -- input state machine, renderTodo, cursor management
-- `internal/config/config.go` -- XDG paths, atomic write pattern
-- `main.go` -- program initialization, tea.NewProgram options
-
-**Bubble Tea ExecProcess issues (HIGH confidence -- official repo):**
-- [tea.ExecProcess writes View output to stdout (Issue #431)](https://github.com/charmbracelet/bubbletea/issues/431)
-- [ExecProcess with WithAltScreen prints outside altscreen (Discussion #424)](https://github.com/charmbracelet/bubbletea/discussions/424)
-- [Official exec example](https://github.com/charmbracelet/bubbletea/blob/main/examples/exec/main.go)
-- [Bubble Tea pkg.go.dev - tea.Exec, tea.ExecProcess docs](https://pkg.go.dev/github.com/charmbracelet/bubbletea)
-
-**Go SQLite best practices (HIGH confidence -- verified with multiple sources):**
-- [Go + SQLite Best Practices (Jake Gold)](https://jacob.gold/posts/go-sqlite-best-practices/) -- connection pooling, WAL, pragmas
-- [Resolve "database is locked" (Ben Boyter)](https://boyter.org/posts/go-sqlite-database-is-locked/) -- MaxOpenConns(1) recommendation
-- [SQLite concurrent writes and "database is locked"](https://tenthousandmeters.com/blog/sqlite-concurrent-writes-and-database-is-locked-errors/) -- busy_timeout behavior, BEGIN IMMEDIATE
-- [SQLITE_BUSY despite timeout (Bert Hubert)](https://berthub.eu/articles/posts/a-brief-post-on-sqlite3-database-locked-despite-timeout/) -- transaction upgrade pitfall
-- [Go and SQLite: when database/sql chafes (David Crawshaw)](https://crawshaw.io/blog/go-and-sqlite) -- connection pool limitations
-
-**SQLite driver selection (MEDIUM confidence -- benchmarks may be outdated):**
-- [SQLite in Go, with and without cgo (multiprocess.io)](https://datastation.multiprocess.io/blog/2022-05-12-sqlite-in-go-with-and-without-cgo.html) -- modernc.org/sqlite vs mattn/go-sqlite3 performance
-- [go-sqlite-bench (GitHub)](https://github.com/cvilsmeier/go-sqlite-bench) -- comparative benchmarks
-- [modernc.org/sqlite with Go](https://theitsolutions.io/blog/modernc.org-sqlite-with-go) -- DSN pragma syntax
-
-**Glamour markdown rendering (MEDIUM confidence):**
-- [Glamour GitHub](https://github.com/charmbracelet/glamour) -- WordWrap option, width configuration
-
-**Vim/Neovim filetype detection (HIGH confidence -- official docs):**
-- [Neovim filetype detection docs](https://neovim.io/doc/user/filetype.html) -- extension-based detection for `.md`
-
----
-
-*Pitfalls research for: TUI Calendar v1.4 Data & Editing*
-*Researched: 2026-02-06*
+- [SQLite Date and Time Functions](https://sqlite.org/lang_datefunc.html) -- verified month arithmetic edge cases with floor/ceiling modifiers (HIGH confidence)
+- Codebase analysis of `/home/antti/Repos/Misc/todo-calendar/internal/store/sqlite.go` -- FK pragma, migration pattern, existing template methods (HIGH confidence)
+- Codebase analysis of `/home/antti/Repos/Misc/todo-calendar/internal/todolist/model.go` -- mode state machine, placeholder workflow, template selection (HIGH confidence)
+- Codebase analysis of `/home/antti/Repos/Misc/todo-calendar/internal/app/model.go` -- overlay routing pattern, startup sequence (HIGH confidence)
+- [Idempotency patterns](https://temporal.io/blog/idempotency-and-durable-execution) -- deduplication strategies (MEDIUM confidence, pattern-level)
+- [Recurring event database storage patterns](https://www.codegenes.net/blog/calendar-recurring-repeating-events-best-storage-method/) -- hybrid table design for recurrence rules (MEDIUM confidence)
+- [Bubble Tea overlay patterns](https://leg100.github.io/en/posts/building-bubbletea-programs/) -- state management for TUI modals (MEDIUM confidence)
