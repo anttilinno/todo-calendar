@@ -776,7 +776,12 @@ func (m Model) View() string {
 	for _, item := range items {
 		switch item.kind {
 		case headerItem:
+			if b.Len() > 0 {
+				b.WriteString("\n") // VIS-02: spacing before non-first headers
+			}
 			b.WriteString(m.styles.SectionHeader.Render(item.label))
+			b.WriteString("\n")
+			b.WriteString(m.styles.Separator.Render("──────────"))
 			b.WriteString("\n")
 
 		case emptyItem:
@@ -787,6 +792,7 @@ func (m Model) View() string {
 			isSelected := selectableIdx < len(selectable) && selectableIdx == m.cursor && m.focused
 			m.renderTodo(&b, item.todo, isSelected)
 			selectableIdx++
+			b.WriteString("\n") // VIS-01: breathing room between items
 		}
 	}
 
@@ -856,26 +862,31 @@ func (m Model) renderTodo(b *strings.Builder, t *store.Todo, selected bool) {
 		b.WriteString("  ")
 	}
 
-	// Checkbox
-	check := "[ ] "
+	// Styled checkbox (VIS-03)
 	if t.Done {
-		check = "[x] "
-	}
-
-	// Text with optional body indicator and date (display in user's configured format)
-	text := t.Text
-	if t.HasBody() {
-		text += " " + m.styles.BodyIndicator.Render("[+]")
-	}
-	if t.HasDate() {
-		text += " " + m.styles.Date.Render(config.FormatDate(t.Date, m.dateLayout))
-	}
-
-	if t.Done {
-		b.WriteString(m.styles.Completed.Render(check + text))
+		b.WriteString(m.styles.CheckboxDone.Render("[x]"))
 	} else {
-		b.WriteString(check + text)
+		b.WriteString(m.styles.Checkbox.Render("[ ]"))
 	}
+	b.WriteString(" ")
+
+	// Text content -- styled separately from checkbox
+	text := t.Text
+	if t.Done {
+		text = m.styles.Completed.Render(text)
+	}
+	b.WriteString(text)
+
+	// Body indicator (after text, not affected by completed styling)
+	if t.HasBody() {
+		b.WriteString(" " + m.styles.BodyIndicator.Render("[+]"))
+	}
+
+	// Date (after text, not affected by completed styling)
+	if t.HasDate() {
+		b.WriteString(" " + m.styles.Date.Render(config.FormatDate(t.Date, m.dateLayout)))
+	}
+
 	b.WriteString("\n")
 }
 
