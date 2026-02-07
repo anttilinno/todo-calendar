@@ -188,10 +188,11 @@ Plans:
   2. Adding a dated todo shows both title and date fields with clear labels in the full pane
   3. Editing an existing todo (title or date) uses the same full-pane layout with the current value pre-filled
   4. The full-pane edit view shows only minimal contextual help (Enter to confirm, Esc to cancel, Tab to switch fields)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 18-01: TBD
+- [ ] 18-01-PLAN.md — Full-pane edit infrastructure and single-field views
+- [ ] 18-02-PLAN.md — Simultaneous two-field dated-add flow
 
 #### Phase 19: Pre-Built Templates
 **Goal**: Users have useful markdown templates available from first launch without needing to create their own
@@ -228,5 +229,5 @@ Plans:
 | 15. Markdown Templates | v1.4 | 3/3 | Complete | 2026-02-06 |
 | 16. External Editor | v1.4 | 1/1 | Complete | 2026-02-06 |
 | 17. Visual Polish & Help | v1.5 | 2/2 | Complete | 2026-02-07 |
-| 18. Full-Pane Editing | v1.5 | 0/? | Not started | - |
+| 18. Full-Pane Editing | v1.5 | 0/2 | Planned | - |
 | 19. Pre-Built Templates | v1.5 | 0/? | Not started | - |
