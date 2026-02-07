@@ -30,11 +30,11 @@
   2. Old `A` (dated add) and `t` (template use) key bindings are removed from the codebase
   3. Today's calendar date shows pending (yellow) or done (green) coloring blended with the today highlight, not just the today style alone
   4. PROJECT.md validated requirements section includes all v1.6+ features (unified edit mode, preview on all items, indicator colors, full-pane template modes)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 23-01: TBD
-- [ ] 23-02: TBD
+- [ ] 23-01-PLAN.md -- Remove JSON store, blend today indicator with todo status
+- [ ] 23-02-PLAN.md -- Remove obsolete A and t keybindings and all dead code
 
 ### Phase 24: Unified Add Form
 **Goal**: User creates any todo (floating, dated, or with body) through a single full-pane form
@@ -72,6 +72,6 @@ Phases execute in numeric order: 23 -> 24 -> 25
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 23. Cleanup & Calendar Polish | v1.7 | 0/TBD | Not started | - |
+| 23. Cleanup & Calendar Polish | v1.7 | 0/2 | Planned | - |
 | 24. Unified Add Form | v1.7 | 0/TBD | Not started | - |
 | 25. Template Picker Integration | v1.7 | 0/TBD | Not started | - |
