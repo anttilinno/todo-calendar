@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-07)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-07 — Milestone v1.6 started
+Phase: 20 - Template Management Overlay
+Plan: --
+Status: Roadmap created, planning not started
+Last activity: 2026-02-07 -- Roadmap created for v1.6 (3 phases, 14 requirements)
 
 ## Performance Metrics
 
@@ -38,5 +38,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Defining v1.6 requirements
-Resume file: None
+Stopped at: Roadmap created for v1.6 milestone
+Resume file: .planning/ROADMAP.md -- v1.6 section (phases 20-22)

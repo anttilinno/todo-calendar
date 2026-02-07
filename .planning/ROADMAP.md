@@ -8,6 +8,7 @@
 - ✅ **v1.3 Views & Usability** - Phases 10-13 (shipped 2026-02-06)
 - ✅ **v1.4 Data & Editing** - Phases 14-16 (shipped 2026-02-06)
 - ✅ **v1.5 UX Polish** - Phases 17-19 (shipped 2026-02-07)
+- 🚧 **v1.6 Templates & Recurring** - Phases 20-22 (in progress)
 
 ## Phases
 
@@ -187,6 +188,80 @@ Plans:
 
 </details>
 
+### 🚧 v1.6 Templates & Recurring (In Progress)
+
+**Milestone Goal:** Users can manage templates in a dedicated overlay and attach recurring schedules that auto-create todos on app launch.
+
+#### Phase 20: Template Management Overlay
+**Goal**: Users can browse, view, edit, rename, and delete templates in a dedicated full-screen overlay
+**Depends on**: Phase 19
+**Requirements**: REQ-20, REQ-21, REQ-22, REQ-23, REQ-24, REQ-25
+**Success Criteria** (what must be TRUE):
+  1. User can press M in normal mode to open a full-screen template list with cursor navigation
+  2. Selecting a template shows its raw content (including placeholder syntax) below the list
+  3. User can delete a template with d, rename with r (pre-filled input, duplicate name handled), and edit content with e (opens external editor)
+  4. Esc closes the overlay and returns to the main view
+**New/Modified files**: NEW internal/tmplmgr/ (model.go, keys.go, styles.go), MOD store/store.go (UpdateTemplate), MOD store/sqlite.go, MOD app/model.go (overlay routing), MOD app/keys.go
+**Risk**: LOW -- follows established overlay pattern (settings, search, preview)
+**Plans**: TBD
+
+#### Phase 21: Schedule Schema & CRUD
+**Goal**: The data layer supports recurring schedule definitions attached to templates with deduplication tracking
+**Depends on**: Phase 20
+**Requirements**: REQ-26, REQ-27, REQ-28
+**Success Criteria** (what must be TRUE):
+  1. Migration v4 creates a schedules table with FK CASCADE to templates and columns for cadence_type, cadence_value, and placeholder_defaults (JSON)
+  2. Migration v5 adds schedule_id (FK SET NULL) and schedule_date columns to todos table with a unique index for deduplication
+  3. ScheduleRule in internal/recurring can parse and match all four cadence types (daily, weekdays, weekly, monthly) including monthly day clamping for short months
+  4. TodoStore interface has schedule CRUD methods (Add/List/Delete/Update) plus TodoExistsForSchedule and AddScheduledTodo, implemented in SQLite and stubbed in JSON store
+**New/Modified files**: NEW internal/recurring/rule.go + rule_test.go, MOD store/todo.go (Schedule struct, Todo schedule fields), MOD store/store.go (interface), MOD store/sqlite.go (migrations v4+v5, schedule methods)
+**Risk**: MEDIUM -- schema design is straightforward but monthly edge cases and migration ordering need careful testing
+**Plans**: TBD
+
+#### Phase 22: Auto-Creation & Schedule UI
+**Goal**: Scheduled todos are automatically created on app launch and users can attach/manage schedules from the template overlay
+**Depends on**: Phase 21
+**Requirements**: REQ-29, REQ-30, REQ-31, REQ-32, REQ-33
+**Success Criteria** (what must be TRUE):
+  1. User can press S on a template in the overlay to open a schedule picker that cycles cadence types with arrows, toggles weekdays with space, and accepts a day number for monthly
+  2. Templates with schedules show a dimmed suffix in the overlay list (e.g., "(daily)", "(Mon/Wed/Fri)", "(15th of month)")
+  3. On app launch, recurring.AutoCreate() runs in main.go before the TUI starts, creating todos for matching dates in a rolling 7-day window with deduplication (multiple launches on the same day produce no duplicates)
+  4. Auto-created todos display an [R] indicator after the todo text, styled in a muted color
+  5. When scheduling a template with placeholders, the user is prompted to fill default values once; auto-created todos use these stored defaults
+**New/Modified files**: NEW internal/recurring/generate.go + generate_test.go, MOD main.go (AutoCreate call), MOD internal/tmplmgr/model.go (schedule modes), MOD internal/todolist/view.go ([R] indicator)
+**Risk**: HIGH -- integrates phases 20 and 21, schedule picker adds multiple sub-modes, placeholder defaults need a prompting sub-flow
+
+**Plans**: TBD
+
+## Requirement Coverage
+
+| REQ | Phase | Description |
+|-----|-------|-------------|
+| REQ-20 | 20 | Template management overlay |
+| REQ-21 | 20 | Template content preview |
+| REQ-22 | 20 | Delete template from overlay |
+| REQ-23 | 20 | Rename template |
+| REQ-24 | 20 | Edit template content |
+| REQ-25 | 20 | Template overlay keybinding (M) |
+| REQ-26 | 21 | Schedule schema (migrations v4+v5) |
+| REQ-27 | 21 | Schedule rule types (daily/weekdays/weekly/monthly) |
+| REQ-28 | 21 | Schedule CRUD in store |
+| REQ-29 | 22 | Schedule picker UI |
+| REQ-30 | 22 | Schedule display in template list |
+| REQ-31 | 22 | Auto-create on app launch |
+| REQ-32 | 22 | Recurring todo visual indicator [R] |
+| REQ-33 | 22 | Placeholder defaults at schedule creation |
+
+**Coverage: 14/14 requirements mapped.**
+
+## Phase Dependencies
+
+```
+Phase 20 (Template Overlay) --> Phase 21 (Schedule Schema) --> Phase 22 (Auto-Creation + UI)
+```
+
+Strict chain: each phase depends on the previous. Phase 20 is standalone value (template management). Phase 21 is backend-only (no UI changes). Phase 22 integrates everything.
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -210,3 +285,6 @@ Plans:
 | 17. Visual Polish & Help | v1.5 | 2/2 | Complete | 2026-02-07 |
 | 18. Full-Pane Editing | v1.5 | 2/2 | Complete | 2026-02-07 |
 | 19. Pre-Built Templates | v1.5 | 1/1 | Complete | 2026-02-07 |
+| 20. Template Management Overlay | v1.6 | 0/TBD | Not started | - |
+| 21. Schedule Schema & CRUD | v1.6 | 0/TBD | Not started | - |
+| 22. Auto-Creation & Schedule UI | v1.6 | 0/TBD | Not started | - |
