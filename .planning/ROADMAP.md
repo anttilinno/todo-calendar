@@ -173,11 +173,11 @@ Plans:
   3. Dates and completion status are visually distinct from todo text (not just inline plaintext)
   4. Normal mode help bar shows at most 5 key bindings instead of the full list
   5. Pressing ? in normal mode reveals the complete keybinding list; input modes show only Enter/Esc
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 17-01: TBD
-- [ ] 17-02: TBD
+- [ ] 17-01-PLAN.md — Todo pane visual polish (spacing, separators, styled checkboxes)
+- [ ] 17-02-PLAN.md — Mode-aware help bar with ? toggle and dynamic height
 
 #### Phase 18: Full-Pane Editing
 **Goal**: Adding and editing todos uses a clean, focused full-pane layout instead of cramped inline inputs
@@ -227,6 +227,6 @@ Plans:
 | 14. Database Backend | v1.4 | 2/2 | Complete | 2026-02-06 |
 | 15. Markdown Templates | v1.4 | 3/3 | Complete | 2026-02-06 |
 | 16. External Editor | v1.4 | 1/1 | Complete | 2026-02-06 |
-| 17. Visual Polish & Help | v1.5 | 0/? | Not started | - |
+| 17. Visual Polish & Help | v1.5 | 0/2 | Not started | - |
 | 18. Full-Pane Editing | v1.5 | 0/? | Not started | - |
 | 19. Pre-Built Templates | v1.5 | 0/? | Not started | - |
