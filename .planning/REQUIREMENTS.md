@@ -43,23 +43,23 @@ Requirements for the Unified Add Flow & Polish milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ADD-01 | — | Pending |
-| ADD-02 | — | Pending |
-| ADD-03 | — | Pending |
-| ADD-04 | — | Pending |
-| ADD-05 | — | Pending |
-| ADD-06 | — | Pending |
-| ADD-07 | — | Pending |
-| CAL-01 | — | Pending |
-| CLN-01 | — | Pending |
-| CLN-02 | — | Pending |
-| CLN-03 | — | Pending |
+| ADD-01 | Phase 24 | Pending |
+| ADD-02 | Phase 24 | Pending |
+| ADD-03 | Phase 25 | Pending |
+| ADD-04 | Phase 25 | Pending |
+| ADD-05 | Phase 24 | Pending |
+| ADD-06 | Phase 24 | Pending |
+| ADD-07 | Phase 24 | Pending |
+| CAL-01 | Phase 23 | Pending |
+| CLN-01 | Phase 23 | Pending |
+| CLN-02 | Phase 23 | Pending |
+| CLN-03 | Phase 23 | Pending |
 
 **Coverage:**
 - v1.7 requirements: 11 total
-- Mapped to phases: 0
-- Unmapped: 11
+- Mapped to phases: 11
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-07*
-*Last updated: 2026-02-07 after initial definition*
+*Last updated: 2026-02-07 after roadmap creation*
