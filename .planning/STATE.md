@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-02-07)
 ## Current Position
 
 Phase: 17 of 19 (Visual Polish & Help)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-02-07 -- Roadmap created for v1.5
+Plan: 1 of 2
+Status: In progress
+Last activity: 2026-02-07 -- Completed 17-01-PLAN.md
 
-Progress: ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0%
+Progress: ████████████████████████████░░ 91% (29/32 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 28 (through v1.4)
+- Total plans completed: 29 (through 17-01)
 - Average duration: 2 min
 - Total execution time: ~1.2 hours
 
@@ -28,6 +28,11 @@ Progress: ░░░░░░░░░░░░░░░░░░░░░░░�
 ### Decisions
 
 See PROJECT.md Key Decisions table for complete log.
+
+| ID | Decision | Phase |
+|----|----------|-------|
+| VIS-checkbox-styling | Checkbox styled independently from text: accent [ ], green [x], strikethrough only on text | 17-01 |
+| VIS-separator-width | Fixed 10-char Unicode box-drawing separator under headers | 17-01 |
 
 ### Pending Todos
 
@@ -40,5 +45,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Roadmap created for v1.5 milestone
+Stopped at: Completed 17-01-PLAN.md
 Resume file: None
