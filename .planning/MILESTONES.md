@@ -1,5 +1,29 @@
 # Project Milestones: Todo Calendar
 
+## v1.5 UX Polish (Shipped: 2026-02-07)
+
+**Delivered:** Visual overhaul with styled checkboxes and section separators, full-pane editing with dual-field forms, mode-aware help bar, and 7 pre-built markdown templates seeded on first launch
+
+**Phases completed:** 17-19 (5 plans total)
+
+**Key accomplishments:**
+- Styled checkboxes (accent/green) with section separators and vertical spacing for easier scanning
+- Mode-aware help bar showing 5 keys in normal mode, Enter/Esc in input modes, full list via ? toggle
+- Full-pane editing forms replacing inline inputs, with dual-field dated-add and Tab field switching
+- 7 pre-built templates (Meeting Notes, Checklist, Daily Plan, Bug Report, Feature Spec, PR Checklist, Code Review) seeded via version-3 migration
+
+**Stats:**
+- 28 files changed, 4326 insertions(+), 71 deletions(-)
+- 5,209 lines of Go across 33 source files
+- 3 phases, 5 plans
+- 1 day (2026-02-07)
+
+**Git range:** `77f6f57` → `777db03`
+
+**What's next:** v2 candidates — simple recurring todos
+
+---
+
 ## v1.4 Data & Editing (Shipped: 2026-02-06)
 
 **Delivered:** SQLite database backend, markdown todo bodies with reusable templates, and external editor integration for power-user editing workflows
