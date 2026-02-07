@@ -91,7 +91,7 @@ func Nord() Theme {
 		TodayFg:         lipgloss.Color("#2E3440"), // nord0 polar night
 		TodayBg:         lipgloss.Color("#88C0D0"), // nord8 frost
 		HolidayFg:       lipgloss.Color("#BF616A"), // nord11 aurora red
-		IndicatorFg:     lipgloss.Color("#A3BE8C"), // nord14 aurora green
+		IndicatorFg:     lipgloss.Color("#EBCB8B"), // nord13 aurora yellow
 		AccentFg:        lipgloss.Color("#88C0D0"), // nord8 frost
 		MutedFg:         lipgloss.Color("#4C566A"), // nord3 polar night
 		CompletedFg:     lipgloss.Color("#4C566A"), // nord3 polar night
@@ -114,7 +114,7 @@ func Solarized() Theme {
 		TodayFg:         lipgloss.Color("#FDF6E3"), // base3
 		TodayBg:         lipgloss.Color("#268BD2"), // blue
 		HolidayFg:       lipgloss.Color("#DC322F"), // red
-		IndicatorFg:     lipgloss.Color("#859900"), // green
+		IndicatorFg:     lipgloss.Color("#B58900"), // yellow
 		AccentFg:        lipgloss.Color("#268BD2"), // blue
 		MutedFg:         lipgloss.Color("#586E75"), // base01
 		CompletedFg:     lipgloss.Color("#586E75"), // base01
