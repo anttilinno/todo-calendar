@@ -33,8 +33,7 @@ const (
 	normalMode          mode = iota
 	inputMode                // typing todo text
 	dateInputMode            // typing date for a dated todo
-	editTextMode             // editing existing todo text
-	editDateMode             // editing existing todo date
+	editMode                 // editing existing todo (title + date + body)
 	filterMode               // inline filter narrowing visible todos
 	templateSelectMode       // browsing/selecting a template
 	placeholderInputMode     // filling in placeholder values one at a time
@@ -79,8 +78,9 @@ type Model struct {
 	styles          Styles
 
 	// Full-pane edit fields
-	dateInput textinput.Model // separate input for date field in full-pane mode
-	editField int             // 0 = title focused, 1 = date focused
+	dateInput    textinput.Model // separate input for date field in full-pane mode
+	bodyTextarea textarea.Model  // textarea for body editing in edit mode
+	editField    int             // 0 = title, 1 = date, 2 = body
 
 	// Template workflow fields
 	templates        []store.Template   // cached template list for selection
@@ -111,11 +111,16 @@ func New(s store.TodoStore, t theme.Theme) Model {
 	ta.Placeholder = "Template content (use {{.VarName}} for placeholders)"
 	ta.ShowLineNumbers = false
 
+	ba := textarea.New()
+	ba.Placeholder = "Body text (markdown supported)"
+	ba.ShowLineNumbers = false
+
 	now := time.Now()
 	return Model{
 		store:            s,
 		input:            ti,
 		dateInput:        di,
+		bodyTextarea:     ba,
 		templateTextarea: ta,
 		viewYear:         now.Year(),
 		viewMonth:        now.Month(),
@@ -166,10 +171,17 @@ func (m Model) HelpBindings() []key.Binding {
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	case dateInputMode:
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel, m.keys.SwitchField}
-	case editTextMode, editDateMode:
-		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
+	case editMode:
+		if m.editField == 2 {
+			return []key.Binding{m.keys.SwitchField, m.keys.Save, m.keys.Cancel}
+		}
+		return []key.Binding{m.keys.SwitchField, m.keys.Confirm, m.keys.Cancel}
 	case normalMode:
 		return []key.Binding{m.keys.Add, m.keys.Toggle, m.keys.Delete, m.keys.Edit, m.keys.Filter}
+	case templateSelectMode:
+		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Confirm, m.keys.Delete, m.keys.Cancel}
+	case templateContentMode:
+		return []key.Binding{m.keys.Save, m.keys.Cancel}
 	default:
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	}
@@ -186,15 +198,22 @@ func (m Model) AllHelpBindings() []key.Binding {
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	case dateInputMode:
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel, m.keys.SwitchField}
-	case editTextMode, editDateMode:
-		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
+	case editMode:
+		if m.editField == 2 {
+			return []key.Binding{m.keys.SwitchField, m.keys.Save, m.keys.Cancel}
+		}
+		return []key.Binding{m.keys.SwitchField, m.keys.Confirm, m.keys.Cancel}
 	case normalMode:
 		return []key.Binding{
 			m.keys.Up, m.keys.Down, m.keys.MoveUp, m.keys.MoveDown,
-			m.keys.Add, m.keys.AddDated, m.keys.Edit, m.keys.EditDate,
+			m.keys.Add, m.keys.AddDated, m.keys.Edit,
 			m.keys.Toggle, m.keys.Delete, m.keys.Filter,
 			m.keys.Preview, m.keys.OpenEditor, m.keys.TemplateUse, m.keys.TemplateCreate,
 		}
+	case templateSelectMode:
+		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Confirm, m.keys.Delete, m.keys.Cancel}
+	case templateContentMode:
+		return []key.Binding{m.keys.Save, m.keys.Cancel}
 	default:
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	}
@@ -284,13 +303,16 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	// Forward blink/tick messages to focused text input in edit modes.
 	switch m.mode {
-	case inputMode, dateInputMode, editTextMode, editDateMode:
+	case inputMode, dateInputMode, editMode:
 		if _, ok := msg.(tea.KeyMsg); !ok {
 			if _, ok := msg.(tea.WindowSizeMsg); !ok {
 				var cmd tea.Cmd
-				if m.editField == 1 && (m.mode == inputMode || m.mode == dateInputMode) {
+				switch {
+				case m.mode == editMode && m.editField == 2:
+					m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
+				case m.editField == 1:
 					m.dateInput, cmd = m.dateInput.Update(msg)
-				} else {
+				default:
 					m.input, cmd = m.input.Update(msg)
 				}
 				return m, cmd
@@ -309,10 +331,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m.updateInputMode(msg)
 		case dateInputMode:
 			return m.updateDateInputMode(msg)
-		case editTextMode:
-			return m.updateEditTextMode(msg)
-		case editDateMode:
-			return m.updateEditDateMode(msg)
+		case editMode:
+			return m.updateEditMode(msg)
 		case filterMode:
 			return m.updateFilterMode(msg)
 		case templateSelectMode:
@@ -415,24 +435,22 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Edit):
 		if len(selectable) > 0 && m.cursor < len(selectable) {
 			todo := items[selectable[m.cursor]].todo
-			m.editingID = todo.ID
-			m.mode = editTextMode
-			m.input.Placeholder = "Edit todo text"
+			// Fetch fresh from store to get current body content
+			fresh := m.store.Find(todo.ID)
+			if fresh == nil {
+				return m, nil
+			}
+			m.editingID = fresh.ID
+			m.mode = editMode
+			m.editField = 0
+			m.input.Placeholder = "Todo title"
 			m.input.Prompt = "> "
-			m.input.SetValue(todo.Text)
+			m.input.SetValue(fresh.Text)
 			m.input.CursorEnd()
-			return m, m.input.Focus()
-		}
-
-	case key.Matches(msg, m.keys.EditDate):
-		if len(selectable) > 0 && m.cursor < len(selectable) {
-			todo := items[selectable[m.cursor]].todo
-			m.editingID = todo.ID
-			m.mode = editDateMode
-			m.input.Placeholder = m.datePlaceholder + " (empty = floating)"
-			m.input.Prompt = "Date: "
-			m.input.SetValue(config.FormatDate(todo.Date, m.dateLayout))
-			m.input.CursorEnd()
+			m.dateInput.Placeholder = m.datePlaceholder + " (empty = floating)"
+			m.dateInput.Prompt = "> "
+			m.dateInput.SetValue(config.FormatDate(fresh.Date, m.dateLayout))
+			m.bodyTextarea.SetValue(fresh.Body)
 			return m, m.input.Focus()
 		}
 
@@ -447,7 +465,7 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Preview):
 		if len(selectable) > 0 && m.cursor < len(selectable) {
 			todo := items[selectable[m.cursor]].todo
-			if todo != nil && todo.HasBody() {
+			if todo != nil {
 				t := *todo
 				return m, func() tea.Msg { return PreviewMsg{Todo: t} }
 			}
@@ -640,77 +658,113 @@ func (m Model) updateDateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
-// updateEditTextMode handles key events while editing an existing todo's text.
-func (m Model) updateEditTextMode(msg tea.KeyMsg) (Model, tea.Cmd) {
+// updateEditMode handles key events while editing an existing todo (title + date + body).
+func (m Model) updateEditMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch {
+	case key.Matches(msg, m.keys.Save):
+		// Ctrl+D saves from any field (including body)
+		return m.saveEdit()
+
 	case key.Matches(msg, m.keys.Confirm):
-		text := strings.TrimSpace(m.input.Value())
-		if text == "" {
-			// Don't save empty text
-			return m, nil
+		// Body field uses Enter for newlines; use Ctrl+D or Tab away to save
+		if m.editField == 2 {
+			// In body textarea, Enter inserts a newline — forward to textarea
+			var cmd tea.Cmd
+			m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
+			return m, cmd
 		}
-		// Get current todo to preserve its date
-		todo := m.store.Find(m.editingID)
-		if todo != nil {
-			m.store.Update(m.editingID, text, todo.Date)
+		// Save all three fields
+		return m.saveEdit()
+
+	case key.Matches(msg, m.keys.SwitchField):
+		// Cycle: title(0) → date(1) → body(2) → title(0)
+		switch m.editField {
+		case 0:
+			m.editField = 1
+			m.input.Blur()
+			return m, m.dateInput.Focus()
+		case 1:
+			m.editField = 2
+			m.dateInput.Blur()
+			return m, m.bodyTextarea.Focus()
+		case 2:
+			m.editField = 0
+			m.bodyTextarea.Blur()
+			return m, m.input.Focus()
 		}
-		m.mode = normalMode
-		m.input.Blur()
-		m.input.SetValue("")
 		return m, nil
 
 	case key.Matches(msg, m.keys.Cancel):
+		if m.editField == 2 {
+			// Esc in body field goes back to title field instead of cancelling
+			m.editField = 0
+			m.bodyTextarea.Blur()
+			return m, m.input.Focus()
+		}
 		m.mode = normalMode
 		m.input.Blur()
+		m.dateInput.Blur()
+		m.bodyTextarea.Blur()
 		m.input.SetValue("")
+		m.dateInput.SetValue("")
+		m.bodyTextarea.SetValue("")
+		m.editField = 0
 		return m, nil
 	}
 
+	// Forward key events to the focused field
 	var cmd tea.Cmd
-	m.input, cmd = m.input.Update(msg)
+	switch m.editField {
+	case 0:
+		m.input, cmd = m.input.Update(msg)
+	case 1:
+		m.dateInput, cmd = m.dateInput.Update(msg)
+	case 2:
+		m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
+	}
 	return m, cmd
 }
 
-// updateEditDateMode handles key events while editing an existing todo's date.
-func (m Model) updateEditDateMode(msg tea.KeyMsg) (Model, tea.Cmd) {
-	switch {
-	case key.Matches(msg, m.keys.Confirm):
-		date := strings.TrimSpace(m.input.Value())
-		// Empty date is valid -- means "make floating"
-		isoDate := ""
-		if date != "" {
-			var err error
-			isoDate, err = config.ParseUserDate(date, m.dateLayout)
-			if err != nil {
-				// Invalid date -- stay in edit mode
-				return m, nil
-			}
-		}
-		// Get current todo to preserve its text
-		todo := m.store.Find(m.editingID)
-		if todo != nil {
-			m.store.Update(m.editingID, todo.Text, isoDate)
-		}
-		m.mode = normalMode
-		m.input.Blur()
-		m.input.SetValue("")
-		// Clamp cursor -- todo may have moved between sections
-		newSelectable := selectableIndices(m.visibleItems())
-		if m.cursor >= len(newSelectable) {
-			m.cursor = max(0, len(newSelectable)-1)
-		}
-		return m, nil
-
-	case key.Matches(msg, m.keys.Cancel):
-		m.mode = normalMode
-		m.input.Blur()
-		m.input.SetValue("")
+// saveEdit persists all three fields and returns to normal mode.
+func (m Model) saveEdit() (Model, tea.Cmd) {
+	text := strings.TrimSpace(m.input.Value())
+	if text == "" {
 		return m, nil
 	}
 
-	var cmd tea.Cmd
-	m.input, cmd = m.input.Update(msg)
-	return m, cmd
+	date := strings.TrimSpace(m.dateInput.Value())
+	isoDate := ""
+	if date != "" {
+		var err error
+		isoDate, err = config.ParseUserDate(date, m.dateLayout)
+		if err != nil {
+			// Invalid date — focus date field
+			m.editField = 1
+			m.input.Blur()
+			return m, m.dateInput.Focus()
+		}
+	}
+
+	body := m.bodyTextarea.Value()
+
+	m.store.Update(m.editingID, text, isoDate)
+	m.store.UpdateBody(m.editingID, body)
+
+	m.mode = normalMode
+	m.input.Blur()
+	m.dateInput.Blur()
+	m.bodyTextarea.Blur()
+	m.input.SetValue("")
+	m.dateInput.SetValue("")
+	m.bodyTextarea.SetValue("")
+	m.editField = 0
+
+	// Clamp cursor — todo may have moved between sections
+	newSelectable := selectableIndices(m.visibleItems())
+	if m.cursor >= len(newSelectable) {
+		m.cursor = max(0, len(newSelectable)-1)
+	}
+	return m, nil
 }
 
 // updateTemplateSelectMode handles key events while browsing the template list.
@@ -881,7 +935,7 @@ func (m Model) updateTemplateContentMode(msg tea.Msg) (Model, tea.Cmd) {
 // View renders the todo list pane content.
 func (m Model) View() string {
 	switch m.mode {
-	case inputMode, dateInputMode, editTextMode, editDateMode:
+	case inputMode, dateInputMode, editMode:
 		return m.editView()
 	default:
 		return m.normalView()
@@ -894,7 +948,7 @@ func (m Model) editView() string {
 
 	// Heading
 	title := "Add Todo"
-	if m.mode == editTextMode || m.mode == editDateMode {
+	if m.mode == editMode {
 		title = "Edit Todo"
 	}
 	b.WriteString(m.styles.EditTitle.Render(title))
@@ -902,12 +956,21 @@ func (m Model) editView() string {
 
 	// Field(s)
 	switch m.mode {
-	case editDateMode:
-		// Single date field
-		b.WriteString(m.styles.FieldLabel.Render("Date"))
+	case editMode:
+		// Three fields: Title, Date, Body
+		b.WriteString(m.styles.FieldLabel.Render("Title"))
 		b.WriteString("\n")
 		b.WriteString(m.input.View())
 		b.WriteString("\n\n")
+		b.WriteString(m.styles.FieldLabel.Render("Date"))
+		b.WriteString("\n")
+		b.WriteString(m.dateInput.View())
+		b.WriteString("\n\n")
+		b.WriteString(m.styles.FieldLabel.Render("Body"))
+		b.WriteString("\n")
+		b.WriteString(m.bodyTextarea.View())
+		b.WriteString("\n")
+
 	case inputMode:
 		if m.addingDated {
 			// Dual fields for dated add
@@ -926,17 +989,18 @@ func (m Model) editView() string {
 			b.WriteString(m.input.View())
 			b.WriteString("\n\n")
 		}
+
 	default:
-		// Title field (dateInputMode, editTextMode)
+		// Title field (dateInputMode)
 		b.WriteString(m.styles.FieldLabel.Render("Title"))
 		b.WriteString("\n")
 		b.WriteString(m.input.View())
 		b.WriteString("\n\n")
 	}
 
-	// Vertical centering
+	// Vertical centering (skip for editMode which has body textarea)
 	content := b.String()
-	if m.height > 0 {
+	if m.height > 0 && m.mode != editMode {
 		lines := strings.Count(content, "\n") + 1
 		topPad := (m.height - lines) / 3
 		if topPad > 0 {
@@ -999,16 +1063,12 @@ func (m Model) normalView() string {
 			b.WriteString(fmt.Sprintf("%s  %s", t.Name, m.styles.Empty.Render(preview)))
 			b.WriteString("\n")
 		}
-		b.WriteString(m.styles.Empty.Render("  enter select | d delete | esc cancel"))
-		b.WriteString("\n")
 
 	case templateContentMode:
 		b.WriteString("\n")
 		b.WriteString(m.styles.SectionHeader.Render("Template Content: " + m.pendingTemplateName))
 		b.WriteString("\n")
 		b.WriteString(m.templateTextarea.View())
-		b.WriteString("\n")
-		b.WriteString(m.styles.Empty.Render("  Ctrl+D save | Esc cancel"))
 		b.WriteString("\n")
 
 	case templateNameMode:

@@ -104,10 +104,6 @@ func (m Model) View() string {
 	b.WriteString("\n")
 
 	b.WriteString(m.viewport.View())
-	b.WriteString("\n")
-
-	hint := m.styles.Hint.Render("  j/k scroll | Esc close")
-	b.WriteString(hint)
 
 	return m.styles.Border.
 		Width(m.width - 2).

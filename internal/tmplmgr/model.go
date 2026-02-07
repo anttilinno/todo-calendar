@@ -507,8 +507,6 @@ func (m Model) View() string {
 
 	if len(m.templates) == 0 {
 		b.WriteString(m.styles.Empty.Render("(no templates)"))
-		b.WriteString("\n\n")
-		b.WriteString(m.styles.Hint.Render("  esc close"))
 		return m.verticalCenter(b.String())
 	}
 
@@ -583,30 +581,6 @@ func (m Model) View() string {
 			content := strings.Join(lines, "\n")
 			b.WriteString(m.styles.Content.Render(content))
 		}
-	}
-
-	// Hint bar.
-	b.WriteString("\n\n")
-	switch m.mode {
-	case renameMode:
-		b.WriteString(m.styles.Hint.Render("  enter confirm  |  esc cancel"))
-	case scheduleMode:
-		cadence := m.cadenceTypes[m.cadenceIndex]
-		hint := "  left/right type  |  enter save  |  esc cancel"
-		if cadence == "weekly" {
-			hint = "  left/right type  |  j/k day  |  space toggle  |  enter save  |  esc cancel"
-		} else if cadence == "monthly" {
-			hint = "  left/right type  |  type digits  |  enter save  |  esc cancel"
-		}
-		b.WriteString(m.styles.Hint.Render(hint))
-	case placeholderDefaultsMode:
-		hint := "  enter next  |  esc cancel"
-		if m.placeholderIndex == len(m.placeholderNames)-1 {
-			hint = "  enter save  |  esc cancel"
-		}
-		b.WriteString(m.styles.Hint.Render(hint))
-	default:
-		b.WriteString(m.styles.Hint.Render("  j/k navigate  |  r rename  |  d delete  |  e edit  |  s schedule  |  esc close"))
 	}
 
 	return m.verticalCenter(b.String())
