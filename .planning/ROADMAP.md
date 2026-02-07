@@ -15,7 +15,7 @@
 - Integer phases (23, 24, 25): Planned milestone work
 - Decimal phases (23.1, 24.1): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 23: Cleanup & Calendar Polish** - Remove dead code, fix today indicator, update docs
+- [x] **Phase 23: Cleanup & Calendar Polish** - Remove dead code, fix today indicator, update docs
 - [ ] **Phase 24: Unified Add Form** - Single `a` key opens full-pane add form with title/date/body fields
 - [ ] **Phase 25: Template Picker Integration** - Template field in add form with pre-fill and editing
 
@@ -33,8 +33,8 @@
 **Plans**: 2 plans
 
 Plans:
-- [ ] 23-01-PLAN.md -- Remove JSON store, blend today indicator with todo status
-- [ ] 23-02-PLAN.md -- Remove obsolete A and t keybindings and all dead code
+- [x] 23-01-PLAN.md -- Remove JSON store, blend today indicator with todo status
+- [x] 23-02-PLAN.md -- Remove obsolete A and t keybindings and all dead code
 
 ### Phase 24: Unified Add Form
 **Goal**: User creates any todo (floating, dated, or with body) through a single full-pane form
@@ -72,6 +72,6 @@ Phases execute in numeric order: 23 -> 24 -> 25
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 23. Cleanup & Calendar Polish | v1.7 | 0/2 | Planned | - |
+| 23. Cleanup & Calendar Polish | v1.7 | 2/2 | ✓ Complete | 2026-02-07 |
 | 24. Unified Add Form | v1.7 | 0/TBD | Not started | - |
 | 25. Template Picker Integration | v1.7 | 0/TBD | Not started | - |
