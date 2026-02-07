@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-02-07)
 ## Current Position
 
 Phase: 20 of 22 (Template Management Overlay)
-Plan: 1 of 2
-Status: In progress
-Last activity: 2026-02-07 -- Completed 20-01-PLAN.md (store extension + tmplmgr package)
+Plan: 2 of 2
+Status: Phase complete
+Last activity: 2026-02-07 -- Completed 20-02-PLAN.md (app wiring + editor integration)
 
-Progress: [██████████████████████████████████░░] 34/36 plans
+Progress: [███████████████████████████████████░] 35/36 plans
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 34 (through 20-01)
+- Total plans completed: 35 (through 20-02)
 - Average duration: 2 min
 - Total execution time: ~1.4 hours
 
@@ -32,6 +32,8 @@ See PROJECT.md Key Decisions table for complete log.
 - Template content shown as raw text in overlay (not glamour-rendered) to reveal placeholder syntax
 - UpdateTemplate returns error for UNIQUE constraint handling in rename UI
 - tmplmgr overlay follows established package pattern (search, settings, preview)
+- Template editor writes raw content (no # heading) unlike todo editor.Open
+- editingTmplID field on Model distinguishes template vs todo edits in EditorFinishedMsg handler
 
 ### Pending Todos
 
@@ -43,6 +45,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-07T12:21:20Z
-Stopped at: Completed 20-01-PLAN.md
-Resume file: .planning/phases/20-template-management-overlay/20-02-PLAN.md
+Last session: 2026-02-07T12:25:46Z
+Stopped at: Completed 20-02-PLAN.md
+Resume file: None
