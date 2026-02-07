@@ -54,10 +54,28 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - Auto-creation of scheduled todos on app launch (rolling 7-day window with dedup) — v1.6
 - Placeholder defaults prompting at schedule creation for auto-created todos — v1.6
 - [R] indicator on recurring todos and schedule cadence suffix in template overlay — v1.6
+- Unified edit mode with title + date + body fields (Tab to cycle) — v1.6+
+- Preview works on all items including those without bodies — v1.6+
+- Distinct pending (yellow) vs completed (green) calendar indicator colors in Nord and Solarized — v1.6+
+- Template and placeholder modes render as full-pane views — v1.6+
 
 ### Active
 
-(None — all shipped through v1.6)
+- [ ] Unified add flow — single `a` key opens full-pane form (title, date, body, template picker) replacing separate `a`/`A`/`t` entry points
+- [ ] Today calendar indicator blends with pending/done colors — currently today style overrides indicator status
+- [ ] Remove dead code — unused JSON store, old keybindings
+- [ ] Document recent v1.6+ changes — unified edit mode, preview on all items, indicator color fix, full-pane template modes
+
+## Current Milestone: v1.7 Unified Add Flow & Polish
+
+**Goal:** Unify the three separate todo creation flows (quick add, dated add, template add) into a single full-pane form, plus polish and cleanup.
+
+**Target features:**
+- Single add form with title, date (optional), body (optional), template picker (optional)
+- Template selection pre-fills title/body, user can edit before saving
+- Today calendar indicator shows pending/done status alongside today highlight
+- Remove unused JSON store and old keybindings
+- Update validated requirements for recent commits
 
 ### v2 Candidates
 
@@ -138,8 +156,8 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 
 ## Known Tech Debt
 
-- JSON Store still exists but unused (main.go uses SQLiteStore exclusively)
+- JSON Store still exists but unused (main.go uses SQLiteStore exclusively) — targeted for removal in v1.7
 - JSON Store template and schedule methods are stubs (return error/nil/no-op)
 
 ---
-*Last updated: 2026-02-07 after v1.6 milestone*
+*Last updated: 2026-02-07 after v1.7 milestone start*

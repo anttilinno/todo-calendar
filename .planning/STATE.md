@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-07)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** Planning next milestone
+**Current focus:** v1.7 Unified Add Flow & Polish
 
 ## Current Position
 
-Phase: 22 of 22 complete
-Plan: All complete
-Status: v1.6 milestone shipped
-Last activity: 2026-02-07 -- v1.6 Templates & Recurring milestone complete
+Phase: Not started (defining requirements)
+Plan: --
+Status: Defining requirements
+Last activity: 2026-02-07 -- Milestone v1.7 started
 
 Progress: [████████████████████████████████████████] 40/40 plans (v1.0-v1.6)
 
@@ -28,7 +28,6 @@ Progress: [███████████████████████
 ### Decisions
 
 See PROJECT.md Key Decisions table for complete log.
-(Cleared at milestone boundary — all decisions archived in milestones/v1.6-ROADMAP.md)
 
 ### Pending Todos
 
@@ -41,5 +40,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: v1.6 milestone archived, ready for next milestone
+Stopped at: v1.7 milestone started, defining requirements
 Resume file: None
