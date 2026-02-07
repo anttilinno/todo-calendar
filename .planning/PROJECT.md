@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A terminal-based (TUI) application that combines a monthly/weekly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, date indicators for pending work, color-coded overview counts, and weekly view toggle. The right panel displays todos for the visible month alongside undated (floating) items with inline filter support. Includes full-screen cross-month search, editing and reordering todos, configurable date format and first day of week, 4 color themes, and an in-app settings overlay with live preview. Todos are stored in SQLite with support for rich markdown bodies, reusable templates with placeholder prompting, and external editor integration ($EDITOR). Templates can be managed in a dedicated overlay and have recurring schedules (daily, weekdays, weekly, monthly) that auto-create todos on app launch. Built with Go and Bubble Tea for personal use.
+A terminal-based (TUI) application that combines a monthly/weekly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, date indicators for pending work, color-coded overview counts, blended today+status highlighting, and weekly view toggle. The right panel displays todos for the visible month alongside undated (floating) items with inline filter support. Includes full-screen cross-month search, editing and reordering todos, configurable date format and first day of week, 4 color themes, and an in-app settings overlay with live preview. Todos are stored in SQLite with support for rich markdown bodies, reusable templates with placeholder prompting, and external editor integration ($EDITOR). Templates can be managed in a dedicated overlay and have recurring schedules (daily, weekdays, weekly, monthly) that auto-create todos on app launch. A unified add form (`a` key) with title, date, body, and template picker fields replaces the previous multi-key entry points. Built with Go and Bubble Tea for personal use.
 
 ## Core Value
 
@@ -58,24 +58,18 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - Preview works on all items including those without bodies — v1.6+
 - Distinct pending (yellow) vs completed (green) calendar indicator colors in Nord and Solarized — v1.6+
 - Template and placeholder modes render as full-pane views — v1.6+
+- Unified add form with title, date, body, and template picker fields (single `a` key) — v1.7
+- Template picker in add form with j/k navigation, placeholder prompting, and Title/Body pre-fill — v1.7
+- Today calendar indicator blends pending/done status with today highlight — v1.7
+- Dead code removed: JSON store, old A/t keybindings, unused modes — v1.7
 
 ### Active
 
-- [ ] Unified add flow — single `a` key opens full-pane form (title, date, body, template picker) replacing separate `a`/`A`/`t` entry points
-- [ ] Today calendar indicator blends with pending/done colors — currently today style overrides indicator status
-- [ ] Remove dead code — unused JSON store, old keybindings
-- [ ] Document recent v1.6+ changes — unified edit mode, preview on all items, indicator color fix, full-pane template modes
+(None — all current requirements shipped. Use `/gsd:new-milestone` to define next goals.)
 
-## Current Milestone: v1.7 Unified Add Flow & Polish
+## Current Milestone: None (v1.7 shipped)
 
-**Goal:** Unify the three separate todo creation flows (quick add, dated add, template add) into a single full-pane form, plus polish and cleanup.
-
-**Target features:**
-- Single add form with title, date (optional), body (optional), template picker (optional)
-- Template selection pre-fills title/body, user can edit before saving
-- Today calendar indicator shows pending/done status alongside today highlight
-- Remove unused JSON store and old keybindings
-- Update validated requirements for recent commits
+v1.7 Unified Add Flow & Polish shipped 2026-02-07. All requirements met. Run `/gsd:new-milestone` to start next version.
 
 ### v2 Candidates
 
@@ -97,7 +91,7 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - **Holidays:** rickar/cal/v2 with 11-country registry (de, dk, ee, es, fi, fr, gb, it, no, se, us)
 - **Config:** TOML at ~/.config/todo-calendar/config.toml (BurntSushi/toml v1.6.0)
 - **Storage:** SQLite at ~/.config/todo-calendar/todos.db (modernc.org/sqlite, pure Go, WAL mode)
-- **Codebase:** 7,624 lines of Go across 35 source files
+- **Codebase:** 7,239 lines of Go across 35 source files
 - **Architecture:** Elm Architecture (Bubble Tea), pure rendering functions, constructor DI, TodoStore interface
 
 ## Constraints
@@ -153,11 +147,14 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 | UNIQUE index on (schedule_id, schedule_date) | Database-level deduplication for auto-created todos | ✓ Good — prevents duplicates |
 | AutoCreate runs synchronously before TUI | Simple, no goroutine complexity | ✓ Good — fast for small schedule counts |
 | Placeholder defaults prompting intercepts schedule confirm | Single flow: pick cadence → fill defaults → save | ✓ Good — natural UX progression |
+| Unified 4-field add form replacing 3 separate entry points | Single form is more intuitive in TUI context (research-backed) | ✓ Good — cleaner UX, fewer keybindings |
+| Sub-state booleans (pickingTemplate) over new mode constants | Picker is transient sub-interaction of inputMode, not standalone | ✓ Good — clean mode enum, no mode switch proliferation |
+| Shared m.input for title field and placeholder prompting | Avoids extra textinput; explicit state restore after pre-fill | ✓ Good — no duplication, state properly managed |
+| Blended today+status styles (foreground=status, background=today) | Users see pending/done at a glance without losing today context | ✓ Good — clean visual hierarchy |
 
 ## Known Tech Debt
 
-- JSON Store still exists but unused (main.go uses SQLiteStore exclusively) — targeted for removal in v1.7
-- JSON Store template and schedule methods are stubs (return error/nil/no-op)
+None — JSON store removed in v1.7.
 
 ---
-*Last updated: 2026-02-07 after v1.7 milestone start*
+*Last updated: 2026-02-07 after v1.7 milestone*
