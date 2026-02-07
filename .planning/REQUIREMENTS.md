@@ -19,13 +19,13 @@ Requirements for the Unified Add Flow & Polish milestone.
 
 ### Calendar Indicators
 
-- [ ] **CAL-01**: Today's date blends today highlight style with pending/done indicator status
+- [x] **CAL-01**: Today's date blends today highlight style with pending/done indicator status
 
 ### Cleanup
 
-- [ ] **CLN-01**: Remove unused JSON store implementation
-- [ ] **CLN-02**: Remove obsolete key bindings and dead code
-- [ ] **CLN-03**: Update PROJECT.md validated requirements for recent v1.6+ commits
+- [x] **CLN-01**: Remove unused JSON store implementation
+- [x] **CLN-02**: Remove obsolete key bindings and dead code
+- [x] **CLN-03**: Update PROJECT.md validated requirements for recent v1.6+ commits
 
 ## Future Requirements
 
@@ -50,10 +50,10 @@ Requirements for the Unified Add Flow & Polish milestone.
 | ADD-05 | Phase 24 | Pending |
 | ADD-06 | Phase 24 | Pending |
 | ADD-07 | Phase 24 | Pending |
-| CAL-01 | Phase 23 | Pending |
-| CLN-01 | Phase 23 | Pending |
-| CLN-02 | Phase 23 | Pending |
-| CLN-03 | Phase 23 | Pending |
+| CAL-01 | Phase 23 | Complete |
+| CLN-01 | Phase 23 | Complete |
+| CLN-02 | Phase 23 | Complete |
+| CLN-03 | Phase 23 | Complete |
 
 **Coverage:**
 - v1.7 requirements: 11 total
@@ -62,4 +62,4 @@ Requirements for the Unified Add Flow & Polish milestone.
 
 ---
 *Requirements defined: 2026-02-07*
-*Last updated: 2026-02-07 after roadmap creation*
+*Last updated: 2026-02-07 after Phase 23 completion*
