@@ -32,8 +32,21 @@ type helpKeyMap struct {
 	bindings []key.Binding
 }
 
-func (h helpKeyMap) ShortHelp() []key.Binding  { return h.bindings }
-func (h helpKeyMap) FullHelp() [][]key.Binding  { return [][]key.Binding{h.bindings} }
+func (h helpKeyMap) ShortHelp() []key.Binding { return h.bindings }
+func (h helpKeyMap) FullHelp() [][]key.Binding {
+	if len(h.bindings) <= 5 {
+		return [][]key.Binding{h.bindings}
+	}
+	var groups [][]key.Binding
+	for i := 0; i < len(h.bindings); i += 5 {
+		end := i + 5
+		if end > len(h.bindings) {
+			end = len(h.bindings)
+		}
+		groups = append(groups, h.bindings[i:end])
+	}
+	return groups
+}
 
 // Model is the root application model.
 type Model struct {
@@ -71,6 +84,9 @@ func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t the
 	h.Styles.ShortKey = lipgloss.NewStyle().Foreground(t.AccentFg)
 	h.Styles.ShortDesc = lipgloss.NewStyle().Foreground(t.MutedFg)
 	h.Styles.ShortSeparator = lipgloss.NewStyle().Foreground(t.MutedFg)
+	h.Styles.FullKey = lipgloss.NewStyle().Foreground(t.AccentFg)
+	h.Styles.FullDesc = lipgloss.NewStyle().Foreground(t.MutedFg)
+	h.Styles.FullSeparator = lipgloss.NewStyle().Foreground(t.MutedFg)
 
 	return Model{
 		calendar:   cal,
@@ -199,6 +215,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.todoList.SetFocused(m.activePane == todoPane)
 			m.todoList.SetViewMonth(m.calendar.Year(), m.calendar.Month())
 			m.calendar.RefreshIndicators()
+			m.help.ShowAll = false
 			return m, nil
 		case key.Matches(msg, m.keys.Settings) && !isInputting:
 			m.savedConfig = m.cfg
@@ -211,6 +228,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.search.SetSize(m.width, m.height)
 			m.showSearch = true
 			return m, m.search.Init()
+		case key.Matches(msg, m.keys.Help) && !isInputting:
+			m.help.ShowAll = !m.help.ShowAll
+			return m, nil
 		}
 
 	case tea.WindowSizeMsg:
@@ -323,6 +343,9 @@ func (m *Model) applyTheme(t theme.Theme) {
 	m.help.Styles.ShortKey = lipgloss.NewStyle().Foreground(t.AccentFg)
 	m.help.Styles.ShortDesc = lipgloss.NewStyle().Foreground(t.MutedFg)
 	m.help.Styles.ShortSeparator = lipgloss.NewStyle().Foreground(t.MutedFg)
+	m.help.Styles.FullKey = lipgloss.NewStyle().Foreground(t.AccentFg)
+	m.help.Styles.FullDesc = lipgloss.NewStyle().Foreground(t.MutedFg)
+	m.help.Styles.FullSeparator = lipgloss.NewStyle().Foreground(t.MutedFg)
 }
 
 // currentHelpKeys returns an aggregated help KeyMap based on the active pane.
@@ -344,10 +367,18 @@ func (m Model) currentHelpKeys() helpKeyMap {
 		calKeys := m.calendar.Keys()
 		bindings = append(bindings, calKeys.PrevMonth, calKeys.NextMonth, calKeys.ToggleWeek)
 	case todoPane:
-		bindings = append(bindings, m.todoList.HelpBindings()...)
+		if m.help.ShowAll {
+			bindings = append(bindings, m.todoList.AllHelpBindings()...)
+		} else {
+			bindings = append(bindings, m.todoList.HelpBindings()...)
+		}
 	}
 
 	bindings = append(bindings, m.keys.Tab, m.keys.Settings, m.keys.Search, m.keys.Quit)
+	// Show ? in help bar except during input modes (HELP-02)
+	if !m.todoList.IsInputting() || m.activePane == calendarPane {
+		bindings = append(bindings, m.keys.Help)
+	}
 	return helpKeyMap{bindings: bindings}
 }
 
@@ -382,10 +413,16 @@ func (m Model) View() string {
 		return lipgloss.JoinVertical(lipgloss.Left, m.search.View(), helpBar)
 	}
 
+	// Calculate help bar first so we can measure its height
+	m.help.Width = m.width
+	helpBar := m.help.View(m.currentHelpKeys())
+	helpHeight := lipgloss.Height(helpBar)
+	if helpHeight < 1 {
+		helpHeight = 1
+	}
+
 	// Calculate frame overhead from pane style
 	frameH, frameV := m.styles.Pane(true).GetFrameSize()
-
-	helpHeight := 1
 	contentHeight := m.height - helpHeight - frameV
 	if contentHeight < 1 {
 		contentHeight = 1
@@ -411,9 +448,6 @@ func (m Model) View() string {
 		calStyle.Render(m.calendar.View()),
 		todoStyle.Render(m.todoList.View()),
 	)
-
-	m.help.Width = m.width
-	helpBar := m.help.View(m.currentHelpKeys())
 
 	return lipgloss.JoinVertical(lipgloss.Left, top, helpBar)
 }
