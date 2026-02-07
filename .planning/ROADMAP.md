@@ -188,7 +188,7 @@ Plans:
 
 </details>
 
-### 🚧 v1.6 Templates & Recurring (In Progress)
+### v1.6 Templates & Recurring (In Progress)
 
 **Milestone Goal:** Users can manage templates in a dedicated overlay and attach recurring schedules that auto-create todos on app launch.
 
@@ -203,7 +203,11 @@ Plans:
   4. Esc closes the overlay and returns to the main view
 **New/Modified files**: NEW internal/tmplmgr/ (model.go, keys.go, styles.go), MOD store/store.go (UpdateTemplate), MOD store/sqlite.go, MOD app/model.go (overlay routing), MOD app/keys.go
 **Risk**: LOW -- follows established overlay pattern (settings, search, preview)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 20-01-PLAN.md -- Store extension (UpdateTemplate) and tmplmgr overlay package
+- [ ] 20-02-PLAN.md -- Wire overlay into app.Model with external editor integration
 
 #### Phase 21: Schedule Schema & CRUD
 **Goal**: The data layer supports recurring schedule definitions attached to templates with deduplication tracking
@@ -285,6 +289,6 @@ Strict chain: each phase depends on the previous. Phase 20 is standalone value (
 | 17. Visual Polish & Help | v1.5 | 2/2 | Complete | 2026-02-07 |
 | 18. Full-Pane Editing | v1.5 | 2/2 | Complete | 2026-02-07 |
 | 19. Pre-Built Templates | v1.5 | 1/1 | Complete | 2026-02-07 |
-| 20. Template Management Overlay | v1.6 | 0/TBD | Not started | - |
+| 20. Template Management Overlay | v1.6 | 0/2 | Planning complete | - |
 | 21. Schedule Schema & CRUD | v1.6 | 0/TBD | Not started | - |
 | 22. Auto-Creation & Schedule UI | v1.6 | 0/TBD | Not started | - |
