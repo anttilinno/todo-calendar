@@ -402,7 +402,9 @@ func (m Model) currentHelpKeys() helpKeyMap {
 		}
 	}
 
-	bindings = append(bindings, m.keys.Tab, m.keys.Settings, m.keys.Search, m.keys.Quit)
+	if m.help.ShowAll {
+		bindings = append(bindings, m.keys.Tab, m.keys.Settings, m.keys.Search, m.keys.Quit)
+	}
 	// Show ? in help bar except during input modes (HELP-02)
 	if !m.todoList.IsInputting() || m.activePane == calendarPane {
 		bindings = append(bindings, m.keys.Help)
