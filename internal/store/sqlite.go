@@ -456,6 +456,16 @@ func (s *SQLiteStore) DeleteTemplate(id int) {
 	s.db.Exec("DELETE FROM templates WHERE id = ?", id)
 }
 
+// UpdateTemplate updates both the name and content of a template by ID.
+// Returns an error if the name violates the UNIQUE constraint.
+func (s *SQLiteStore) UpdateTemplate(id int, name, content string) error {
+	_, err := s.db.Exec("UPDATE templates SET name = ?, content = ? WHERE id = ?", name, content, id)
+	if err != nil {
+		return fmt.Errorf("update template: %w", err)
+	}
+	return nil
+}
+
 // Save is a no-op for SQLiteStore since all mutations are immediately persisted.
 func (s *SQLiteStore) Save() error {
 	return nil
