@@ -9,6 +9,7 @@ import (
 type Styles struct {
 	Focused   lipgloss.Style
 	Unfocused lipgloss.Style
+	Error     lipgloss.Style
 }
 
 // NewStyles builds app styles from the given theme.
@@ -22,6 +23,7 @@ func NewStyles(t theme.Theme) Styles {
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(t.BorderUnfocused).
 			Padding(0, 1),
+		Error: lipgloss.NewStyle().Foreground(t.HolidayFg),
 	}
 }
 
