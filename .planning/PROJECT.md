@@ -52,11 +52,14 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 
 ### Active
 
-(None — planning next milestone)
+- Template management overlay (list, view, edit, rename, delete)
+- Recurring schedules on templates (daily, weekday(s), monthly on Nth)
+- Auto-creation of scheduled todos on app launch (rolling 7-day window)
+- Placeholder prompting for auto-created recurring todos on first launch
 
 ### v2 Candidates
 
-- Simple recurring todos
+- Complex recurring cadences ("every 2nd Tuesday", "last Friday of month")
 
 ### Out of Scope
 
@@ -128,4 +131,4 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - JSON Store template methods are stubs (return error/nil/no-op)
 
 ---
-*Last updated: 2026-02-07 after v1.5 milestone*
+*Last updated: 2026-02-07 after v1.6 milestone start*
