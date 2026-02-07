@@ -2,6 +2,7 @@ package tmplmgr
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -17,8 +18,9 @@ import (
 type viewMode int
 
 const (
-	listMode   viewMode = iota
+	listMode     viewMode = iota
 	renameMode
+	scheduleMode
 )
 
 // CloseMsg is emitted when the user presses Esc to close the overlay.
@@ -44,6 +46,14 @@ type Model struct {
 	styles    Styles
 	input     textinput.Model
 	err       string
+
+	// Schedule picker state
+	cadenceTypes    []string
+	cadenceIndex    int
+	weeklyDays      [7]bool
+	weekdayCursor   int
+	monthlyInput    textinput.Model
+	editingSchedule *store.Schedule
 }
 
 // New creates a new template management overlay model.
@@ -52,11 +62,18 @@ func New(s store.TodoStore, t theme.Theme) Model {
 	ti.Prompt = "> "
 	ti.CharLimit = 80
 
+	mi := textinput.New()
+	mi.Prompt = "> "
+	mi.CharLimit = 2
+	mi.Placeholder = "1-31"
+
 	m := Model{
-		store:  s,
-		keys:   DefaultKeyMap(),
-		styles: NewStyles(t),
-		input:  ti,
+		store:        s,
+		keys:         DefaultKeyMap(),
+		styles:       NewStyles(t),
+		input:        ti,
+		cadenceTypes: []string{"none", "daily", "weekdays", "weekly", "monthly"},
+		monthlyInput: mi,
 	}
 	m.RefreshTemplates()
 	return m
@@ -75,10 +92,18 @@ func (m *Model) SetTheme(t theme.Theme) {
 
 // HelpBindings returns overlay-specific key bindings for help bar display.
 func (m Model) HelpBindings() []key.Binding {
-	if m.mode == renameMode {
+	switch m.mode {
+	case renameMode:
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
+	case scheduleMode:
+		bindings := []key.Binding{m.keys.Left, m.keys.Right, m.keys.Confirm, m.keys.Cancel}
+		if m.cadenceTypes[m.cadenceIndex] == "weekly" {
+			bindings = []key.Binding{m.keys.Left, m.keys.Right, m.keys.Up, m.keys.Down, m.keys.Toggle, m.keys.Confirm, m.keys.Cancel}
+		}
+		return bindings
+	default:
+		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Delete, m.keys.Rename, m.keys.Edit, m.keys.Schedule, m.keys.Cancel}
 	}
-	return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Delete, m.keys.Rename, m.keys.Edit, m.keys.Cancel}
 }
 
 // RefreshTemplates reloads templates from the store.
@@ -110,6 +135,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m.updateListMode(msg)
 		case renameMode:
 			return m.updateRenameMode(msg)
+		case scheduleMode:
+			return m.updateScheduleMode(msg)
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -158,6 +185,55 @@ func (m Model) updateListMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if sel := m.selected(); sel != nil {
 			t := *sel
 			return m, func() tea.Msg { return EditTemplateMsg{Template: t} }
+		}
+		return m, nil
+
+	case key.Matches(msg, m.keys.Schedule):
+		if sel := m.selected(); sel != nil {
+			m.mode = scheduleMode
+			m.cadenceIndex = 0
+			m.weeklyDays = [7]bool{}
+			m.weekdayCursor = 0
+			m.monthlyInput.SetValue("")
+			m.monthlyInput.Blur()
+			m.editingSchedule = nil
+			m.err = ""
+
+			// Load existing schedule if any.
+			scheds := m.store.ListSchedulesForTemplate(sel.ID)
+			if len(scheds) > 0 {
+				sched := scheds[0]
+				m.editingSchedule = &sched
+
+				ruleStr := sched.CadenceType
+				if sched.CadenceValue != "" {
+					ruleStr += ":" + sched.CadenceValue
+				}
+				rule, err := recurring.ParseRule(ruleStr)
+				if err == nil {
+					switch rule.Type {
+					case "daily":
+						m.cadenceIndex = 1
+					case "weekdays":
+						m.cadenceIndex = 2
+					case "weekly":
+						m.cadenceIndex = 3
+						dayIndex := map[string]int{
+							"mon": 0, "tue": 1, "wed": 2, "thu": 3,
+							"fri": 4, "sat": 5, "sun": 6,
+						}
+						for _, d := range rule.Days {
+							if idx, ok := dayIndex[d]; ok {
+								m.weeklyDays[idx] = true
+							}
+						}
+					case "monthly":
+						m.cadenceIndex = 4
+						m.monthlyInput.SetValue(strconv.Itoa(rule.DayOfMonth))
+						m.monthlyInput.Focus()
+					}
+				}
+			}
 		}
 		return m, nil
 	}
@@ -209,6 +285,138 @@ func (m Model) updateRenameMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
+// dayNames maps index 0-6 to lowercase day abbreviations (Mon=0, Sun=6).
+var dayNames = [7]string{"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
+
+// updateScheduleMode handles key messages in schedule picker mode.
+func (m Model) updateScheduleMode(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.Cancel):
+		m.mode = listMode
+		m.err = ""
+		m.monthlyInput.Blur()
+		return m, nil
+
+	case key.Matches(msg, m.keys.Left):
+		wasMonthly := m.cadenceTypes[m.cadenceIndex] == "monthly"
+		m.cadenceIndex = (m.cadenceIndex - 1 + len(m.cadenceTypes)) % len(m.cadenceTypes)
+		if wasMonthly {
+			m.monthlyInput.Blur()
+		}
+		if m.cadenceTypes[m.cadenceIndex] == "monthly" {
+			m.monthlyInput.Focus()
+		}
+		return m, nil
+
+	case key.Matches(msg, m.keys.Right):
+		wasMonthly := m.cadenceTypes[m.cadenceIndex] == "monthly"
+		m.cadenceIndex = (m.cadenceIndex + 1) % len(m.cadenceTypes)
+		if wasMonthly {
+			m.monthlyInput.Blur()
+		}
+		if m.cadenceTypes[m.cadenceIndex] == "monthly" {
+			m.monthlyInput.Focus()
+		}
+		return m, nil
+
+	case key.Matches(msg, m.keys.Up):
+		if m.cadenceTypes[m.cadenceIndex] == "weekly" && m.weekdayCursor > 0 {
+			m.weekdayCursor--
+		}
+		return m, nil
+
+	case key.Matches(msg, m.keys.Down):
+		if m.cadenceTypes[m.cadenceIndex] == "weekly" && m.weekdayCursor < 6 {
+			m.weekdayCursor++
+		}
+		return m, nil
+
+	case key.Matches(msg, m.keys.Toggle):
+		if m.cadenceTypes[m.cadenceIndex] == "weekly" {
+			m.weeklyDays[m.weekdayCursor] = !m.weeklyDays[m.weekdayCursor]
+		}
+		return m, nil
+
+	case key.Matches(msg, m.keys.Confirm):
+		sel := m.selected()
+		if sel == nil {
+			m.mode = listMode
+			m.monthlyInput.Blur()
+			return m, nil
+		}
+
+		var cadenceType, cadenceValue string
+
+		switch m.cadenceTypes[m.cadenceIndex] {
+		case "none":
+			if m.editingSchedule != nil {
+				m.store.DeleteSchedule(m.editingSchedule.ID)
+			}
+			m.mode = listMode
+			m.err = ""
+			m.monthlyInput.Blur()
+			m.RefreshTemplates()
+			return m, func() tea.Msg { return TemplateUpdatedMsg{} }
+
+		case "daily":
+			cadenceType = "daily"
+			cadenceValue = ""
+
+		case "weekdays":
+			cadenceType = "weekdays"
+			cadenceValue = ""
+
+		case "weekly":
+			var selected []string
+			for i := 0; i < 7; i++ {
+				if m.weeklyDays[i] {
+					selected = append(selected, dayNames[i])
+				}
+			}
+			if len(selected) == 0 {
+				m.err = "Select at least one day"
+				return m, nil
+			}
+			cadenceType = "weekly"
+			cadenceValue = strings.Join(selected, ",")
+
+		case "monthly":
+			dayStr := strings.TrimSpace(m.monthlyInput.Value())
+			day, err := strconv.Atoi(dayStr)
+			if err != nil || day < 1 || day > 31 {
+				m.err = "Enter a day 1-31"
+				return m, nil
+			}
+			cadenceType = "monthly"
+			cadenceValue = dayStr
+		}
+
+		defaults := "{}"
+		if m.editingSchedule != nil {
+			if m.editingSchedule.PlaceholderDefaults != "" {
+				defaults = m.editingSchedule.PlaceholderDefaults
+			}
+			m.store.UpdateSchedule(m.editingSchedule.ID, cadenceType, cadenceValue, defaults)
+		} else {
+			m.store.AddSchedule(sel.ID, cadenceType, cadenceValue, defaults)
+		}
+		m.mode = listMode
+		m.err = ""
+		m.monthlyInput.Blur()
+		m.RefreshTemplates()
+		return m, func() tea.Msg { return TemplateUpdatedMsg{} }
+	}
+
+	// Forward to monthlyInput when in monthly mode.
+	if m.cadenceTypes[m.cadenceIndex] == "monthly" {
+		var cmd tea.Cmd
+		m.monthlyInput, cmd = m.monthlyInput.Update(msg)
+		return m, cmd
+	}
+
+	return m, nil
+}
+
 // View renders the template management overlay.
 func (m Model) View() string {
 	var b strings.Builder
@@ -257,8 +465,8 @@ func (m Model) View() string {
 		b.WriteString("\n")
 	}
 
-	// Error message for rename.
-	if m.err != "" {
+	// Error message for rename mode (schedule errors are shown inside the picker).
+	if m.err != "" && m.mode == renameMode {
 		b.WriteString(m.styles.Error.Render("  " + m.err))
 		b.WriteString("\n")
 	}
@@ -269,29 +477,104 @@ func (m Model) View() string {
 	b.WriteString(m.styles.Separator.Render(sep))
 	b.WriteString("\n\n")
 
-	// Content preview of selected template (raw text).
-	if sel := m.selected(); sel != nil {
-		maxContentLines := m.height - visible - 10
-		if maxContentLines < 1 {
-			maxContentLines = 1
+	if m.mode == scheduleMode {
+		// Schedule picker.
+		b.WriteString(m.renderSchedulePicker())
+	} else {
+		// Content preview of selected template (raw text).
+		if sel := m.selected(); sel != nil {
+			maxContentLines := m.height - visible - 10
+			if maxContentLines < 1 {
+				maxContentLines = 1
+			}
+			lines := strings.Split(sel.Content, "\n")
+			if len(lines) > maxContentLines {
+				lines = lines[:maxContentLines]
+			}
+			content := strings.Join(lines, "\n")
+			b.WriteString(m.styles.Content.Render(content))
 		}
-		lines := strings.Split(sel.Content, "\n")
-		if len(lines) > maxContentLines {
-			lines = lines[:maxContentLines]
-		}
-		content := strings.Join(lines, "\n")
-		b.WriteString(m.styles.Content.Render(content))
 	}
 
 	// Hint bar.
 	b.WriteString("\n\n")
-	if m.mode == renameMode {
+	switch m.mode {
+	case renameMode:
 		b.WriteString(m.styles.Hint.Render("  enter confirm  |  esc cancel"))
-	} else {
-		b.WriteString(m.styles.Hint.Render("  j/k navigate  |  r rename  |  d delete  |  e edit  |  esc close"))
+	case scheduleMode:
+		cadence := m.cadenceTypes[m.cadenceIndex]
+		hint := "  left/right type  |  enter save  |  esc cancel"
+		if cadence == "weekly" {
+			hint = "  left/right type  |  j/k day  |  space toggle  |  enter save  |  esc cancel"
+		} else if cadence == "monthly" {
+			hint = "  left/right type  |  type digits  |  enter save  |  esc cancel"
+		}
+		b.WriteString(m.styles.Hint.Render(hint))
+	default:
+		b.WriteString(m.styles.Hint.Render("  j/k navigate  |  r rename  |  d delete  |  e edit  |  s schedule  |  esc close"))
 	}
 
 	return m.verticalCenter(b.String())
+}
+
+// renderSchedulePicker renders the schedule picker UI below the separator.
+func (m Model) renderSchedulePicker() string {
+	var b strings.Builder
+
+	// Cadence type bar: < None  Daily  Weekdays  Weekly  Monthly >
+	displayNames := [5]string{"None", "Daily", "Weekdays", "Weekly", "Monthly"}
+	b.WriteString("Schedule: < ")
+	for i, name := range displayNames {
+		if i == m.cadenceIndex {
+			b.WriteString(m.styles.ScheduleActive.Render(name))
+		} else {
+			b.WriteString(m.styles.ScheduleInactive.Render(name))
+		}
+		if i < len(displayNames)-1 {
+			b.WriteString("  ")
+		}
+	}
+	b.WriteString(" >")
+	b.WriteString("\n")
+
+	cadence := m.cadenceTypes[m.cadenceIndex]
+
+	switch cadence {
+	case "weekly":
+		b.WriteString("\n")
+		weekdayLabels := [7]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
+		for i := 0; i < 7; i++ {
+			cursor := "  "
+			if i == m.weekdayCursor {
+				cursor = "> "
+			}
+			check := "[ ]"
+			if m.weeklyDays[i] {
+				check = "[x]"
+			}
+			var label string
+			if m.weeklyDays[i] {
+				label = m.styles.ScheduleDaySelected.Render(weekdayLabels[i])
+			} else {
+				label = m.styles.ScheduleDay.Render(weekdayLabels[i])
+			}
+			b.WriteString(fmt.Sprintf("  %s%s  %s\n", cursor, label, check))
+		}
+
+	case "monthly":
+		b.WriteString("\n")
+		b.WriteString("  Day of month: ")
+		b.WriteString(m.monthlyInput.View())
+		b.WriteString("\n")
+	}
+
+	// Error message.
+	if m.err != "" {
+		b.WriteString("\n")
+		b.WriteString(m.styles.Error.Render("  " + m.err))
+	}
+
+	return b.String()
 }
 
 // scheduleLabel returns a display suffix for the schedule attached to the
