@@ -282,6 +282,22 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		return m.updateTemplateContentMode(msg)
 	}
 
+	// Forward blink/tick messages to focused text input in edit modes.
+	switch m.mode {
+	case inputMode, dateInputMode, editTextMode, editDateMode:
+		if _, ok := msg.(tea.KeyMsg); !ok {
+			if _, ok := msg.(tea.WindowSizeMsg); !ok {
+				var cmd tea.Cmd
+				if m.editField == 1 && (m.mode == inputMode || m.mode == dateInputMode) {
+					m.dateInput, cmd = m.dateInput.Update(msg)
+				} else {
+					m.input, cmd = m.input.Update(msg)
+				}
+				return m, cmd
+			}
+		}
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if !m.focused {
@@ -369,6 +385,10 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.input.Placeholder = "What needs doing?"
 		m.input.Prompt = "> "
 		m.input.SetValue("")
+		m.dateInput.SetValue("")
+		m.dateInput.Placeholder = m.datePlaceholder
+		m.dateInput.Prompt = "> "
+		m.editField = 0
 		return m, m.input.Focus()
 
 	case key.Matches(msg, m.keys.Toggle):
@@ -498,17 +518,42 @@ func (m Model) updateFilterMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.Confirm):
+		if m.addingDated {
+			// Unified confirm: read both fields
+			title := strings.TrimSpace(m.input.Value())
+			if title == "" {
+				return m, nil
+			}
+			date := strings.TrimSpace(m.dateInput.Value())
+			if date == "" {
+				// Auto-switch to date field if empty
+				m.editField = 1
+				m.input.Blur()
+				return m, m.dateInput.Focus()
+			}
+			isoDate, err := config.ParseUserDate(date, m.dateLayout)
+			if err != nil {
+				// Invalid date -- focus date field
+				m.editField = 1
+				m.input.Blur()
+				return m, m.dateInput.Focus()
+			}
+			todo := m.store.Add(title, isoDate)
+			if m.fromTemplate {
+				m.store.UpdateBody(todo.ID, m.pendingBody)
+				m.clearTemplateState()
+			}
+			m.mode = normalMode
+			m.input.Blur()
+			m.dateInput.Blur()
+			m.input.SetValue("")
+			m.dateInput.SetValue("")
+			m.editField = 0
+			return m, nil
+		}
 		text := strings.TrimSpace(m.input.Value())
 		if text == "" {
 			// Don't add empty todos -- stay in input mode
-			return m, nil
-		}
-		if m.addingDated {
-			m.pendingText = text
-			m.mode = dateInputMode
-			m.input.Placeholder = m.datePlaceholder
-			m.input.Prompt = "Date: "
-			m.input.SetValue("")
 			return m, nil
 		}
 		todo := m.store.Add(text, "")
@@ -521,18 +566,38 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.input.SetValue("")
 		return m, nil
 
+	case key.Matches(msg, m.keys.SwitchField):
+		if m.addingDated {
+			if m.editField == 0 {
+				m.editField = 1
+				m.input.Blur()
+				return m, m.dateInput.Focus()
+			}
+			m.editField = 0
+			m.dateInput.Blur()
+			return m, m.input.Focus()
+		}
+		return m, nil
+
 	case key.Matches(msg, m.keys.Cancel):
 		m.mode = normalMode
 		m.input.Blur()
+		m.dateInput.Blur()
 		m.input.SetValue("")
+		m.dateInput.SetValue("")
+		m.editField = 0
 		m.pendingText = ""
 		m.clearTemplateState()
 		return m, nil
 	}
 
-	// Forward all other keys to the text input
+	// Forward key events to the focused input
 	var cmd tea.Cmd
-	m.input, cmd = m.input.Update(msg)
+	if m.addingDated && m.editField == 1 {
+		m.dateInput, cmd = m.dateInput.Update(msg)
+	} else {
+		m.input, cmd = m.input.Update(msg)
+	}
 	return m, cmd
 }
 
@@ -843,8 +908,26 @@ func (m Model) editView() string {
 		b.WriteString("\n")
 		b.WriteString(m.input.View())
 		b.WriteString("\n\n")
+	case inputMode:
+		if m.addingDated {
+			// Dual fields for dated add
+			b.WriteString(m.styles.FieldLabel.Render("Title"))
+			b.WriteString("\n")
+			b.WriteString(m.input.View())
+			b.WriteString("\n\n")
+			b.WriteString(m.styles.FieldLabel.Render("Date"))
+			b.WriteString("\n")
+			b.WriteString(m.dateInput.View())
+			b.WriteString("\n\n")
+		} else {
+			// Single title field for regular add
+			b.WriteString(m.styles.FieldLabel.Render("Title"))
+			b.WriteString("\n")
+			b.WriteString(m.input.View())
+			b.WriteString("\n\n")
+		}
 	default:
-		// Title field (inputMode, dateInputMode, editTextMode)
+		// Title field (dateInputMode, editTextMode)
 		b.WriteString(m.styles.FieldLabel.Render("Title"))
 		b.WriteString("\n")
 		b.WriteString(m.input.View())
@@ -852,7 +935,11 @@ func (m Model) editView() string {
 	}
 
 	// Minimal help hint
-	b.WriteString(m.styles.EditHint.Render("Enter confirm | Esc cancel"))
+	hint := "Enter confirm | Esc cancel"
+	if m.addingDated && (m.mode == inputMode || m.mode == dateInputMode) {
+		hint = "Enter confirm | Esc cancel | Tab switch field"
+	}
+	b.WriteString(m.styles.EditHint.Render(hint))
 
 	// Vertical centering
 	content := b.String()
