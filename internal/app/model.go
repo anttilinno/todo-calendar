@@ -2,6 +2,8 @@ package app
 
 import (
 	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/antti/todo-calendar/internal/calendar"
 	"github.com/antti/todo-calendar/internal/config"
@@ -12,6 +14,7 @@ import (
 	"github.com/antti/todo-calendar/internal/settings"
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
+	"github.com/antti/todo-calendar/internal/tmplmgr"
 	"github.com/antti/todo-calendar/internal/todolist"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -63,12 +66,15 @@ type Model struct {
 	settings     settings.Model
 	showSearch   bool
 	search       search.Model
-	showPreview  bool
-	preview      preview.Model
-	editing      bool
-	store        store.TodoStore
-	cfg          config.Config
-	savedConfig  config.Config
+	showPreview   bool
+	preview       preview.Model
+	showTmplMgr   bool
+	tmplMgr       tmplmgr.Model
+	editing       bool
+	editingTmplID int
+	store         store.TodoStore
+	cfg           config.Config
+	savedConfig   config.Config
 }
 
 // New creates a new root application model with the given dependencies.
@@ -155,6 +161,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.showPreview = false
 		return m, nil
 
+	case tmplmgr.CloseMsg:
+		m.showTmplMgr = false
+		return m, nil
+
+	case tmplmgr.EditTemplateMsg:
+		m.editing = true
+		m.editingTmplID = msg.Template.ID
+		tpl := msg.Template
+		return m, editorOpenTemplateContent(tpl.Content)
+
+	case tmplmgr.TemplateUpdatedMsg:
+		return m, nil
+
 	case todolist.PreviewMsg:
 		m.preview = preview.New(msg.Todo.Text, msg.Todo.Body, m.cfg.Theme, theme.ForName(m.cfg.Theme), m.width, m.height)
 		m.showPreview = true
@@ -167,6 +186,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case editor.EditorFinishedMsg:
 		m.editing = false
+		if m.editingTmplID != 0 {
+			templateID := m.editingTmplID
+			m.editingTmplID = 0
+			defer os.Remove(msg.TempPath)
+			if msg.Err != nil {
+				return m, nil
+			}
+			data, err := os.ReadFile(msg.TempPath)
+			if err != nil {
+				return m, nil
+			}
+			newContent := strings.TrimRight(string(data), " \t\n")
+			if newContent != msg.OriginalBody {
+				tpl := m.store.FindTemplate(templateID)
+				if tpl != nil {
+					m.store.UpdateTemplate(templateID, tpl.Name, newContent)
+				}
+			}
+			m.tmplMgr.RefreshTemplates()
+			return m, nil
+		}
 		newBody, changed, err := editor.ReadResult(msg)
 		// Always clean up temp file after reading to prevent /tmp accumulation.
 		os.Remove(msg.TempPath)
@@ -183,6 +223,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// When settings overlay is open, route most messages there.
 	if m.showSettings {
 		return m.updateSettings(msg)
+	}
+
+	// When template manager overlay is open, route most messages there.
+	if m.showTmplMgr {
+		return m.updateTmplMgr(msg)
 	}
 
 	// When preview overlay is open, route most messages there.
@@ -235,6 +280,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.search.SetSize(m.width, m.height)
 			m.showSearch = true
 			return m, m.search.Init()
+		case key.Matches(msg, m.keys.Templates) && !isInputting:
+			m.tmplMgr = tmplmgr.New(m.store, theme.ForName(m.cfg.Theme))
+			m.tmplMgr.SetSize(m.width, m.height)
+			m.showTmplMgr = true
+			return m, nil
 		case key.Matches(msg, m.keys.Help) && !isInputting:
 			m.help.ShowAll = !m.help.ShowAll
 			return m, nil
@@ -342,6 +392,66 @@ func (m Model) updatePreview(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// updateTmplMgr routes messages to the tmplmgr model when the overlay is open.
+func (m Model) updateTmplMgr(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Also propagate window resize to all children so the app resizes correctly.
+	if wsm, ok := msg.(tea.WindowSizeMsg); ok {
+		m.width = wsm.Width
+		m.height = wsm.Height
+		m.ready = true
+		m.help.Width = wsm.Width
+		m.tmplMgr.SetSize(wsm.Width, wsm.Height)
+
+		var calCmd tea.Cmd
+		m.calendar, calCmd = m.calendar.Update(msg)
+		m.syncTodoSize()
+		return m, calCmd
+	}
+
+	var cmd tea.Cmd
+	m.tmplMgr, cmd = m.tmplMgr.Update(msg)
+	return m, cmd
+}
+
+// editorOpenTemplateContent opens the user's editor with the template content.
+// Unlike editor.Open, it writes raw content without a # heading, since templates
+// are raw content with placeholders, not todo bodies.
+func editorOpenTemplateContent(content string) tea.Cmd {
+	f, err := os.CreateTemp("", "todo-calendar-template-*.md")
+	if err != nil {
+		return func() tea.Msg {
+			return editor.EditorFinishedMsg{Err: err}
+		}
+	}
+
+	if _, err := f.WriteString(content); err != nil {
+		f.Close()
+		os.Remove(f.Name())
+		return func() tea.Msg {
+			return editor.EditorFinishedMsg{Err: err}
+		}
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(f.Name())
+		return func() tea.Msg {
+			return editor.EditorFinishedMsg{Err: err}
+		}
+	}
+
+	tempPath := f.Name()
+	parts := strings.Fields(editor.ResolveEditor())
+	args := append(parts[1:], tempPath)
+	cmd := exec.Command(parts[0], args...)
+
+	return tea.ExecProcess(cmd, func(err error) tea.Msg {
+		return editor.EditorFinishedMsg{
+			TempPath:     tempPath,
+			OriginalBody: content,
+			Err:          err,
+		}
+	})
+}
+
 // syncTodoSize computes the pane dimensions and passes them to the todolist model.
 func (m *Model) syncTodoSize() {
 	frameH, frameV := m.styles.Pane(true).GetFrameSize()
@@ -375,6 +485,7 @@ func (m *Model) applyTheme(t theme.Theme) {
 	m.settings.SetTheme(t)
 	m.search.SetTheme(t)
 	m.preview.SetTheme(t)
+	m.tmplMgr.SetTheme(t)
 	m.help.Styles.ShortKey = lipgloss.NewStyle().Foreground(t.AccentFg)
 	m.help.Styles.ShortDesc = lipgloss.NewStyle().Foreground(t.MutedFg)
 	m.help.Styles.ShortSeparator = lipgloss.NewStyle().Foreground(t.MutedFg)
@@ -387,6 +498,9 @@ func (m *Model) applyTheme(t theme.Theme) {
 func (m Model) currentHelpKeys() helpKeyMap {
 	if m.showPreview {
 		return helpKeyMap{bindings: m.preview.HelpBindings()}
+	}
+	if m.showTmplMgr {
+		return helpKeyMap{bindings: m.tmplMgr.HelpBindings()}
 	}
 	if m.showSearch {
 		return helpKeyMap{bindings: m.search.HelpBindings()}
@@ -410,7 +524,7 @@ func (m Model) currentHelpKeys() helpKeyMap {
 	}
 
 	if m.help.ShowAll {
-		bindings = append(bindings, m.keys.Tab, m.keys.Settings, m.keys.Search, m.keys.Quit)
+		bindings = append(bindings, m.keys.Tab, m.keys.Settings, m.keys.Search, m.keys.Templates, m.keys.Quit)
 	}
 	// Show ? in help bar except during input modes (HELP-02)
 	if !m.todoList.IsInputting() || m.activePane == calendarPane {
@@ -442,6 +556,12 @@ func (m Model) View() string {
 		m.help.Width = m.width
 		helpBar := m.help.View(m.currentHelpKeys())
 		return lipgloss.JoinVertical(lipgloss.Left, m.preview.View(), helpBar)
+	}
+
+	if m.showTmplMgr {
+		m.help.Width = m.width
+		helpBar := m.help.View(m.currentHelpKeys())
+		return lipgloss.JoinVertical(lipgloss.Left, m.tmplMgr.View(), helpBar)
 	}
 
 	if m.showSearch {
