@@ -30,6 +30,7 @@ type TodoStore interface {
 	ListTemplates() []Template
 	FindTemplate(id int) *Template
 	DeleteTemplate(id int)
+	UpdateTemplate(id int, name, content string) error
 	SwapOrder(id1, id2 int)
 	SearchTodos(query string) []Todo
 	EnsureSortOrder()
@@ -215,6 +216,11 @@ func (s *Store) FindTemplate(id int) *Template {
 
 // DeleteTemplate is a no-op in the JSON store (templates not supported).
 func (s *Store) DeleteTemplate(id int) {}
+
+// UpdateTemplate is not supported in the JSON store.
+func (s *Store) UpdateTemplate(id int, name, content string) error {
+	return fmt.Errorf("templates not supported in JSON store")
+}
 
 // Todos returns all todos in the store.
 func (s *Store) Todos() []Todo {
