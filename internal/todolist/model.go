@@ -935,7 +935,7 @@ func (m Model) updateTemplateContentMode(msg tea.Msg) (Model, tea.Cmd) {
 // View renders the todo list pane content.
 func (m Model) View() string {
 	switch m.mode {
-	case inputMode, dateInputMode, editMode:
+	case inputMode, dateInputMode, editMode, templateNameMode, templateContentMode, templateSelectMode, placeholderInputMode:
 		return m.editView()
 	default:
 		return m.normalView()
@@ -947,9 +947,20 @@ func (m Model) editView() string {
 	var b strings.Builder
 
 	// Heading
-	title := "Add Todo"
-	if m.mode == editMode {
+	var title string
+	switch m.mode {
+	case editMode:
 		title = "Edit Todo"
+	case templateSelectMode:
+		title = "Use Template"
+	case templateNameMode:
+		title = "New Template"
+	case templateContentMode:
+		title = "Template Content: " + m.pendingTemplateName
+	case placeholderInputMode:
+		title = fmt.Sprintf("Fill Placeholder (%d/%d)", m.placeholderIndex+1, len(m.placeholderNames))
+	default:
+		title = "Add Todo"
 	}
 	b.WriteString(m.styles.EditTitle.Render(title))
 	b.WriteString("\n\n")
@@ -970,6 +981,38 @@ func (m Model) editView() string {
 		b.WriteString("\n")
 		b.WriteString(m.bodyTextarea.View())
 		b.WriteString("\n")
+
+	case templateSelectMode:
+		for i, t := range m.templates {
+			if i == m.templateCursor {
+				b.WriteString(m.styles.Cursor.Render("> "))
+			} else {
+				b.WriteString("  ")
+			}
+			preview := t.Content
+			if len(preview) > 40 {
+				preview = preview[:40] + "..."
+			}
+			preview = strings.ReplaceAll(preview, "\n", " ")
+			b.WriteString(fmt.Sprintf("%s  %s", t.Name, m.styles.Empty.Render(preview)))
+			b.WriteString("\n")
+		}
+
+	case templateContentMode:
+		b.WriteString(m.templateTextarea.View())
+		b.WriteString("\n")
+
+	case templateNameMode:
+		b.WriteString(m.styles.FieldLabel.Render("Name"))
+		b.WriteString("\n")
+		b.WriteString(m.input.View())
+		b.WriteString("\n\n")
+
+	case placeholderInputMode:
+		b.WriteString(m.styles.FieldLabel.Render(m.placeholderNames[m.placeholderIndex]))
+		b.WriteString("\n")
+		b.WriteString(m.input.View())
+		b.WriteString("\n\n")
 
 	case inputMode:
 		if m.addingDated {
@@ -998,9 +1041,9 @@ func (m Model) editView() string {
 		b.WriteString("\n\n")
 	}
 
-	// Vertical centering (skip for editMode which has body textarea)
+	// Vertical centering (skip for modes with textareas)
 	content := b.String()
-	if m.height > 0 && m.mode != editMode {
+	if m.height > 0 && m.mode != editMode && m.mode != templateContentMode {
 		lines := strings.Count(content, "\n") + 1
 		topPad := (m.height - lines) / 3
 		if topPad > 0 {
@@ -1044,45 +1087,6 @@ func (m Model) normalView() string {
 
 	// Show mode-specific UI below the todo list
 	switch m.mode {
-	case templateSelectMode:
-		b.WriteString("\n")
-		b.WriteString(m.styles.SectionHeader.Render("Select Template:"))
-		b.WriteString("\n")
-		for i, t := range m.templates {
-			if i == m.templateCursor {
-				b.WriteString(m.styles.Cursor.Render("> "))
-			} else {
-				b.WriteString("  ")
-			}
-			preview := t.Content
-			if len(preview) > 40 {
-				preview = preview[:40] + "..."
-			}
-			// Replace newlines with spaces for inline preview
-			preview = strings.ReplaceAll(preview, "\n", " ")
-			b.WriteString(fmt.Sprintf("%s  %s", t.Name, m.styles.Empty.Render(preview)))
-			b.WriteString("\n")
-		}
-
-	case templateContentMode:
-		b.WriteString("\n")
-		b.WriteString(m.styles.SectionHeader.Render("Template Content: " + m.pendingTemplateName))
-		b.WriteString("\n")
-		b.WriteString(m.templateTextarea.View())
-		b.WriteString("\n")
-
-	case templateNameMode:
-		b.WriteString("\n")
-		b.WriteString(m.styles.SectionHeader.Render("New Template:"))
-		b.WriteString("\n")
-		b.WriteString(m.input.View())
-
-	case placeholderInputMode:
-		b.WriteString("\n")
-		b.WriteString(m.styles.SectionHeader.Render(fmt.Sprintf("Fill placeholder (%d/%d):", m.placeholderIndex+1, len(m.placeholderNames))))
-		b.WriteString("\n")
-		b.WriteString(m.input.View())
-
 	case filterMode:
 		b.WriteString("\n")
 		b.WriteString(m.input.View())
