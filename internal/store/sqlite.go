@@ -94,6 +94,18 @@ func (s *SQLiteStore) migrate() error {
 		}
 	}
 
+	if version < 3 {
+		for _, t := range defaultTemplates() {
+			s.db.Exec(
+				"INSERT OR IGNORE INTO templates (name, content, created_at) VALUES (?, ?, ?)",
+				t.Name, t.Content, time.Now().Format(dateFormat),
+			)
+		}
+		if _, err := s.db.Exec("PRAGMA user_version = 3"); err != nil {
+			return fmt.Errorf("set user_version: %w", err)
+		}
+	}
+
 	return nil
 }
 
