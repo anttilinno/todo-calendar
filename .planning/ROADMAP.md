@@ -59,10 +59,10 @@ Plans:
   1. Tabbing to the Template field and pressing Enter opens the template picker list
   2. Selecting a template pre-fills the Title field with the template name and the Body field with the rendered template content
   3. After template selection, user can navigate to Title or Body fields and edit the pre-filled content before saving
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 25-01: TBD
+- [ ] 25-01-PLAN.md -- Wire template picker into add form with placeholder prompting and pre-fill
 
 ## Progress
 
@@ -73,4 +73,4 @@ Phases execute in numeric order: 23 -> 24 -> 25
 |-------|-----------|----------------|--------|-----------|
 | 23. Cleanup & Calendar Polish | v1.7 | 2/2 | ✓ Complete | 2026-02-07 |
 | 24. Unified Add Form | v1.7 | 1/1 | ✓ Complete | 2026-02-07 |
-| 25. Template Picker Integration | v1.7 | 0/TBD | Not started | - |
+| 25. Template Picker Integration | v1.7 | 0/1 | Not started | - |
