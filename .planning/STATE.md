@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-07)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** v1.5 UX Polish
+**Current focus:** v1.5 UX Polish -- Phase 17 Visual Polish & Help
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-07 — Milestone v1.5 started
+Phase: 17 of 19 (Visual Polish & Help)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-02-07 -- Roadmap created for v1.5
 
 Progress: ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0%
 
@@ -40,5 +40,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Defining v1.5 requirements
+Stopped at: Roadmap created for v1.5 milestone
 Resume file: None

@@ -1,7 +1,7 @@
 # Requirements: Todo Calendar
 
 **Defined:** 2026-02-07
-**Core Value:** See your month at a glance — calendar with holidays and todos in one terminal screen.
+**Core Value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
 
 ## v1.5 Requirements
 
@@ -51,27 +51,27 @@ Requirements for UX Polish milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VIS-01 | — | Pending |
-| VIS-02 | — | Pending |
-| VIS-03 | — | Pending |
-| EDIT-01 | — | Pending |
-| EDIT-02 | — | Pending |
-| EDIT-03 | — | Pending |
-| EDIT-04 | — | Pending |
-| EDIT-05 | — | Pending |
-| HELP-01 | — | Pending |
-| HELP-02 | — | Pending |
-| HELP-03 | — | Pending |
-| TMPL-01 | — | Pending |
-| TMPL-02 | — | Pending |
-| TMPL-03 | — | Pending |
-| TMPL-04 | — | Pending |
+| VIS-01 | Phase 17 | Pending |
+| VIS-02 | Phase 17 | Pending |
+| VIS-03 | Phase 17 | Pending |
+| EDIT-01 | Phase 18 | Pending |
+| EDIT-02 | Phase 18 | Pending |
+| EDIT-03 | Phase 18 | Pending |
+| EDIT-04 | Phase 18 | Pending |
+| EDIT-05 | Phase 18 | Pending |
+| HELP-01 | Phase 17 | Pending |
+| HELP-02 | Phase 17 | Pending |
+| HELP-03 | Phase 17 | Pending |
+| TMPL-01 | Phase 19 | Pending |
+| TMPL-02 | Phase 19 | Pending |
+| TMPL-03 | Phase 19 | Pending |
+| TMPL-04 | Phase 19 | Pending |
 
 **Coverage:**
 - v1.5 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15
+- Mapped to phases: 15
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-07*
-*Last updated: 2026-02-07 after initial definition*
+*Last updated: 2026-02-07 after roadmap creation*
