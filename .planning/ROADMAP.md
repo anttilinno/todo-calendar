@@ -46,11 +46,10 @@ Plans:
   3. Pressing Enter from Title or Date field saves the todo; pressing Ctrl+D from Body or Template field saves the todo
   4. Leaving Date empty creates a floating (undated) todo; filling Date creates a dated todo
   5. The old `A` and `t` key bindings no longer exist (removed in Phase 23)
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 24-01: TBD
-- [ ] 24-02: TBD
+- [ ] 24-01-PLAN.md -- Extend inputMode to 4-field form with Tab cycling, save logic, view rendering, and help bindings
 
 ### Phase 25: Template Picker Integration
 **Goal**: User can select a template from within the add form to pre-fill title and body, then edit before saving
@@ -73,5 +72,5 @@ Phases execute in numeric order: 23 -> 24 -> 25
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 23. Cleanup & Calendar Polish | v1.7 | 2/2 | ✓ Complete | 2026-02-07 |
-| 24. Unified Add Form | v1.7 | 0/TBD | Not started | - |
+| 24. Unified Add Form | v1.7 | 0/1 | Not started | - |
 | 25. Template Picker Integration | v1.7 | 0/TBD | Not started | - |
