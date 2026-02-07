@@ -169,6 +169,12 @@ func (m Model) IsInputting() bool {
 func (m Model) HelpBindings() []key.Binding {
 	switch m.mode {
 	case inputMode:
+		if m.pickingTemplate {
+			return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Confirm, m.keys.Cancel}
+		}
+		if m.promptingPlaceholders {
+			return []key.Binding{m.keys.Confirm, m.keys.Cancel}
+		}
 		if m.editField == 2 || m.editField == 3 {
 			return []key.Binding{m.keys.SwitchField, m.keys.Save, m.keys.Cancel}
 		}
@@ -192,6 +198,12 @@ func (m Model) HelpBindings() []key.Binding {
 func (m Model) AllHelpBindings() []key.Binding {
 	switch m.mode {
 	case inputMode:
+		if m.pickingTemplate {
+			return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Confirm, m.keys.Cancel}
+		}
+		if m.promptingPlaceholders {
+			return []key.Binding{m.keys.Confirm, m.keys.Cancel}
+		}
 		if m.editField == 2 || m.editField == 3 {
 			return []key.Binding{m.keys.SwitchField, m.keys.Save, m.keys.Cancel}
 		}
@@ -891,23 +903,58 @@ func (m Model) editView() string {
 		b.WriteString("\n\n")
 
 	case inputMode:
-		// Four fields: Title, Date, Body, Template
-		b.WriteString(m.styles.FieldLabel.Render("Title"))
-		b.WriteString("\n")
-		b.WriteString(m.input.View())
-		b.WriteString("\n\n")
-		b.WriteString(m.styles.FieldLabel.Render("Date"))
-		b.WriteString("\n")
-		b.WriteString(m.dateInput.View())
-		b.WriteString("\n\n")
-		b.WriteString(m.styles.FieldLabel.Render("Body"))
-		b.WriteString("\n")
-		b.WriteString(m.bodyTextarea.View())
-		b.WriteString("\n\n")
-		b.WriteString(m.styles.FieldLabel.Render("Template"))
-		b.WriteString("\n")
-		b.WriteString(m.templateInput.View())
-		b.WriteString("\n")
+		if m.pickingTemplate {
+			// Render "Select Template" heading + template list with cursor
+			b.Reset()
+			b.WriteString(m.styles.EditTitle.Render("Select Template"))
+			b.WriteString("\n\n")
+			for i, t := range m.pickerTemplates {
+				if i == m.pickerCursor {
+					b.WriteString(m.styles.Cursor.Render("> "))
+				} else {
+					b.WriteString("  ")
+				}
+				b.WriteString(t.Name)
+				// Brief inline preview (40 chars, single line)
+				preview := t.Content
+				if len(preview) > 40 {
+					preview = preview[:40] + "..."
+				}
+				preview = strings.ReplaceAll(preview, "\n", " ")
+				b.WriteString("  " + m.styles.Empty.Render(preview))
+				b.WriteString("\n")
+			}
+		} else if m.promptingPlaceholders {
+			// Render placeholder prompt heading + input field
+			b.Reset()
+			pTitle := fmt.Sprintf("Fill Placeholder (%d/%d)",
+				m.pickerPlaceholderIndex+1, len(m.pickerPlaceholderNames))
+			b.WriteString(m.styles.EditTitle.Render(pTitle))
+			b.WriteString("\n\n")
+			b.WriteString(m.styles.FieldLabel.Render(
+				m.pickerPlaceholderNames[m.pickerPlaceholderIndex]))
+			b.WriteString("\n")
+			b.WriteString(m.input.View())
+			b.WriteString("\n")
+		} else {
+			// Normal 4-field form: Title, Date, Body, Template
+			b.WriteString(m.styles.FieldLabel.Render("Title"))
+			b.WriteString("\n")
+			b.WriteString(m.input.View())
+			b.WriteString("\n\n")
+			b.WriteString(m.styles.FieldLabel.Render("Date"))
+			b.WriteString("\n")
+			b.WriteString(m.dateInput.View())
+			b.WriteString("\n\n")
+			b.WriteString(m.styles.FieldLabel.Render("Body"))
+			b.WriteString("\n")
+			b.WriteString(m.bodyTextarea.View())
+			b.WriteString("\n\n")
+			b.WriteString(m.styles.FieldLabel.Render("Template"))
+			b.WriteString("\n")
+			b.WriteString(m.templateInput.View())
+			b.WriteString("\n")
+		}
 	}
 
 	// Vertical centering (skip for modes with textareas)
