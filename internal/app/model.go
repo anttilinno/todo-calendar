@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -72,6 +73,7 @@ type Model struct {
 	tmplMgr       tmplmgr.Model
 	editing       bool
 	editingTmplID int
+	editorErr     string
 	store         store.TodoStore
 	cfg           config.Config
 	savedConfig   config.Config
@@ -191,6 +193,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.editingTmplID = 0
 			defer os.Remove(msg.TempPath)
 			if msg.Err != nil {
+				m.tmplMgr.SetError(fmt.Sprintf("Could not open editor: %v", msg.Err))
 				return m, nil
 			}
 			data, err := os.ReadFile(msg.TempPath)
@@ -211,6 +214,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Always clean up temp file after reading to prevent /tmp accumulation.
 		os.Remove(msg.TempPath)
 		if err != nil {
+			m.editorErr = fmt.Sprintf("Could not open editor: %v", err)
 			return m, nil
 		}
 		if changed {
@@ -242,6 +246,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		m.editorErr = ""
 		// In input mode, only ctrl+c quits (let 'q' go to textinput)
 		isInputting := m.activePane == todoPane && m.todoList.IsInputting()
 
@@ -606,5 +611,9 @@ func (m Model) View() string {
 		todoStyle.Render(m.todoList.View()),
 	)
 
+	if m.editorErr != "" {
+		errLine := m.styles.Error.Render(m.editorErr)
+		return lipgloss.JoinVertical(lipgloss.Left, top, errLine, helpBar)
+	}
 	return lipgloss.JoinVertical(lipgloss.Left, top, helpBar)
 }

@@ -124,6 +124,11 @@ func (m Model) HelpBindings() []key.Binding {
 	}
 }
 
+// SetError sets an error message to display in the overlay.
+func (m *Model) SetError(msg string) {
+	m.err = msg
+}
+
 // RefreshTemplates reloads templates from the store.
 func (m *Model) RefreshTemplates() {
 	m.templates = m.store.ListTemplates()
@@ -167,6 +172,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 // updateListMode handles key messages in list mode.
 func (m Model) updateListMode(msg tea.KeyMsg) (Model, tea.Cmd) {
+	m.err = ""
 	switch {
 	case key.Matches(msg, m.keys.Cancel):
 		return m, func() tea.Msg { return CloseMsg{} }
@@ -543,8 +549,8 @@ func (m Model) View() string {
 		b.WriteString("\n")
 	}
 
-	// Error message for rename mode (schedule errors are shown inside the picker).
-	if m.err != "" && m.mode == renameMode {
+	// Error message for list/rename mode (schedule errors are shown inside the picker).
+	if m.err != "" && (m.mode == listMode || m.mode == renameMode) {
 		b.WriteString(m.styles.Error.Render("  " + m.err))
 		b.WriteString("\n")
 	}
