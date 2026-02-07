@@ -1,6 +1,7 @@
 package tmplmgr
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -12,15 +13,17 @@ import (
 	"github.com/antti/todo-calendar/internal/recurring"
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
+	"github.com/antti/todo-calendar/internal/tmpl"
 )
 
 // viewMode tracks the current interaction mode of the overlay.
 type viewMode int
 
 const (
-	listMode     viewMode = iota
+	listMode              viewMode = iota
 	renameMode
 	scheduleMode
+	placeholderDefaultsMode
 )
 
 // CloseMsg is emitted when the user presses Esc to close the overlay.
@@ -54,6 +57,14 @@ type Model struct {
 	weekdayCursor   int
 	monthlyInput    textinput.Model
 	editingSchedule *store.Schedule
+
+	// Placeholder defaults state
+	pendingCadenceType  string
+	pendingCadenceValue string
+	placeholderNames    []string
+	placeholderIndex    int
+	placeholderValues   map[string]string
+	defaultsInput       textinput.Model
 }
 
 // New creates a new template management overlay model.
@@ -67,13 +78,18 @@ func New(s store.TodoStore, t theme.Theme) Model {
 	mi.CharLimit = 2
 	mi.Placeholder = "1-31"
 
+	di := textinput.New()
+	di.Prompt = "> "
+	di.CharLimit = 200
+
 	m := Model{
-		store:        s,
-		keys:         DefaultKeyMap(),
-		styles:       NewStyles(t),
-		input:        ti,
-		cadenceTypes: []string{"none", "daily", "weekdays", "weekly", "monthly"},
-		monthlyInput: mi,
+		store:         s,
+		keys:          DefaultKeyMap(),
+		styles:        NewStyles(t),
+		input:         ti,
+		cadenceTypes:  []string{"none", "daily", "weekdays", "weekly", "monthly"},
+		monthlyInput:  mi,
+		defaultsInput: di,
 	}
 	m.RefreshTemplates()
 	return m
@@ -101,6 +117,8 @@ func (m Model) HelpBindings() []key.Binding {
 			bindings = []key.Binding{m.keys.Left, m.keys.Right, m.keys.Up, m.keys.Down, m.keys.Toggle, m.keys.Confirm, m.keys.Cancel}
 		}
 		return bindings
+	case placeholderDefaultsMode:
+		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	default:
 		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Delete, m.keys.Rename, m.keys.Edit, m.keys.Schedule, m.keys.Cancel}
 	}
@@ -137,6 +155,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m.updateRenameMode(msg)
 		case scheduleMode:
 			return m.updateScheduleMode(msg)
+		case placeholderDefaultsMode:
+			return m.updatePlaceholderDefaultsMode(msg)
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -391,6 +411,25 @@ func (m Model) updateScheduleMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 			cadenceValue = dayStr
 		}
 
+		// Check if template has placeholders that need defaults.
+		placeholders, pErr := tmpl.ExtractPlaceholders(sel.Content)
+		if pErr == nil && len(placeholders) > 0 {
+			m.pendingCadenceType = cadenceType
+			m.pendingCadenceValue = cadenceValue
+			m.placeholderNames = placeholders
+			m.placeholderIndex = 0
+			m.placeholderValues = make(map[string]string)
+			if m.editingSchedule != nil && m.editingSchedule.PlaceholderDefaults != "" {
+				json.Unmarshal([]byte(m.editingSchedule.PlaceholderDefaults), &m.placeholderValues)
+			}
+			m.defaultsInput.SetValue(m.placeholderValues[placeholders[0]])
+			m.defaultsInput.Focus()
+			m.defaultsInput.CursorEnd()
+			m.monthlyInput.Blur()
+			m.mode = placeholderDefaultsMode
+			return m, nil
+		}
+
 		defaults := "{}"
 		if m.editingSchedule != nil {
 			if m.editingSchedule.PlaceholderDefaults != "" {
@@ -415,6 +454,47 @@ func (m Model) updateScheduleMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// updatePlaceholderDefaultsMode handles key messages in placeholder defaults mode.
+func (m Model) updatePlaceholderDefaultsMode(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.Cancel):
+		m.mode = listMode
+		m.err = ""
+		m.defaultsInput.Blur()
+		return m, nil
+
+	case key.Matches(msg, m.keys.Confirm):
+		m.placeholderValues[m.placeholderNames[m.placeholderIndex]] = m.defaultsInput.Value()
+
+		if m.placeholderIndex < len(m.placeholderNames)-1 {
+			m.placeholderIndex++
+			m.defaultsInput.SetValue(m.placeholderValues[m.placeholderNames[m.placeholderIndex]])
+			m.defaultsInput.CursorEnd()
+			return m, nil
+		}
+
+		// Last placeholder -- save the schedule.
+		defaultsJSON, _ := json.Marshal(m.placeholderValues)
+		defaults := string(defaultsJSON)
+
+		sel := m.selected()
+		if m.editingSchedule != nil {
+			m.store.UpdateSchedule(m.editingSchedule.ID, m.pendingCadenceType, m.pendingCadenceValue, defaults)
+		} else if sel != nil {
+			m.store.AddSchedule(sel.ID, m.pendingCadenceType, m.pendingCadenceValue, defaults)
+		}
+		m.mode = listMode
+		m.err = ""
+		m.defaultsInput.Blur()
+		m.RefreshTemplates()
+		return m, func() tea.Msg { return TemplateUpdatedMsg{} }
+	}
+
+	var cmd tea.Cmd
+	m.defaultsInput, cmd = m.defaultsInput.Update(msg)
+	return m, cmd
 }
 
 // View renders the template management overlay.
@@ -480,6 +560,15 @@ func (m Model) View() string {
 	if m.mode == scheduleMode {
 		// Schedule picker.
 		b.WriteString(m.renderSchedulePicker())
+	} else if m.mode == placeholderDefaultsMode {
+		// Placeholder defaults prompting.
+		prompt := fmt.Sprintf("Set default for %q (%d/%d):",
+			m.placeholderNames[m.placeholderIndex],
+			m.placeholderIndex+1,
+			len(m.placeholderNames))
+		b.WriteString(m.styles.SchedulePrompt.Render(prompt))
+		b.WriteString("\n")
+		b.WriteString(m.defaultsInput.View())
 	} else {
 		// Content preview of selected template (raw text).
 		if sel := m.selected(); sel != nil {
@@ -508,6 +597,12 @@ func (m Model) View() string {
 			hint = "  left/right type  |  j/k day  |  space toggle  |  enter save  |  esc cancel"
 		} else if cadence == "monthly" {
 			hint = "  left/right type  |  type digits  |  enter save  |  esc cancel"
+		}
+		b.WriteString(m.styles.Hint.Render(hint))
+	case placeholderDefaultsMode:
+		hint := "  enter next  |  esc cancel"
+		if m.placeholderIndex == len(m.placeholderNames)-1 {
+			hint = "  enter save  |  esc cancel"
 		}
 		b.WriteString(m.styles.Hint.Render(hint))
 	default:
