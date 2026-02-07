@@ -78,8 +78,12 @@ func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mo
 			cell = fmt.Sprintf(" %2d ", day)
 		}
 
-		// Apply style based on priority: today > holiday > indicator > normal.
+		// Apply style based on priority: today+indicator > today+done > today > holiday > indicator > done > normal.
 		switch {
+		case day == today && hasPending:
+			cell = s.TodayIndicator.Render(cell)
+		case day == today && hasAllDone:
+			cell = s.TodayDone.Render(cell)
 		case day == today:
 			cell = s.Today.Render(cell)
 		case holidays[day]:
@@ -222,8 +226,12 @@ func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider,
 			cell = fmt.Sprintf(" %2d ", dd)
 		}
 
-		// Apply style based on priority: today > holiday > indicator > normal.
+		// Apply style based on priority: today+indicator > today+done > today > holiday > indicator > done > normal.
 		switch {
+		case isToday && hasPending:
+			cell = s.TodayIndicator.Render(cell)
+		case isToday && hasAllDone:
+			cell = s.TodayDone.Render(cell)
 		case isToday:
 			cell = s.Today.Render(cell)
 		case hols[dd]:
