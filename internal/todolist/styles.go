@@ -13,6 +13,9 @@ type Styles struct {
 	Date          lipgloss.Style
 	Empty         lipgloss.Style
 	BodyIndicator lipgloss.Style
+	Separator     lipgloss.Style
+	Checkbox      lipgloss.Style
+	CheckboxDone  lipgloss.Style
 }
 
 // NewStyles builds todo list styles from the given theme.
@@ -24,5 +27,8 @@ func NewStyles(t theme.Theme) Styles {
 		Date:          lipgloss.NewStyle().Foreground(t.MutedFg),
 		Empty:         lipgloss.NewStyle().Foreground(t.EmptyFg),
 		BodyIndicator: lipgloss.NewStyle().Foreground(t.MutedFg),
+		Separator:     lipgloss.NewStyle().Foreground(t.MutedFg),
+		Checkbox:      lipgloss.NewStyle().Foreground(t.AccentFg),
+		CheckboxDone:  lipgloss.NewStyle().Foreground(t.CompletedCountFg),
 	}
 }
