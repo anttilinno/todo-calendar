@@ -13,7 +13,6 @@ import (
 	"github.com/antti/todo-calendar/internal/config"
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
-	"github.com/antti/todo-calendar/internal/tmpl"
 )
 
 // PreviewMsg is emitted when the user wants to preview a todo's body.
@@ -32,11 +31,8 @@ type mode int
 const (
 	normalMode          mode = iota
 	inputMode                // typing todo text
-	dateInputMode            // typing date for a dated todo
 	editMode                 // editing existing todo (title + date + body)
 	filterMode               // inline filter narrowing visible todos
-	templateSelectMode       // browsing/selecting a template
-	placeholderInputMode     // filling in placeholder values one at a time
 	templateNameMode         // entering a name for a new template
 	templateContentMode      // entering content for a new template (multi-line)
 )
@@ -68,8 +64,6 @@ type Model struct {
 	store       store.TodoStore
 	viewYear    int
 	viewMonth   time.Month
-	addingDated bool   // true if current add will produce a dated todo
-	pendingText string // text saved during dateInputMode
 	editingID       int    // ID of the todo being edited
 	filterQuery     string // current filter text (empty = no filter)
 	dateLayout      string // Go time layout for date display/input
@@ -83,16 +77,8 @@ type Model struct {
 	editField    int             // 0 = title, 1 = date, 2 = body
 
 	// Template workflow fields
-	templates        []store.Template   // cached template list for selection
-	templateCursor   int                // selection cursor in template list
-	pendingTemplate  *store.Template    // selected template during placeholder flow
-	placeholderNames []string           // extracted placeholder names from template
-	placeholderIndex int                // which placeholder we're currently prompting for
-	placeholderValues map[string]string  // collected values so far
 	pendingTemplateName string           // name for template being created
 	templateTextarea textarea.Model      // multi-line textarea for template content entry
-	pendingBody      string             // template body to attach after todo creation
-	fromTemplate     bool               // true when creating a todo from a template
 }
 
 // New creates a new todo list model backed by the given store.
@@ -165,12 +151,7 @@ func (m Model) IsInputting() bool {
 func (m Model) HelpBindings() []key.Binding {
 	switch m.mode {
 	case inputMode:
-		if m.addingDated {
-			return []key.Binding{m.keys.Confirm, m.keys.Cancel, m.keys.SwitchField}
-		}
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
-	case dateInputMode:
-		return []key.Binding{m.keys.Confirm, m.keys.Cancel, m.keys.SwitchField}
 	case editMode:
 		if m.editField == 2 {
 			return []key.Binding{m.keys.SwitchField, m.keys.Save, m.keys.Cancel}
@@ -178,8 +159,6 @@ func (m Model) HelpBindings() []key.Binding {
 		return []key.Binding{m.keys.SwitchField, m.keys.Confirm, m.keys.Cancel}
 	case normalMode:
 		return []key.Binding{m.keys.Add, m.keys.Toggle, m.keys.Delete, m.keys.Edit, m.keys.Filter}
-	case templateSelectMode:
-		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Confirm, m.keys.Delete, m.keys.Cancel}
 	case templateContentMode:
 		return []key.Binding{m.keys.Save, m.keys.Cancel}
 	default:
@@ -192,12 +171,7 @@ func (m Model) HelpBindings() []key.Binding {
 func (m Model) AllHelpBindings() []key.Binding {
 	switch m.mode {
 	case inputMode:
-		if m.addingDated {
-			return []key.Binding{m.keys.Confirm, m.keys.Cancel, m.keys.SwitchField}
-		}
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
-	case dateInputMode:
-		return []key.Binding{m.keys.Confirm, m.keys.Cancel, m.keys.SwitchField}
 	case editMode:
 		if m.editField == 2 {
 			return []key.Binding{m.keys.SwitchField, m.keys.Save, m.keys.Cancel}
@@ -206,12 +180,10 @@ func (m Model) AllHelpBindings() []key.Binding {
 	case normalMode:
 		return []key.Binding{
 			m.keys.Up, m.keys.Down, m.keys.MoveUp, m.keys.MoveDown,
-			m.keys.Add, m.keys.AddDated, m.keys.Edit,
+			m.keys.Add, m.keys.Edit,
 			m.keys.Toggle, m.keys.Delete, m.keys.Filter,
-			m.keys.Preview, m.keys.OpenEditor, m.keys.TemplateUse, m.keys.TemplateCreate,
+			m.keys.Preview, m.keys.OpenEditor, m.keys.TemplateCreate,
 		}
-	case templateSelectMode:
-		return []key.Binding{m.keys.Up, m.keys.Down, m.keys.Confirm, m.keys.Delete, m.keys.Cancel}
 	case templateContentMode:
 		return []key.Binding{m.keys.Save, m.keys.Cancel}
 	default:
@@ -303,7 +275,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	// Forward blink/tick messages to focused text input in edit modes.
 	switch m.mode {
-	case inputMode, dateInputMode, editMode:
+	case inputMode, editMode:
 		if _, ok := msg.(tea.KeyMsg); !ok {
 			if _, ok := msg.(tea.WindowSizeMsg); !ok {
 				var cmd tea.Cmd
@@ -329,16 +301,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		switch m.mode {
 		case inputMode:
 			return m.updateInputMode(msg)
-		case dateInputMode:
-			return m.updateDateInputMode(msg)
 		case editMode:
 			return m.updateEditMode(msg)
 		case filterMode:
 			return m.updateFilterMode(msg)
-		case templateSelectMode:
-			return m.updateTemplateSelectMode(msg)
-		case placeholderInputMode:
-			return m.updatePlaceholderInputMode(msg)
 		case templateNameMode:
 			return m.updateTemplateNameMode(msg)
 		default:
@@ -393,22 +359,9 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Add):
 		m.mode = inputMode
-		m.addingDated = false
 		m.input.Placeholder = "What needs doing?"
 		m.input.Prompt = "> "
 		m.input.SetValue("")
-		return m, m.input.Focus()
-
-	case key.Matches(msg, m.keys.AddDated):
-		m.mode = inputMode
-		m.addingDated = true
-		m.input.Placeholder = "What needs doing?"
-		m.input.Prompt = "> "
-		m.input.SetValue("")
-		m.dateInput.SetValue("")
-		m.dateInput.Placeholder = m.datePlaceholder
-		m.dateInput.Prompt = "> "
-		m.editField = 0
 		return m, m.input.Focus()
 
 	case key.Matches(msg, m.keys.Toggle):
@@ -484,15 +437,6 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 			}
 		}
 
-	case key.Matches(msg, m.keys.TemplateUse):
-		m.templates = m.store.ListTemplates()
-		if len(m.templates) == 0 {
-			return m, nil
-		}
-		m.templateCursor = 0
-		m.mode = templateSelectMode
-		return m, nil
-
 	case key.Matches(msg, m.keys.TemplateCreate):
 		m.mode = templateNameMode
 		m.input.Placeholder = "Template name"
@@ -536,123 +480,28 @@ func (m Model) updateFilterMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.Confirm):
-		if m.addingDated {
-			// Unified confirm: read both fields
-			title := strings.TrimSpace(m.input.Value())
-			if title == "" {
-				return m, nil
-			}
-			date := strings.TrimSpace(m.dateInput.Value())
-			if date == "" {
-				// Auto-switch to date field if empty
-				m.editField = 1
-				m.input.Blur()
-				return m, m.dateInput.Focus()
-			}
-			isoDate, err := config.ParseUserDate(date, m.dateLayout)
-			if err != nil {
-				// Invalid date -- focus date field
-				m.editField = 1
-				m.input.Blur()
-				return m, m.dateInput.Focus()
-			}
-			todo := m.store.Add(title, isoDate)
-			if m.fromTemplate {
-				m.store.UpdateBody(todo.ID, m.pendingBody)
-				m.clearTemplateState()
-			}
-			m.mode = normalMode
-			m.input.Blur()
-			m.dateInput.Blur()
-			m.input.SetValue("")
-			m.dateInput.SetValue("")
-			m.editField = 0
-			return m, nil
-		}
 		text := strings.TrimSpace(m.input.Value())
 		if text == "" {
 			// Don't add empty todos -- stay in input mode
 			return m, nil
 		}
-		todo := m.store.Add(text, "")
-		if m.fromTemplate {
-			m.store.UpdateBody(todo.ID, m.pendingBody)
-			m.clearTemplateState()
-		}
+		m.store.Add(text, "")
 		m.mode = normalMode
 		m.input.Blur()
 		m.input.SetValue("")
 		return m, nil
 
 	case key.Matches(msg, m.keys.SwitchField):
-		if m.addingDated {
-			if m.editField == 0 {
-				m.editField = 1
-				m.input.Blur()
-				return m, m.dateInput.Focus()
-			}
-			m.editField = 0
-			m.dateInput.Blur()
-			return m, m.input.Focus()
-		}
 		return m, nil
 
 	case key.Matches(msg, m.keys.Cancel):
 		m.mode = normalMode
 		m.input.Blur()
-		m.dateInput.Blur()
 		m.input.SetValue("")
-		m.dateInput.SetValue("")
-		m.editField = 0
-		m.pendingText = ""
-		m.clearTemplateState()
 		return m, nil
 	}
 
 	// Forward key events to the focused input
-	var cmd tea.Cmd
-	if m.addingDated && m.editField == 1 {
-		m.dateInput, cmd = m.dateInput.Update(msg)
-	} else {
-		m.input, cmd = m.input.Update(msg)
-	}
-	return m, cmd
-}
-
-// updateDateInputMode handles key events while typing a date.
-func (m Model) updateDateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
-	switch {
-	case key.Matches(msg, m.keys.Confirm):
-		date := strings.TrimSpace(m.input.Value())
-		if date == "" {
-			return m, nil
-		}
-		// Parse in user's configured format, convert to ISO for storage
-		isoDate, err := config.ParseUserDate(date, m.dateLayout)
-		if err != nil {
-			// Invalid date -- stay in date input mode
-			return m, nil
-		}
-		todo := m.store.Add(m.pendingText, isoDate)
-		if m.fromTemplate {
-			m.store.UpdateBody(todo.ID, m.pendingBody)
-			m.clearTemplateState()
-		}
-		m.mode = normalMode
-		m.input.Blur()
-		m.input.SetValue("")
-		m.pendingText = ""
-		return m, nil
-
-	case key.Matches(msg, m.keys.Cancel):
-		m.mode = normalMode
-		m.input.Blur()
-		m.input.SetValue("")
-		m.pendingText = ""
-		m.clearTemplateState()
-		return m, nil
-	}
-
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(msg)
 	return m, cmd
@@ -767,112 +616,6 @@ func (m Model) saveEdit() (Model, tea.Cmd) {
 	return m, nil
 }
 
-// updateTemplateSelectMode handles key events while browsing the template list.
-func (m Model) updateTemplateSelectMode(msg tea.KeyMsg) (Model, tea.Cmd) {
-	switch {
-	case key.Matches(msg, m.keys.Up):
-		if m.templateCursor > 0 {
-			m.templateCursor--
-		}
-		return m, nil
-
-	case key.Matches(msg, m.keys.Down):
-		if m.templateCursor < len(m.templates)-1 {
-			m.templateCursor++
-		}
-		return m, nil
-
-	case key.Matches(msg, m.keys.Confirm):
-		if len(m.templates) == 0 {
-			return m, nil
-		}
-		selected := m.templates[m.templateCursor]
-		m.pendingTemplate = &selected
-		names, err := tmpl.ExtractPlaceholders(selected.Content)
-		if err != nil || len(names) == 0 {
-			// No placeholders -- execute template immediately and ask for todo text
-			body, _ := tmpl.ExecuteTemplate(selected.Content, map[string]string{})
-			m.pendingBody = body
-			m.fromTemplate = true
-			m.mode = inputMode
-			m.input.Placeholder = "What needs doing?"
-			m.input.Prompt = "> "
-			m.input.SetValue("")
-			return m, m.input.Focus()
-		}
-		// Has placeholders -- prompt for each
-		m.placeholderNames = names
-		m.placeholderIndex = 0
-		m.placeholderValues = make(map[string]string)
-		m.mode = placeholderInputMode
-		m.input.Placeholder = names[0]
-		m.input.Prompt = names[0] + ": "
-		m.input.SetValue("")
-		return m, m.input.Focus()
-
-	case key.Matches(msg, m.keys.Delete):
-		if len(m.templates) == 0 {
-			return m, nil
-		}
-		m.store.DeleteTemplate(m.templates[m.templateCursor].ID)
-		m.templates = m.store.ListTemplates()
-		if len(m.templates) == 0 {
-			m.mode = normalMode
-			m.clearTemplateState()
-			return m, nil
-		}
-		if m.templateCursor >= len(m.templates) {
-			m.templateCursor = len(m.templates) - 1
-		}
-		return m, nil
-
-	case key.Matches(msg, m.keys.Cancel):
-		m.mode = normalMode
-		m.clearTemplateState()
-		return m, nil
-	}
-
-	return m, nil
-}
-
-// updatePlaceholderInputMode handles key events while filling placeholder values.
-func (m Model) updatePlaceholderInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
-	switch {
-	case key.Matches(msg, m.keys.Confirm):
-		value := strings.TrimSpace(m.input.Value())
-		m.placeholderValues[m.placeholderNames[m.placeholderIndex]] = value
-		m.placeholderIndex++
-		if m.placeholderIndex < len(m.placeholderNames) {
-			// More placeholders remain
-			name := m.placeholderNames[m.placeholderIndex]
-			m.input.Placeholder = name
-			m.input.Prompt = name + ": "
-			m.input.SetValue("")
-			return m, nil
-		}
-		// All placeholders filled -- execute template
-		body, _ := tmpl.ExecuteTemplate(m.pendingTemplate.Content, m.placeholderValues)
-		m.pendingBody = body
-		m.fromTemplate = true
-		m.mode = inputMode
-		m.input.Placeholder = "What needs doing?"
-		m.input.Prompt = "> "
-		m.input.SetValue("")
-		return m, m.input.Focus()
-
-	case key.Matches(msg, m.keys.Cancel):
-		m.mode = normalMode
-		m.input.Blur()
-		m.input.SetValue("")
-		m.clearTemplateState()
-		return m, nil
-	}
-
-	var cmd tea.Cmd
-	m.input, cmd = m.input.Update(msg)
-	return m, cmd
-}
-
 // updateTemplateNameMode handles key events while entering a template name.
 func (m Model) updateTemplateNameMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch {
@@ -935,7 +678,7 @@ func (m Model) updateTemplateContentMode(msg tea.Msg) (Model, tea.Cmd) {
 // View renders the todo list pane content.
 func (m Model) View() string {
 	switch m.mode {
-	case inputMode, dateInputMode, editMode, templateNameMode, templateContentMode, templateSelectMode, placeholderInputMode:
+	case inputMode, editMode, templateNameMode, templateContentMode:
 		return m.editView()
 	default:
 		return m.normalView()
@@ -951,14 +694,10 @@ func (m Model) editView() string {
 	switch m.mode {
 	case editMode:
 		title = "Edit Todo"
-	case templateSelectMode:
-		title = "Use Template"
 	case templateNameMode:
 		title = "New Template"
 	case templateContentMode:
 		title = "Template Content: " + m.pendingTemplateName
-	case placeholderInputMode:
-		title = fmt.Sprintf("Fill Placeholder (%d/%d)", m.placeholderIndex+1, len(m.placeholderNames))
 	default:
 		title = "Add Todo"
 	}
@@ -982,22 +721,6 @@ func (m Model) editView() string {
 		b.WriteString(m.bodyTextarea.View())
 		b.WriteString("\n")
 
-	case templateSelectMode:
-		for i, t := range m.templates {
-			if i == m.templateCursor {
-				b.WriteString(m.styles.Cursor.Render("> "))
-			} else {
-				b.WriteString("  ")
-			}
-			preview := t.Content
-			if len(preview) > 40 {
-				preview = preview[:40] + "..."
-			}
-			preview = strings.ReplaceAll(preview, "\n", " ")
-			b.WriteString(fmt.Sprintf("%s  %s", t.Name, m.styles.Empty.Render(preview)))
-			b.WriteString("\n")
-		}
-
 	case templateContentMode:
 		b.WriteString(m.templateTextarea.View())
 		b.WriteString("\n")
@@ -1008,33 +731,8 @@ func (m Model) editView() string {
 		b.WriteString(m.input.View())
 		b.WriteString("\n\n")
 
-	case placeholderInputMode:
-		b.WriteString(m.styles.FieldLabel.Render(m.placeholderNames[m.placeholderIndex]))
-		b.WriteString("\n")
-		b.WriteString(m.input.View())
-		b.WriteString("\n\n")
-
 	case inputMode:
-		if m.addingDated {
-			// Dual fields for dated add
-			b.WriteString(m.styles.FieldLabel.Render("Title"))
-			b.WriteString("\n")
-			b.WriteString(m.input.View())
-			b.WriteString("\n\n")
-			b.WriteString(m.styles.FieldLabel.Render("Date"))
-			b.WriteString("\n")
-			b.WriteString(m.dateInput.View())
-			b.WriteString("\n\n")
-		} else {
-			// Single title field for regular add
-			b.WriteString(m.styles.FieldLabel.Render("Title"))
-			b.WriteString("\n")
-			b.WriteString(m.input.View())
-			b.WriteString("\n\n")
-		}
-
-	default:
-		// Title field (dateInputMode)
+		// Single title field for regular add
 		b.WriteString(m.styles.FieldLabel.Render("Title"))
 		b.WriteString("\n")
 		b.WriteString(m.input.View())
@@ -1154,15 +852,7 @@ func (m *Model) SetDateFormat(layout, placeholder string) {
 
 // clearTemplateState resets all template workflow fields.
 func (m *Model) clearTemplateState() {
-	m.fromTemplate = false
-	m.pendingBody = ""
-	m.pendingTemplate = nil
-	m.placeholderNames = nil
-	m.placeholderIndex = 0
-	m.placeholderValues = nil
 	m.pendingTemplateName = ""
-	m.templates = nil
-	m.templateCursor = 0
 }
 
 func max(a, b int) int {
