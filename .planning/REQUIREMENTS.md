@@ -74,9 +74,9 @@ When creating a schedule for a template that has `{{.Variable}}` placeholders, p
 | REQ-23 | Phase 20 | Complete |
 | REQ-24 | Phase 20 | Complete |
 | REQ-25 | Phase 20 | Complete |
-| REQ-26 | Phase 21 | Pending |
-| REQ-27 | Phase 21 | Pending |
-| REQ-28 | Phase 21 | Pending |
+| REQ-26 | Phase 21 | Complete |
+| REQ-27 | Phase 21 | Complete |
+| REQ-28 | Phase 21 | Complete |
 | REQ-29 | Phase 22 | Pending |
 | REQ-30 | Phase 22 | Pending |
 | REQ-31 | Phase 22 | Pending |
