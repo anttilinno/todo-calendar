@@ -20,6 +20,7 @@ type Styles struct {
 	ScheduleInactive   lipgloss.Style
 	ScheduleDay        lipgloss.Style
 	ScheduleDaySelected lipgloss.Style
+	SchedulePrompt     lipgloss.Style
 }
 
 // NewStyles builds template management styles from the given theme.
@@ -38,5 +39,6 @@ func NewStyles(t theme.Theme) Styles {
 		ScheduleInactive:   lipgloss.NewStyle().Foreground(t.MutedFg),
 		ScheduleDay:        lipgloss.NewStyle().Foreground(t.NormalFg),
 		ScheduleDaySelected: lipgloss.NewStyle().Bold(true).Foreground(t.AccentFg),
+		SchedulePrompt:     lipgloss.NewStyle().Foreground(t.NormalFg),
 	}
 }
