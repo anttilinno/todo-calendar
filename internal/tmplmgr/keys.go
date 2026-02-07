@@ -6,6 +6,7 @@ import "github.com/charmbracelet/bubbles/key"
 type KeyMap struct {
 	Up       key.Binding
 	Down     key.Binding
+	Create   key.Binding
 	Delete   key.Binding
 	Rename   key.Binding
 	Edit     key.Binding
@@ -19,7 +20,7 @@ type KeyMap struct {
 
 // ShortHelp returns key bindings for the short help view.
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.Delete, k.Rename, k.Edit, k.Schedule, k.Cancel}
+	return []key.Binding{k.Up, k.Down, k.Create, k.Delete, k.Rename, k.Edit, k.Schedule, k.Cancel}
 }
 
 // FullHelp returns key bindings for the full help view.
@@ -37,6 +38,10 @@ func DefaultKeyMap() KeyMap {
 		Down: key.NewBinding(
 			key.WithKeys("j", "down"),
 			key.WithHelp("j/dn", "down"),
+		),
+		Create: key.NewBinding(
+			key.WithKeys("a"),
+			key.WithHelp("a", "new"),
 		),
 		Delete: key.NewBinding(
 			key.WithKeys("d"),

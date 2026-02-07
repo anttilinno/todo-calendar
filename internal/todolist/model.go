@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/antti/todo-calendar/internal/config"
+	"github.com/antti/todo-calendar/internal/fuzzy"
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
 	"github.com/antti/todo-calendar/internal/tmpl"
@@ -30,12 +31,10 @@ type OpenEditorMsg struct {
 type mode int
 
 const (
-	normalMode          mode = iota
-	inputMode                // typing todo text
-	editMode                 // editing existing todo (title + date + body)
-	filterMode               // inline filter narrowing visible todos
-	templateNameMode         // entering a name for a new template
-	templateContentMode      // entering content for a new template (multi-line)
+	normalMode mode = iota
+	inputMode       // typing todo text
+	editMode        // editing existing todo (title + date + body)
+	filterMode      // inline filter narrowing visible todos
 )
 
 // itemKind classifies a visible row in the rendered list.
@@ -88,9 +87,6 @@ type Model struct {
 	pickerPlaceholderValues map[string]string
 	pickerSelectedTemplate  *store.Template
 
-	// Template workflow fields
-	pendingTemplateName string           // name for template being created
-	templateTextarea textarea.Model      // multi-line textarea for template content entry
 }
 
 // New creates a new todo list model backed by the given store.
@@ -104,10 +100,6 @@ func New(s store.TodoStore, t theme.Theme) Model {
 	di.Placeholder = "YYYY-MM-DD"
 	di.Prompt = "Date: "
 	di.CharLimit = 10
-
-	ta := textarea.New()
-	ta.Placeholder = "Template content (use {{.VarName}} for placeholders)"
-	ta.ShowLineNumbers = false
 
 	ba := textarea.New()
 	ba.Placeholder = "Body text (markdown supported)"
@@ -125,7 +117,6 @@ func New(s store.TodoStore, t theme.Theme) Model {
 		dateInput:        di,
 		bodyTextarea:     ba,
 		templateInput:    tmplInput,
-		templateTextarea: ta,
 		viewYear:         now.Year(),
 		viewMonth:        now.Month(),
 		dateLayout:       "2006-01-02",
@@ -186,8 +177,6 @@ func (m Model) HelpBindings() []key.Binding {
 		return []key.Binding{m.keys.SwitchField, m.keys.Confirm, m.keys.Cancel}
 	case normalMode:
 		return []key.Binding{m.keys.Add, m.keys.Toggle, m.keys.Delete, m.keys.Edit, m.keys.Filter}
-	case templateContentMode:
-		return []key.Binding{m.keys.Save, m.keys.Cancel}
 	default:
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	}
@@ -218,10 +207,8 @@ func (m Model) AllHelpBindings() []key.Binding {
 			m.keys.Up, m.keys.Down, m.keys.MoveUp, m.keys.MoveDown,
 			m.keys.Add, m.keys.Edit,
 			m.keys.Toggle, m.keys.Delete, m.keys.Filter,
-			m.keys.Preview, m.keys.OpenEditor, m.keys.TemplateCreate,
+			m.keys.Preview, m.keys.OpenEditor,
 		}
-	case templateContentMode:
-		return []key.Binding{m.keys.Save, m.keys.Cancel}
 	default:
 		return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 	}
@@ -260,14 +247,13 @@ func (m Model) visibleItems() []visibleItem {
 
 	// Apply inline filter when active
 	if m.filterQuery != "" {
-		query := strings.ToLower(m.filterQuery)
 		var filtered []visibleItem
 		for _, item := range items {
 			switch item.kind {
 			case headerItem:
 				filtered = append(filtered, item)
 			case todoItem:
-				if strings.Contains(strings.ToLower(item.todo.Text), query) {
+				if matched, _ := fuzzy.Match(m.filterQuery, item.todo.Text); matched {
 					filtered = append(filtered, item)
 				}
 			// Skip emptyItem entries -- they are misleading when filtered
@@ -304,11 +290,6 @@ func selectableIndices(items []visibleItem) []int {
 
 // Update handles messages for the todo list pane.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	// templateContentMode needs all message types (not just KeyMsg) for textarea blink/tick.
-	if m.mode == templateContentMode && m.focused {
-		return m.updateTemplateContentMode(msg)
-	}
-
 	// Forward blink/tick messages to focused text input in edit modes.
 	switch m.mode {
 	case inputMode, editMode:
@@ -348,8 +329,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m.updateEditMode(msg)
 		case filterMode:
 			return m.updateFilterMode(msg)
-		case templateNameMode:
-			return m.updateTemplateNameMode(msg)
 		default:
 			return m.updateNormalMode(msg)
 		}
@@ -484,12 +463,6 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 			}
 		}
 
-	case key.Matches(msg, m.keys.TemplateCreate):
-		m.mode = templateNameMode
-		m.input.Placeholder = "Template name"
-		m.input.Prompt = "> "
-		m.input.SetValue("")
-		return m, m.input.Focus()
 	}
 
 	return m, nil
@@ -787,69 +760,11 @@ func (m Model) saveAdd() (Model, tea.Cmd) {
 	return m, nil
 }
 
-// updateTemplateNameMode handles key events while entering a template name.
-func (m Model) updateTemplateNameMode(msg tea.KeyMsg) (Model, tea.Cmd) {
-	switch {
-	case key.Matches(msg, m.keys.Confirm):
-		name := strings.TrimSpace(m.input.Value())
-		if name == "" {
-			return m, nil
-		}
-		m.pendingTemplateName = name
-		m.mode = templateContentMode
-		m.input.Blur()
-		m.templateTextarea.Reset()
-		return m, m.templateTextarea.Focus()
-
-	case key.Matches(msg, m.keys.Cancel):
-		m.mode = normalMode
-		m.input.Blur()
-		m.input.SetValue("")
-		m.clearTemplateState()
-		return m, nil
-	}
-
-	var cmd tea.Cmd
-	m.input, cmd = m.input.Update(msg)
-	return m, cmd
-}
-
-// updateTemplateContentMode handles messages while entering template content (multi-line).
-func (m Model) updateTemplateContentMode(msg tea.Msg) (Model, tea.Cmd) {
-	saveKey := key.NewBinding(key.WithKeys("ctrl+d"))
-
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, saveKey):
-			content := strings.TrimSpace(m.templateTextarea.Value())
-			if content == "" {
-				return m, nil
-			}
-			m.store.AddTemplate(m.pendingTemplateName, content)
-			m.mode = normalMode
-			m.templateTextarea.Reset()
-			m.clearTemplateState()
-			return m, nil
-
-		case key.Matches(msg, m.keys.Cancel):
-			m.mode = normalMode
-			m.templateTextarea.Reset()
-			m.clearTemplateState()
-			return m, nil
-		}
-	}
-
-	// Forward all other messages to textarea (handles typing, cursor, blink, etc.)
-	var cmd tea.Cmd
-	m.templateTextarea, cmd = m.templateTextarea.Update(msg)
-	return m, cmd
-}
 
 // View renders the todo list pane content.
 func (m Model) View() string {
 	switch m.mode {
-	case inputMode, editMode, templateNameMode, templateContentMode:
+	case inputMode, editMode:
 		return m.editView()
 	default:
 		return m.normalView()
@@ -865,10 +780,6 @@ func (m Model) editView() string {
 	switch m.mode {
 	case editMode:
 		title = "Edit Todo"
-	case templateNameMode:
-		title = "New Template"
-	case templateContentMode:
-		title = "Template Content: " + m.pendingTemplateName
 	default:
 		title = "Add Todo"
 	}
@@ -891,16 +802,6 @@ func (m Model) editView() string {
 		b.WriteString("\n")
 		b.WriteString(m.bodyTextarea.View())
 		b.WriteString("\n")
-
-	case templateContentMode:
-		b.WriteString(m.templateTextarea.View())
-		b.WriteString("\n")
-
-	case templateNameMode:
-		b.WriteString(m.styles.FieldLabel.Render("Name"))
-		b.WriteString("\n")
-		b.WriteString(m.input.View())
-		b.WriteString("\n\n")
 
 	case inputMode:
 		if m.pickingTemplate {
@@ -959,7 +860,7 @@ func (m Model) editView() string {
 
 	// Vertical centering (skip for modes with textareas)
 	content := b.String()
-	if m.height > 0 && m.mode != editMode && m.mode != inputMode && m.mode != templateContentMode {
+	if m.height > 0 && m.mode != editMode && m.mode != inputMode {
 		lines := strings.Count(content, "\n") + 1
 		topPad := (m.height - lines) / 3
 		if topPad > 0 {
@@ -1167,11 +1068,6 @@ func (m Model) prefillFromTemplate(t *store.Template, renderedBody string) Model
 	m.pickerPlaceholderIndex = 0
 	m.pickerPlaceholderValues = nil
 	return m
-}
-
-// clearTemplateState resets all template workflow fields.
-func (m *Model) clearTemplateState() {
-	m.pendingTemplateName = ""
 }
 
 func max(a, b int) int {
