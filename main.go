@@ -7,6 +7,7 @@ import (
 	"github.com/antti/todo-calendar/internal/app"
 	"github.com/antti/todo-calendar/internal/config"
 	"github.com/antti/todo-calendar/internal/holidays"
+	"github.com/antti/todo-calendar/internal/recurring"
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
 	tea "github.com/charmbracelet/bubbletea"
@@ -37,6 +38,8 @@ func main() {
 		os.Exit(1)
 	}
 	defer s.Close()
+
+	recurring.AutoCreate(s)
 
 	t := theme.ForName(cfg.Theme)
 	model := app.New(provider, cfg.MondayStart(), s, t, cfg)
