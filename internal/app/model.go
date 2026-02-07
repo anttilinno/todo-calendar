@@ -242,11 +242,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Sync todo view month on first ready
 		m.todoList.SetViewMonth(m.calendar.Year(), m.calendar.Month())
 
-		// Broadcast to all children
-		var calCmd, todoCmd tea.Cmd
+		// Broadcast to calendar
+		var calCmd tea.Cmd
 		m.calendar, calCmd = m.calendar.Update(msg)
-		m.todoList, todoCmd = m.todoList.Update(msg)
-		return m, tea.Batch(calCmd, todoCmd)
+
+		// Set pane dimensions on todolist explicitly
+		m.syncTodoSize()
+
+		return m, calCmd
 	}
 
 	// Route to focused child only
@@ -277,10 +280,10 @@ func (m Model) updateSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.help.Width = wsm.Width
 		m.settings.SetSize(wsm.Width, wsm.Height)
 
-		var calCmd, todoCmd tea.Cmd
+		var calCmd tea.Cmd
 		m.calendar, calCmd = m.calendar.Update(msg)
-		m.todoList, todoCmd = m.todoList.Update(msg)
-		return m, tea.Batch(calCmd, todoCmd)
+		m.syncTodoSize()
+		return m, calCmd
 	}
 
 	var cmd tea.Cmd
@@ -298,10 +301,10 @@ func (m Model) updateSearch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.help.Width = wsm.Width
 		m.search.SetSize(wsm.Width, wsm.Height)
 
-		var calCmd, todoCmd tea.Cmd
+		var calCmd tea.Cmd
 		m.calendar, calCmd = m.calendar.Update(msg)
-		m.todoList, todoCmd = m.todoList.Update(msg)
-		return m, tea.Batch(calCmd, todoCmd)
+		m.syncTodoSize()
+		return m, calCmd
 	}
 
 	var cmd tea.Cmd
@@ -318,18 +321,43 @@ func (m Model) updatePreview(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ready = true
 		m.help.Width = wsm.Width
 
-		var calCmd, todoCmd tea.Cmd
+		var calCmd tea.Cmd
 		m.calendar, calCmd = m.calendar.Update(msg)
-		m.todoList, todoCmd = m.todoList.Update(msg)
+		m.syncTodoSize()
 
 		var prevCmd tea.Cmd
 		m.preview, prevCmd = m.preview.Update(msg)
-		return m, tea.Batch(calCmd, todoCmd, prevCmd)
+		return m, tea.Batch(calCmd, prevCmd)
 	}
 
 	var cmd tea.Cmd
 	m.preview, cmd = m.preview.Update(msg)
 	return m, cmd
+}
+
+// syncTodoSize computes the pane dimensions and passes them to the todolist model.
+func (m *Model) syncTodoSize() {
+	frameH, frameV := m.styles.Pane(true).GetFrameSize()
+
+	// Render help to measure its height
+	helpBar := m.help.View(m.currentHelpKeys())
+	helpHeight := lipgloss.Height(helpBar)
+	if helpHeight < 1 {
+		helpHeight = 1
+	}
+
+	contentHeight := m.height - helpHeight - frameV
+	if contentHeight < 1 {
+		contentHeight = 1
+	}
+
+	calendarInnerWidth := 38
+	todoInnerWidth := m.width - calendarInnerWidth - (frameH * 2)
+	if todoInnerWidth < 1 {
+		todoInnerWidth = 1
+	}
+
+	m.todoList.SetSize(todoInnerWidth, contentHeight)
 }
 
 // applyTheme updates all component styles with the given theme.

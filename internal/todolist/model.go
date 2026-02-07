@@ -78,6 +78,10 @@ type Model struct {
 	keys            KeyMap
 	styles          Styles
 
+	// Full-pane edit fields
+	dateInput textinput.Model // separate input for date field in full-pane mode
+	editField int             // 0 = title focused, 1 = date focused
+
 	// Template workflow fields
 	templates        []store.Template   // cached template list for selection
 	templateCursor   int                // selection cursor in template list
@@ -98,6 +102,11 @@ func New(s store.TodoStore, t theme.Theme) Model {
 	ti.CharLimit = 120
 	ti.Prompt = "> "
 
+	di := textinput.New()
+	di.Placeholder = "YYYY-MM-DD"
+	di.Prompt = "Date: "
+	di.CharLimit = 10
+
 	ta := textarea.New()
 	ta.Placeholder = "Template content (use {{.VarName}} for placeholders)"
 	ta.ShowLineNumbers = false
@@ -106,6 +115,7 @@ func New(s store.TodoStore, t theme.Theme) Model {
 	return Model{
 		store:            s,
 		input:            ti,
+		dateInput:        di,
 		templateTextarea: ta,
 		viewYear:         now.Year(),
 		viewMonth:        now.Month(),
@@ -119,6 +129,12 @@ func New(s store.TodoStore, t theme.Theme) Model {
 // SetFocused sets whether this pane is focused.
 func (m *Model) SetFocused(f bool) {
 	m.focused = f
+}
+
+// SetSize sets the available pane dimensions for layout calculations.
+func (m *Model) SetSize(w, h int) {
+	m.width = w
+	m.height = h
 }
 
 // SetViewMonth updates the filtered month for dated todos.
