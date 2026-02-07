@@ -241,10 +241,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 22-01-PLAN.md -- AutoCreate engine TDD (generate scheduled todos with dedup and placeholder fill)
-- [ ] 22-02-PLAN.md -- Visual indicators ([R] on todos, schedule suffix on templates)
-- [ ] 22-03-PLAN.md -- Schedule picker UI with cadence cycling and weekday/monthly input
-- [ ] 22-04-PLAN.md -- Placeholder defaults prompting at schedule creation
+- [x] 22-01-PLAN.md -- AutoCreate engine TDD (generate scheduled todos with dedup and placeholder fill)
+- [x] 22-02-PLAN.md -- Visual indicators ([R] on todos, schedule suffix on templates)
+- [x] 22-03-PLAN.md -- Schedule picker UI with cadence cycling and weekday/monthly input
+- [x] 22-04-PLAN.md -- Placeholder defaults prompting at schedule creation
 
 ## Requirement Coverage
 
@@ -300,4 +300,4 @@ Strict chain: each phase depends on the previous. Phase 20 is standalone value (
 | 19. Pre-Built Templates | v1.5 | 1/1 | Complete | 2026-02-07 |
 | 20. Template Management Overlay | v1.6 | 2/2 | Complete | 2026-02-07 |
 | 21. Schedule Schema & CRUD | v1.6 | 2/2 | Complete | 2026-02-07 |
-| 22. Auto-Creation & Schedule UI | v1.6 | 0/4 | Not started | - |
+| 22. Auto-Creation & Schedule UI | v1.6 | 4/4 | Complete | 2026-02-07 |
