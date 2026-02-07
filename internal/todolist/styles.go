@@ -16,6 +16,9 @@ type Styles struct {
 	Separator     lipgloss.Style
 	Checkbox      lipgloss.Style
 	CheckboxDone  lipgloss.Style
+	EditTitle     lipgloss.Style
+	FieldLabel    lipgloss.Style
+	EditHint      lipgloss.Style
 }
 
 // NewStyles builds todo list styles from the given theme.
@@ -30,5 +33,8 @@ func NewStyles(t theme.Theme) Styles {
 		Separator:     lipgloss.NewStyle().Foreground(t.MutedFg),
 		Checkbox:      lipgloss.NewStyle().Foreground(t.AccentFg),
 		CheckboxDone:  lipgloss.NewStyle().Foreground(t.CompletedCountFg),
+		EditTitle:     lipgloss.NewStyle().Bold(true).Foreground(t.AccentFg),
+		FieldLabel:    lipgloss.NewStyle().Bold(true).Foreground(t.NormalFg),
+		EditHint:      lipgloss.NewStyle().Foreground(t.MutedFg),
 	}
 }
