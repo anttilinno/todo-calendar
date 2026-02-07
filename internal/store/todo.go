@@ -15,7 +15,9 @@ type Todo struct {
 	Date      string `json:"date,omitempty"`
 	Done      bool   `json:"done"`
 	CreatedAt string `json:"created_at"`
-	SortOrder int    `json:"sort_order,omitempty"`
+	SortOrder    int    `json:"sort_order,omitempty"`
+	ScheduleID   int    `json:"schedule_id,omitempty"`
+	ScheduleDate string `json:"schedule_date,omitempty"`
 }
 
 // HasBody reports whether the todo has a non-empty markdown body.
@@ -29,6 +31,16 @@ type Template struct {
 	Name      string
 	Content   string
 	CreatedAt string
+}
+
+// Schedule represents a recurring schedule linked to a template.
+type Schedule struct {
+	ID                 int
+	TemplateID         int
+	CadenceType        string
+	CadenceValue       string
+	PlaceholderDefaults string // JSON object of default placeholder values
+	CreatedAt          string
 }
 
 // Data is the top-level JSON envelope persisted to disk.
