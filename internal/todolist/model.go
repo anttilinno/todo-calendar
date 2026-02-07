@@ -934,13 +934,6 @@ func (m Model) editView() string {
 		b.WriteString("\n\n")
 	}
 
-	// Minimal help hint
-	hint := "Enter confirm | Esc cancel"
-	if m.addingDated && (m.mode == inputMode || m.mode == dateInputMode) {
-		hint = "Enter confirm | Esc cancel | Tab switch field"
-	}
-	b.WriteString(m.styles.EditHint.Render(hint))
-
 	// Vertical centering
 	content := b.String()
 	if m.height > 0 {
