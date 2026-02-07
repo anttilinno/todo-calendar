@@ -223,8 +223,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 21-01-PLAN.md -- ScheduleRule TDD (parse/match all cadence types in internal/recurring)
-- [ ] 21-02-PLAN.md -- Schedule struct, migrations v4+v5, interface extension, SQLite CRUD
+- [x] 21-01-PLAN.md -- ScheduleRule TDD (parse/match all cadence types in internal/recurring)
+- [x] 21-02-PLAN.md -- Schedule struct, migrations v4+v5, interface extension, SQLite CRUD
 
 #### Phase 22: Auto-Creation & Schedule UI
 **Goal**: Scheduled todos are automatically created on app launch and users can attach/manage schedules from the template overlay
@@ -294,5 +294,5 @@ Strict chain: each phase depends on the previous. Phase 20 is standalone value (
 | 18. Full-Pane Editing | v1.5 | 2/2 | Complete | 2026-02-07 |
 | 19. Pre-Built Templates | v1.5 | 1/1 | Complete | 2026-02-07 |
 | 20. Template Management Overlay | v1.6 | 2/2 | Complete | 2026-02-07 |
-| 21. Schedule Schema & CRUD | v1.6 | 0/2 | Not started | - |
+| 21. Schedule Schema & CRUD | v1.6 | 2/2 | Complete | 2026-02-07 |
 | 22. Auto-Creation & Schedule UI | v1.6 | 0/TBD | Not started | - |
