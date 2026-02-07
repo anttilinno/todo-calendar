@@ -202,6 +202,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch {
 		case key.Matches(msg, m.keys.Quit) && !isInputting:
+			if m.help.ShowAll {
+				m.help.ShowAll = false
+				return m, nil
+			}
 			return m, tea.Quit
 		case isInputting && msg.String() == "ctrl+c":
 			return m, tea.Quit
