@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-07)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** v1.5 UX Polish -- Phase 18 Responsive Layout
+**Current focus:** v1.5 UX Polish -- Phase 18 Full-Pane Editing
 
 ## Current Position
 
-Phase: 17 of 19 (Visual Polish & Help)
-Plan: 2 of 2
-Status: Phase complete
-Last activity: 2026-02-07 -- Completed 17-02-PLAN.md
+Phase: 18 of 19 (Full-Pane Editing)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-02-07 -- Phase 17 verified and complete
 
 Progress: █████████████████████████████░ 94% (30/32 plans)
 
@@ -48,5 +48,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Completed 17-02-PLAN.md
+Stopped at: Phase 17 complete, ready for Phase 18
 Resume file: None
