@@ -9,17 +9,17 @@ See: .planning/PROJECT.md (updated 2026-02-07)
 
 ## Current Position
 
-Phase: 21 of 22 (Schedule Schema & CRUD)
-Plan: 2 of 2
-Status: Phase complete
-Last activity: 2026-02-07 -- Completed Phase 21 (both plans verified)
+Phase: 22 of 22 (Auto-Creation & Schedule UI)
+Plan: 1 of 2
+Status: In progress
+Last activity: 2026-02-07 -- Completed 22-01-PLAN.md
 
-Progress: [████████████████████████████████████] 36/36 plans
+Progress: [█████████████████████████████████████] 37/38 plans
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 36 (through 21-02, Phase 22 TBD)
+- Total plans completed: 37 (through 22-01)
 - Average duration: 2 min
 - Total execution time: ~1.5 hours
 
@@ -39,6 +39,8 @@ See PROJECT.md Key Decisions table for complete log.
 - Schedule CadenceType/CadenceValue as flexible strings (weekly/monday, monthly/1, daily/empty)
 - PlaceholderDefaults stored as JSON string for arbitrary key-value pairs
 - AddScheduledTodo uses date as both display date and schedule_date dedup key
+- Template body executed once per schedule (not per date) for efficiency since defaults are constant
+- fakeStore in test implements full TodoStore interface with stubs for unused methods
 
 ### Pending Todos
 
@@ -50,6 +52,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-07T13:00:00Z
-Stopped at: Completed Phase 21, ready for Phase 22
+Last session: 2026-02-07T13:14:43Z
+Stopped at: Completed 22-01-PLAN.md
 Resume file: None
