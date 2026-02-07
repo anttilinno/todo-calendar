@@ -5,16 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-07)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen.
-**Current focus:** Planning next milestone
+**Current focus:** v1.6 Templates & Recurring
 
 ## Current Position
 
-Phase: 19 of 19 complete
-Plan: All plans complete
-Status: v1.5 milestone shipped
-Last activity: 2026-02-07 -- v1.5 milestone complete
-
-Progress: █████████████████████████████████ 100% (33/33 plans)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-07 — Milestone v1.6 started
 
 ## Performance Metrics
 
@@ -28,7 +26,6 @@ Progress: ███████████████████████�
 ### Decisions
 
 See PROJECT.md Key Decisions table for complete log.
-All v1.5 decisions archived to milestones/v1.5-ROADMAP.md.
 
 ### Pending Todos
 
@@ -41,5 +38,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: v1.5 milestone complete
+Stopped at: Defining v1.6 requirements
 Resume file: None
