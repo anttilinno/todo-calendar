@@ -470,3 +470,36 @@ func (s *SQLiteStore) UpdateTemplate(id int, name, content string) error {
 func (s *SQLiteStore) Save() error {
 	return nil
 }
+
+// AddSchedule creates a new schedule linked to a template.
+func (s *SQLiteStore) AddSchedule(templateID int, cadenceType, cadenceValue, placeholderDefaults string) (Schedule, error) {
+	return Schedule{}, fmt.Errorf("not implemented")
+}
+
+// ListSchedules returns all schedules ordered by ID.
+func (s *SQLiteStore) ListSchedules() []Schedule {
+	return nil
+}
+
+// ListSchedulesForTemplate returns schedules for a given template.
+func (s *SQLiteStore) ListSchedulesForTemplate(templateID int) []Schedule {
+	return nil
+}
+
+// DeleteSchedule removes a schedule by ID.
+func (s *SQLiteStore) DeleteSchedule(id int) {}
+
+// UpdateSchedule modifies the cadence and placeholder defaults of a schedule.
+func (s *SQLiteStore) UpdateSchedule(id int, cadenceType, cadenceValue, placeholderDefaults string) error {
+	return fmt.Errorf("not implemented")
+}
+
+// TodoExistsForSchedule checks if a todo already exists for a schedule and date.
+func (s *SQLiteStore) TodoExistsForSchedule(scheduleID int, date string) bool {
+	return false
+}
+
+// AddScheduledTodo creates a todo linked to a schedule.
+func (s *SQLiteStore) AddScheduledTodo(text, date, body string, scheduleID int) Todo {
+	return Todo{}
+}

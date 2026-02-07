@@ -31,6 +31,14 @@ type TodoStore interface {
 	FindTemplate(id int) *Template
 	DeleteTemplate(id int)
 	UpdateTemplate(id int, name, content string) error
+	// Schedule operations
+	AddSchedule(templateID int, cadenceType, cadenceValue, placeholderDefaults string) (Schedule, error)
+	ListSchedules() []Schedule
+	ListSchedulesForTemplate(templateID int) []Schedule
+	DeleteSchedule(id int)
+	UpdateSchedule(id int, cadenceType, cadenceValue, placeholderDefaults string) error
+	TodoExistsForSchedule(scheduleID int, date string) bool
+	AddScheduledTodo(text, date, body string, scheduleID int) Todo
 	SwapOrder(id1, id2 int)
 	SearchTodos(query string) []Todo
 	EnsureSortOrder()
@@ -426,4 +434,37 @@ func (s *Store) SearchTodos(query string) []Todo {
 		return results[i].ID < results[j].ID
 	})
 	return results
+}
+
+// AddSchedule is not supported in the JSON store.
+func (s *Store) AddSchedule(templateID int, cadenceType, cadenceValue, placeholderDefaults string) (Schedule, error) {
+	return Schedule{}, fmt.Errorf("schedules not supported in JSON store")
+}
+
+// ListSchedules returns nil in the JSON store (schedules not supported).
+func (s *Store) ListSchedules() []Schedule {
+	return nil
+}
+
+// ListSchedulesForTemplate returns nil in the JSON store (schedules not supported).
+func (s *Store) ListSchedulesForTemplate(templateID int) []Schedule {
+	return nil
+}
+
+// DeleteSchedule is a no-op in the JSON store (schedules not supported).
+func (s *Store) DeleteSchedule(id int) {}
+
+// UpdateSchedule is not supported in the JSON store.
+func (s *Store) UpdateSchedule(id int, cadenceType, cadenceValue, placeholderDefaults string) error {
+	return fmt.Errorf("schedules not supported in JSON store")
+}
+
+// TodoExistsForSchedule returns false in the JSON store (schedules not supported).
+func (s *Store) TodoExistsForSchedule(scheduleID int, date string) bool {
+	return false
+}
+
+// AddScheduledTodo returns an empty Todo in the JSON store (schedules not supported).
+func (s *Store) AddScheduledTodo(text, date, body string, scheduleID int) Todo {
+	return Todo{}
 }
