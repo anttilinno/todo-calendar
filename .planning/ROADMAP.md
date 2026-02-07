@@ -17,7 +17,7 @@
 
 - [x] **Phase 23: Cleanup & Calendar Polish** - Remove dead code, fix today indicator, update docs
 - [x] **Phase 24: Unified Add Form** - Single `a` key opens full-pane add form with title/date/body fields
-- [ ] **Phase 25: Template Picker Integration** - Template field in add form with pre-fill and editing
+- [x] **Phase 25: Template Picker Integration** - Template field in add form with pre-fill and editing
 
 ## Phase Details
 
@@ -62,7 +62,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 25-01-PLAN.md -- Wire template picker into add form with placeholder prompting and pre-fill
+- [x] 25-01-PLAN.md -- Wire template picker into add form with placeholder prompting and pre-fill
 
 ## Progress
 
@@ -73,4 +73,4 @@ Phases execute in numeric order: 23 -> 24 -> 25
 |-------|-----------|----------------|--------|-----------|
 | 23. Cleanup & Calendar Polish | v1.7 | 2/2 | ✓ Complete | 2026-02-07 |
 | 24. Unified Add Form | v1.7 | 1/1 | ✓ Complete | 2026-02-07 |
-| 25. Template Picker Integration | v1.7 | 0/1 | Not started | - |
+| 25. Template Picker Integration | v1.7 | 1/1 | ✓ Complete | 2026-02-07 |

@@ -11,8 +11,8 @@ Requirements for the Unified Add Flow & Polish milestone.
 
 - [x] **ADD-01**: Single `a` key opens full-pane add form replacing separate `a`/`A`/`t` entry points
 - [x] **ADD-02**: Add form has Title, Date (optional), Body (optional), and Template fields with Tab cycling
-- [ ] **ADD-03**: Template field opens template picker; selecting a template pre-fills Title and Body
-- [ ] **ADD-04**: User can edit pre-filled Title and Body after template selection before saving
+- [x] **ADD-03**: Template field opens template picker; selecting a template pre-fills Title and Body
+- [x] **ADD-04**: User can edit pre-filled Title and Body after template selection before saving
 - [x] **ADD-05**: Enter saves from Title/Date fields; Ctrl+D saves from Body/Template fields
 - [x] **ADD-06**: Empty date creates floating todo; filled date creates dated todo
 - [x] **ADD-07**: Remove `A` (dated add) and `t` (template use) key bindings
@@ -45,8 +45,8 @@ Requirements for the Unified Add Flow & Polish milestone.
 |-------------|-------|--------|
 | ADD-01 | Phase 24 | Complete |
 | ADD-02 | Phase 24 | Complete |
-| ADD-03 | Phase 25 | Pending |
-| ADD-04 | Phase 25 | Pending |
+| ADD-03 | Phase 25 | Complete |
+| ADD-04 | Phase 25 | Complete |
 | ADD-05 | Phase 24 | Complete |
 | ADD-06 | Phase 24 | Complete |
 | ADD-07 | Phase 24 | Complete |
@@ -62,4 +62,4 @@ Requirements for the Unified Add Flow & Polish milestone.
 
 ---
 *Requirements defined: 2026-02-07*
-*Last updated: 2026-02-07 after Phase 24 completion*
+*Last updated: 2026-02-07 after Phase 25 completion*
