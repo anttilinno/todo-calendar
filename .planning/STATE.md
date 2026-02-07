@@ -9,23 +9,29 @@ See: .planning/PROJECT.md (updated 2026-02-07)
 
 ## Current Position
 
-Phase: 20 - Template Management Overlay
-Plan: --
-Status: Roadmap created, planning not started
-Last activity: 2026-02-07 -- Roadmap created for v1.6 (3 phases, 14 requirements)
+Phase: 20 of 22 (Template Management Overlay)
+Plan: 1 of 2
+Status: In progress
+Last activity: 2026-02-07 -- Completed 20-01-PLAN.md (store extension + tmplmgr package)
+
+Progress: [██████████████████████████████████░░] 34/36 plans
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 33 (through 19-01)
+- Total plans completed: 34 (through 20-01)
 - Average duration: 2 min
-- Total execution time: ~1.3 hours
+- Total execution time: ~1.4 hours
 
 ## Accumulated Context
 
 ### Decisions
 
 See PROJECT.md Key Decisions table for complete log.
+
+- Template content shown as raw text in overlay (not glamour-rendered) to reveal placeholder syntax
+- UpdateTemplate returns error for UNIQUE constraint handling in rename UI
+- tmplmgr overlay follows established package pattern (search, settings, preview)
 
 ### Pending Todos
 
@@ -37,6 +43,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-07
-Stopped at: Roadmap created for v1.6 milestone
-Resume file: .planning/ROADMAP.md -- v1.6 section (phases 20-22)
+Last session: 2026-02-07T12:21:20Z
+Stopped at: Completed 20-01-PLAN.md
+Resume file: .planning/phases/20-template-management-overlay/20-02-PLAN.md
