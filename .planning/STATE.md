@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-07)
 ## Current Position
 
 Phase: 21 of 22 (Schedule Schema & CRUD)
-Plan: 1 of 2 (21-02 running in parallel)
-Status: In progress
-Last activity: 2026-02-07 -- Completed 21-01-PLAN.md
+Plan: 2 of 2
+Status: Phase complete
+Last activity: 2026-02-07 -- Completed 21-02-PLAN.md
 
-Progress: [████████████████████████████████████░] 36/37 plans
+Progress: [████████████████████████████████████] 36/36 plans
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 36 (through 21-01)
+- Total plans completed: 36 (through 21-02, Phase 22 TBD)
 - Average duration: 2 min
-- Total execution time: ~1.4 hours
+- Total execution time: ~1.5 hours
 
 ## Accumulated Context
 
@@ -36,6 +36,9 @@ See PROJECT.md Key Decisions table for complete log.
 - editingTmplID field on Model distinguishes template vs todo edits in EditorFinishedMsg handler
 - validDays map for bidirectional day name lookup and validation in recurring package
 - lastDayOfMonth helper using Go time.Date day-0 trick for monthly clamping
+- Schedule CadenceType/CadenceValue as flexible strings (weekly/monday, monthly/1, daily/empty)
+- PlaceholderDefaults stored as JSON string for arbitrary key-value pairs
+- AddScheduledTodo uses date as both display date and schedule_date dedup key
 
 ### Pending Todos
 
@@ -47,6 +50,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-07T12:45:06Z
-Stopped at: Completed 21-01-PLAN.md
+Last session: 2026-02-07T12:47:00Z
+Stopped at: Completed 21-02-PLAN.md
 Resume file: None
