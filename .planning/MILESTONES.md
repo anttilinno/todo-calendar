@@ -1,5 +1,30 @@
 # Project Milestones: Todo Calendar
 
+## v1.7 Unified Add Flow & Polish (Shipped: 2026-02-07)
+
+**Delivered:** Unified todo creation into a single full-pane form with template picker integration, fixed today indicator blending, and removed dead code
+
+**Phases completed:** 23-25 (4 plans total)
+
+**Key accomplishments:**
+- Unified add flow: single `a` key opens 4-field form (title, date, body, template) replacing 3 separate entry points (`a`/`A`/`t`)
+- Template picker integrated into add form with j/k navigation, placeholder prompting, and Title/Body pre-fill
+- Today calendar indicator now blends pending/done status colors with today highlight
+- Removed 799+ lines of dead code (JSON store, old keybindings, 3 unused modes, 10 struct fields)
+- TodoStore interface extracted to dedicated `iface.go` for clean dependency injection
+
+**Stats:**
+- 17 files changed, 2,394 insertions(+), 359 deletions(-)
+- 7,239 lines of Go across 35 source files
+- 3 phases, 4 plans
+- 1 day (2026-02-07)
+
+**Git range:** `54e50a7` → `70f99c8`
+
+**What's next:** v2 candidates or new feature milestones
+
+---
+
 ## v1.6 Templates & Recurring (Shipped: 2026-02-07)
 
 **Delivered:** Template management overlay with CRUD operations, recurring schedule system with 4 cadence types, and auto-creation engine that generates scheduled todos on app launch
