@@ -48,7 +48,11 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 
 ### Active
 
-(No active milestone — planning next)
+**v1.5 UX Polish:**
+- [ ] Todo pane visual overhaul — better spacing and visual hierarchy between sections, dates, status
+- [ ] Full-pane editing — add/edit todo takes over the right pane with clean layout and minimal help
+- [ ] Mode-aware help bar — show only 3-5 relevant keys per mode instead of all 15
+- [ ] Pre-built templates — ship general purpose + dev-focused templates by default
 
 ### v2 Candidates
 
@@ -120,4 +124,4 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - JSON Store template methods are stubs (return error/nil/no-op)
 
 ---
-*Last updated: 2026-02-06 after v1.4 milestone*
+*Last updated: 2026-02-07 after v1.5 milestone start*
