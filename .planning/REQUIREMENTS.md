@@ -68,12 +68,12 @@ When creating a schedule for a template that has `{{.Variable}}` placeholders, p
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REQ-20 | Phase 20 | Pending |
-| REQ-21 | Phase 20 | Pending |
-| REQ-22 | Phase 20 | Pending |
-| REQ-23 | Phase 20 | Pending |
-| REQ-24 | Phase 20 | Pending |
-| REQ-25 | Phase 20 | Pending |
+| REQ-20 | Phase 20 | Complete |
+| REQ-21 | Phase 20 | Complete |
+| REQ-22 | Phase 20 | Complete |
+| REQ-23 | Phase 20 | Complete |
+| REQ-24 | Phase 20 | Complete |
+| REQ-25 | Phase 20 | Complete |
 | REQ-26 | Phase 21 | Pending |
 | REQ-27 | Phase 21 | Pending |
 | REQ-28 | Phase 21 | Pending |
