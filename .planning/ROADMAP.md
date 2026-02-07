@@ -203,10 +203,10 @@ Plans:
   2. General templates include practical items like meeting notes, checklist, and daily plan
   3. Dev templates include practical items like bug report, feature spec, and PR checklist
   4. Users can delete any pre-built template -- none are locked or force-retained
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 19-01: TBD
+- [ ] 19-01: Seed 7 pre-built templates via version-3 migration
 
 ## Progress
 
@@ -230,4 +230,4 @@ Plans:
 | 16. External Editor | v1.4 | 1/1 | Complete | 2026-02-06 |
 | 17. Visual Polish & Help | v1.5 | 2/2 | Complete | 2026-02-07 |
 | 18. Full-Pane Editing | v1.5 | 2/2 | Complete | 2026-02-07 |
-| 19. Pre-Built Templates | v1.5 | 0/? | Not started | - |
+| 19. Pre-Built Templates | v1.5 | 0/1 | Not started | - |
