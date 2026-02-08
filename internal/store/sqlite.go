@@ -286,6 +286,21 @@ func (s *SQLiteStore) TodosForMonth(year int, month time.Month) []Todo {
 	return todos
 }
 
+// TodosForDateRange returns todos whose date falls within [startDate, endDate] inclusive,
+// sorted by sort_order, date, then id. Parameters are ISO date strings ("YYYY-MM-DD").
+func (s *SQLiteStore) TodosForDateRange(startDate, endDate string) []Todo {
+	rows, err := s.db.Query(
+		"SELECT "+todoColumns+" FROM todos WHERE date >= ? AND date <= ? ORDER BY sort_order, date, id",
+		startDate, endDate,
+	)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	todos, _ := scanTodos(rows)
+	return todos
+}
+
 // FloatingTodos returns todos with no date, sorted by sort_order then id.
 func (s *SQLiteStore) FloatingTodos() []Todo {
 	rows, err := s.db.Query("SELECT " + todoColumns + " FROM todos WHERE date IS NULL ORDER BY sort_order, id")

@@ -252,6 +252,9 @@ func (m Model) Keys() KeyMap {
 // GetViewMode returns the current view mode (MonthView or WeekView).
 func (m Model) GetViewMode() ViewMode { return m.viewMode }
 
+// WeekStart returns the start date of the currently viewed week.
+func (m Model) WeekStart() time.Time { return m.weekStart }
+
 // SetYearMonth navigates directly to the specified year and month,
 // refreshing holidays and indicators.
 func (m *Model) SetYearMonth(year int, month time.Month) {

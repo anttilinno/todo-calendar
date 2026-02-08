@@ -77,6 +77,10 @@ type Model struct {
 	editField     int             // 0 = title, 1 = date, 2 = body, 3 = template
 	templateInput textinput.Model // placeholder input for template field (Phase 25 adds picker)
 
+	// Week filter state (empty = no filter, set by app model when calendar is in weekly view)
+	weekFilterStart string
+	weekFilterEnd   string
+
 	// Template picker sub-state (within inputMode)
 	pickingTemplate         bool
 	pickerTemplates         []store.Template
@@ -149,6 +153,26 @@ func (m *Model) SetViewMonth(year int, month time.Month) {
 	}
 }
 
+// SetWeekFilter sets the week date range filter for visibleItems.
+// When active, dated todos are filtered to [startDate, endDate] instead of the full month.
+func (m *Model) SetWeekFilter(startDate, endDate string) {
+	m.weekFilterStart = startDate
+	m.weekFilterEnd = endDate
+	m.cursor = 0
+	m.filterQuery = ""
+	if m.mode == filterMode {
+		m.mode = normalMode
+		m.input.Blur()
+		m.input.SetValue("")
+	}
+}
+
+// ClearWeekFilter removes the week date range filter, reverting to full month display.
+func (m *Model) ClearWeekFilter() {
+	m.weekFilterStart = ""
+	m.weekFilterEnd = ""
+}
+
 // IsInputting returns true when the todo list is in text entry mode.
 // The app uses this to suppress the quit keybinding.
 func (m Model) IsInputting() bool {
@@ -218,17 +242,37 @@ func (m Model) AllHelpBindings() []key.Binding {
 func (m Model) visibleItems() []visibleItem {
 	var items []visibleItem
 
-	// Month section header
-	monthLabel := fmt.Sprintf("%s %d", m.viewMonth.String(), m.viewYear)
-	items = append(items, visibleItem{kind: headerItem, label: monthLabel})
+	// Section header and dated todos: week-filtered or full month
+	if m.weekFilterStart != "" {
+		// Week filter active: show "Week of {date}" header and date-range query
+		startDate, err := time.Parse("2006-01-02", m.weekFilterStart)
+		headerLabel := "Week of " + m.weekFilterStart
+		if err == nil {
+			headerLabel = fmt.Sprintf("Week of %s %d", startDate.Month().String(), startDate.Day())
+		}
+		items = append(items, visibleItem{kind: headerItem, label: headerLabel})
 
-	// Dated todos for the viewed month
-	dated := m.store.TodosForMonth(m.viewYear, m.viewMonth)
-	if len(dated) == 0 {
-		items = append(items, visibleItem{kind: emptyItem, label: "(no todos this month)"})
+		dated := m.store.TodosForDateRange(m.weekFilterStart, m.weekFilterEnd)
+		if len(dated) == 0 {
+			items = append(items, visibleItem{kind: emptyItem, label: "(no todos this week)"})
+		} else {
+			for i := range dated {
+				items = append(items, visibleItem{kind: todoItem, todo: &dated[i]})
+			}
+		}
 	} else {
-		for i := range dated {
-			items = append(items, visibleItem{kind: todoItem, todo: &dated[i]})
+		// Month section header
+		monthLabel := fmt.Sprintf("%s %d", m.viewMonth.String(), m.viewYear)
+		items = append(items, visibleItem{kind: headerItem, label: monthLabel})
+
+		// Dated todos for the viewed month
+		dated := m.store.TodosForMonth(m.viewYear, m.viewMonth)
+		if len(dated) == 0 {
+			items = append(items, visibleItem{kind: emptyItem, label: "(no todos this month)"})
+		} else {
+			for i := range dated {
+				items = append(items, visibleItem{kind: todoItem, todo: &dated[i]})
+			}
 		}
 	}
 
