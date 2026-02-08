@@ -2,17 +2,17 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-07)
+See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen
-**Current focus:** Planning next milestone
+**Current focus:** v1.8 Weekly Todo Filtering
 
 ## Current Position
 
-Phase: None (v1.7 complete)
-Plan: Not started
-Status: Ready for next milestone
-Last activity: 2026-02-07 -- v1.7 milestone complete
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-08 — Milestone v1.8 started
 
 Progress: [##########] 100% (v1.7 complete, 4 plans shipped)
 
