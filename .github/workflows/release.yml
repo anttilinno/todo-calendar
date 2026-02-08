@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Get tag name
+        id: tag
+        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build amd64 Linux binary
+        run: |
+          GOOS=linux GOARCH=amd64 go build -o todo-calendar-linux-amd64 -ldflags="-s -w" .
+          chmod +x todo-calendar-linux-amd64
+
+      - name: Create checksum
+        run: |
+          sha256sum todo-calendar-linux-amd64 > todo-calendar-linux-amd64.sha256
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            todo-calendar-linux-amd64
+            todo-calendar-linux-amd64.sha256
+          body: |
+            ## todo-calendar ${{ steps.tag.outputs.TAG }}
+
+            ### Downloads
+            - `todo-calendar-linux-amd64` - Linux AMD64 binary
+
+            ### Installation
+            ```bash
+            # Download and install
+            wget https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.TAG }}/todo-calendar-linux-amd64
+            chmod +x todo-calendar-linux-amd64
+            sudo mv todo-calendar-linux-amd64 /usr/local/bin/todo-calendar
+            ```
+
+            ### Checksum
+            Verify the binary integrity using the provided SHA256 checksum file.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
