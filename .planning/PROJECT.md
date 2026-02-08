@@ -158,10 +158,11 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 | Sub-state booleans (pickingTemplate) over new mode constants | Picker is transient sub-interaction of inputMode, not standalone | ✓ Good — clean mode enum, no mode switch proliferation |
 | Shared m.input for title field and placeholder prompting | Avoids extra textinput; explicit state restore after pre-fill | ✓ Good — no duplication, state properly managed |
 | Blended today+status styles (foreground=status, background=today) | Users see pending/done at a glance without losing today context | ✓ Good — clean visual hierarchy |
+| Nord/Solarized MutedFg/EmptyFg use lighter colors (nord9, base00) | nord3 (#4C566A) and base01 (#586E75) too dark on typical dark backgrounds | ✓ Good — empty states and hints now readable |
 
 ## Known Tech Debt
 
 None — JSON store removed in v1.7.
 
 ---
-*Last updated: 2026-02-08 after v1.8 milestone started*
+*Last updated: 2026-02-08 after v1.8 phase 26 complete*
