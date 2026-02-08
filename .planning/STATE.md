@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen
-**Current focus:** Phase 26 - Weekly Todo Filtering (v1.8) - Complete
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 26 of 26 (Weekly Todo Filtering)
-Plan: 1 of 1 in current phase
-Status: Phase complete
-Last activity: 2026-02-08 — Completed 26-01-PLAN.md
+Phase: None (v1.8 complete)
+Plan: Not started
+Status: Ready for next milestone
+Last activity: 2026-02-08 — v1.8 milestone complete
 
-Progress: [##########] 100% (v1.8)
+Progress: [##########] 100% (v1.8 complete, 1 plan shipped)
 
 ## Performance Metrics
 
@@ -29,10 +29,6 @@ Progress: [##########] 100% (v1.8)
 
 See PROJECT.md Key Decisions table for complete log.
 
-- Week filter uses ISO date strings to match existing store date patterns
-- syncTodoView centralizes view-mode logic replacing scattered SetViewMonth calls
-- Search jump clears week filter to return to monthly context
-
 ### Pending Todos
 
 None.
@@ -44,5 +40,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-08
-Stopped at: Phase 26 complete (v1.8 weekly todo filtering)
+Stopped at: v1.8 milestone complete
 Resume file: None

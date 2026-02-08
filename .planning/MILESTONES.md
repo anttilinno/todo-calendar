@@ -1,5 +1,29 @@
 # Project Milestones: Todo Calendar
 
+## v1.8 Weekly Todo Filtering (Shipped: 2026-02-08)
+
+**Delivered:** Weekly view now filters todo panel to show only that week's dated todos plus floating items, with instant updates on navigation
+
+**Phases completed:** 26 (1 plan total)
+
+**Key accomplishments:**
+- TodosForDateRange store method for date-range query enabling week-scoped todo retrieval
+- Week filter state in todolist model with SetWeekFilter/ClearWeekFilter and conditional visibleItems logic
+- syncTodoView app helper centralizing view-mode-aware sync, replacing 3 scattered SetViewMonth calls
+- Improved contrast for MutedFg/EmptyFg in Nord and Solarized themes for better readability
+
+**Stats:**
+- 11 files changed, 390 insertions(+), 27 deletions(-)
+- 7,469 lines of Go across 35 source files
+- 1 phase, 1 plan, 2 tasks
+- Same day (2026-02-08, ~17 minutes)
+
+**Git range:** `7957a04` → `1ca2379`
+
+**What's next:** Additional weekly view enhancements or new feature milestones
+
+---
+
 ## v1.7 Unified Add Flow & Polish (Shipped: 2026-02-07)
 
 **Delivered:** Unified todo creation into a single full-pane form with template picker integration, fixed today indicator blending, and removed dead code

@@ -62,21 +62,18 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - Template picker in add form with j/k navigation, placeholder prompting, and Title/Body pre-fill — v1.7
 - Today calendar indicator blends pending/done status with today highlight — v1.7
 - Dead code removed: JSON store, old A/t keybindings, unused modes — v1.7
+- In weekly view, todo panel filters to show only todos dated within the visible week — v1.8
+- Floating (undated) todos remain visible in weekly view — v1.8
+- Todo panel updates immediately when navigating weeks with h/l keys — v1.8
+- Improved contrast for MutedFg/EmptyFg in Nord and Solarized themes — v1.8
 
 ### Active
 
-- [ ] In weekly view, todo panel filters to show only todos dated within the visible week
-- [ ] Floating (undated) todos remain visible in weekly view
-- [ ] Todo panel updates immediately when navigating weeks with h/l keys
+(None — all current requirements shipped. Use `/gsd:new-milestone` to define next goals.)
 
-## Current Milestone: v1.8 Weekly Todo Filtering
+## Current Milestone: None (v1.8 shipped)
 
-**Goal:** Weekly view shows only that week's todos, not the entire month.
-
-**Target features:**
-- Filter todo panel to visible week in weekly view
-- Keep floating todos visible
-- Real-time updates when navigating weeks
+v1.8 Weekly Todo Filtering shipped 2026-02-08. All requirements met. Run `/gsd:new-milestone` to start next version.
 
 ### v2 Candidates
 
@@ -165,4 +162,4 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 None — JSON store removed in v1.7.
 
 ---
-*Last updated: 2026-02-08 after v1.8 phase 26 complete*
+*Last updated: 2026-02-08 after v1.8 milestone complete*
