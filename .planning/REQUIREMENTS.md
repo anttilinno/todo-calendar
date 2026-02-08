@@ -35,15 +35,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| WKLY-01 | TBD | Pending |
-| WKLY-02 | TBD | Pending |
-| WKLY-03 | TBD | Pending |
+| WKLY-01 | Phase 26 | Pending |
+| WKLY-02 | Phase 26 | Pending |
+| WKLY-03 | Phase 26 | Pending |
 
 **Coverage:**
 - v1 requirements: 3 total
-- Mapped to phases: 0
-- Unmapped: 3 ⚠️
+- Mapped to phases: 3
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-08*
-*Last updated: 2026-02-08 after initial definition*
+*Last updated: 2026-02-08 after roadmap creation*

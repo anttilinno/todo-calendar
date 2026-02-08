@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen
-**Current focus:** v1.8 Weekly Todo Filtering
+**Current focus:** Phase 26 - Weekly Todo Filtering (v1.8)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-08 — Milestone v1.8 started
+Phase: 26 of 26 (Weekly Todo Filtering)
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-02-08 — Roadmap created for v1.8
 
-Progress: [##########] 100% (v1.7 complete, 4 plans shipped)
+Progress: [..........] 0% (v1.8)
 
 ## Performance Metrics
 
@@ -39,6 +39,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-07
-Stopped at: v1.7 milestone complete
+Last session: 2026-02-08
+Stopped at: v1.8 roadmap created, ready to plan Phase 26
 Resume file: None
