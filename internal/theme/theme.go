@@ -87,15 +87,15 @@ func Nord() Theme {
 		BorderFocused:   lipgloss.Color("#88C0D0"), // nord8 frost
 		BorderUnfocused: lipgloss.Color("#4C566A"), // nord3 polar night
 		HeaderFg:        lipgloss.Color("#ECEFF4"), // nord6 snow storm
-		WeekdayFg:       lipgloss.Color("#4C566A"), // nord3 polar night
+		WeekdayFg:       lipgloss.Color("#81A1C1"), // nord9 muted frost (better contrast)
 		TodayFg:         lipgloss.Color("#2E3440"), // nord0 polar night
 		TodayBg:         lipgloss.Color("#88C0D0"), // nord8 frost
 		HolidayFg:       lipgloss.Color("#BF616A"), // nord11 aurora red
 		IndicatorFg:     lipgloss.Color("#EBCB8B"), // nord13 aurora yellow
 		AccentFg:        lipgloss.Color("#88C0D0"), // nord8 frost
-		MutedFg:         lipgloss.Color("#4C566A"), // nord3 polar night
+		MutedFg:         lipgloss.Color("#81A1C1"), // nord9 muted frost (better contrast)
 		CompletedFg:     lipgloss.Color("#4C566A"), // nord3 polar night
-		EmptyFg:         lipgloss.Color("#4C566A"), // nord3 polar night
+		EmptyFg:         lipgloss.Color("#81A1C1"), // nord9 muted frost (better contrast)
 		NormalFg:        lipgloss.Color("#D8DEE9"), // nord4 snow storm
 		NormalBg:        lipgloss.Color(""),         // terminal default
 		PendingFg:        lipgloss.Color("#BF616A"), // nord11 aurora red
@@ -110,15 +110,15 @@ func Solarized() Theme {
 		BorderFocused:   lipgloss.Color("#268BD2"), // blue
 		BorderUnfocused: lipgloss.Color("#586E75"), // base01
 		HeaderFg:        lipgloss.Color("#93A1A1"), // base1
-		WeekdayFg:       lipgloss.Color("#586E75"), // base01
+		WeekdayFg:       lipgloss.Color("#657B83"), // base00 (better contrast)
 		TodayFg:         lipgloss.Color("#FDF6E3"), // base3
 		TodayBg:         lipgloss.Color("#268BD2"), // blue
 		HolidayFg:       lipgloss.Color("#DC322F"), // red
 		IndicatorFg:     lipgloss.Color("#B58900"), // yellow
 		AccentFg:        lipgloss.Color("#268BD2"), // blue
-		MutedFg:         lipgloss.Color("#586E75"), // base01
+		MutedFg:         lipgloss.Color("#657B83"), // base00 (better contrast)
 		CompletedFg:     lipgloss.Color("#586E75"), // base01
-		EmptyFg:         lipgloss.Color("#586E75"), // base01
+		EmptyFg:         lipgloss.Color("#657B83"), // base00 (better contrast)
 		NormalFg:        lipgloss.Color("#839496"), // base0
 		NormalBg:        lipgloss.Color(""),         // terminal default
 		PendingFg:        lipgloss.Color("#DC322F"), // solarized red
