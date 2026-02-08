@@ -152,6 +152,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.showSearch = false
 		m.calendar.SetYearMonth(msg.Year, msg.Month)
 		m.todoList.SetViewMonth(msg.Year, msg.Month)
+		m.todoList.ClearWeekFilter()
 		m.calendar.RefreshIndicators()
 		return m, nil
 
@@ -270,7 +271,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.calendar.SetFocused(m.activePane == calendarPane)
 			m.todoList.SetFocused(m.activePane == todoPane)
-			m.todoList.SetViewMonth(m.calendar.Year(), m.calendar.Month())
+			m.syncTodoView()
 			m.calendar.RefreshIndicators()
 			m.help.ShowAll = false
 			return m, nil
@@ -301,8 +302,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ready = true
 		m.help.Width = msg.Width
 
-		// Sync todo view month on first ready
-		m.todoList.SetViewMonth(m.calendar.Year(), m.calendar.Month())
+		// Sync todo view on first ready
+		m.syncTodoView()
 
 		// Broadcast to calendar
 		var calCmd tea.Cmd
@@ -319,8 +320,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.activePane {
 	case calendarPane:
 		m.calendar, cmd = m.calendar.Update(msg)
-		// Sync todo list when calendar month changes
-		m.todoList.SetViewMonth(m.calendar.Year(), m.calendar.Month())
+		// Sync todo list when calendar view changes (month or week navigation)
+		m.syncTodoView()
 	case todoPane:
 		m.todoList, cmd = m.todoList.Update(msg)
 	}
@@ -455,6 +456,22 @@ func editorOpenTemplateContent(content string) tea.Cmd {
 			Err:          err,
 		}
 	})
+}
+
+// syncTodoView sets the todolist view month and conditionally applies/clears
+// the week filter based on the calendar's current view mode.
+func (m *Model) syncTodoView() {
+	m.todoList.SetViewMonth(m.calendar.Year(), m.calendar.Month())
+	if m.calendar.GetViewMode() == calendar.WeekView {
+		ws := m.calendar.WeekStart()
+		we := ws.AddDate(0, 0, 6)
+		m.todoList.SetWeekFilter(
+			ws.Format("2006-01-02"),
+			we.Format("2006-01-02"),
+		)
+	} else {
+		m.todoList.ClearWeekFilter()
+	}
 }
 
 // syncTodoSize computes the pane dimensions and passes them to the todolist model.
