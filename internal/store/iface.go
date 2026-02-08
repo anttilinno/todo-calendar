@@ -12,6 +12,7 @@ type TodoStore interface {
 	Update(id int, text string, date string)
 	Todos() []Todo
 	TodosForMonth(year int, month time.Month) []Todo
+	TodosForDateRange(startDate, endDate string) []Todo
 	FloatingTodos() []Todo
 	IncompleteTodosPerDay(year int, month time.Month) map[int]int
 	TotalTodosPerDay(year int, month time.Month) map[int]int

@@ -61,3 +61,24 @@ func (t Todo) InMonth(year int, month time.Month) bool {
 	y, m, _ := d.Date()
 	return y == year && m == month
 }
+
+// InDateRange reports whether the todo's date falls within [startDate, endDate] inclusive.
+// Returns false if the todo has no date or any date cannot be parsed.
+func (t Todo) InDateRange(startDate, endDate string) bool {
+	if t.Date == "" {
+		return false
+	}
+	d, err := time.Parse(dateFormat, t.Date)
+	if err != nil {
+		return false
+	}
+	s, err := time.Parse(dateFormat, startDate)
+	if err != nil {
+		return false
+	}
+	e, err := time.Parse(dateFormat, endDate)
+	if err != nil {
+		return false
+	}
+	return !d.Before(s) && !d.After(e)
+}

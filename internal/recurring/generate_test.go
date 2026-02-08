@@ -52,6 +52,7 @@ func (f *fakeStore) Find(id int) *store.Todo                          { return n
 func (f *fakeStore) Update(id int, text, date string)                 {}
 func (f *fakeStore) Todos() []store.Todo                              { return nil }
 func (f *fakeStore) TodosForMonth(y int, m time.Month) []store.Todo   { return nil }
+func (f *fakeStore) TodosForDateRange(startDate, endDate string) []store.Todo { return nil }
 func (f *fakeStore) FloatingTodos() []store.Todo                      { return nil }
 func (f *fakeStore) IncompleteTodosPerDay(y int, m time.Month) map[int]int { return nil }
 func (f *fakeStore) TotalTodosPerDay(y int, m time.Month) map[int]int { return nil }
