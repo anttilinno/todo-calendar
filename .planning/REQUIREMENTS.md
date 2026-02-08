@@ -1,0 +1,49 @@
+# Requirements: Todo Calendar
+
+**Defined:** 2026-02-08
+**Core Value:** See your month at a glance — calendar with holidays and todos in one terminal screen
+
+## v1 Requirements
+
+Requirements for v1.8 milestone.
+
+### Weekly View Filtering
+
+- [ ] **WKLY-01**: In weekly view, todo panel displays only todos dated within the currently visible week
+- [ ] **WKLY-02**: Floating (undated) todos remain visible in weekly view regardless of selected week
+- [ ] **WKLY-03**: Todo panel updates immediately when user navigates weeks using h/l keys
+
+## v2 Requirements
+
+Deferred to future release.
+
+### Advanced Recurring
+
+- **RECUR-01**: Complex recurring cadences ("every 2nd Tuesday", "last Friday of month")
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Monthly view todo filtering | Monthly view should continue showing all month todos — established behavior |
+| Week number display | Not needed for core weekly filtering feature |
+| Multi-week view | Single week focus is sufficient |
+
+## Traceability
+
+Which phases cover which requirements. Updated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| WKLY-01 | TBD | Pending |
+| WKLY-02 | TBD | Pending |
+| WKLY-03 | TBD | Pending |
+
+**Coverage:**
+- v1 requirements: 3 total
+- Mapped to phases: 0
+- Unmapped: 3 ⚠️
+
+---
+*Requirements defined: 2026-02-08*
+*Last updated: 2026-02-08 after initial definition*
