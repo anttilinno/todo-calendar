@@ -48,8 +48,8 @@ jobs:
 
             ### Installation
             ```bash
-            # Download and install
-            wget https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.TAG }}/todo-calendar-linux-amd64
+            # Download latest version
+            wget https://github.com/${{ github.repository }}/releases/latest/download/todo-calendar-linux-amd64
             chmod +x todo-calendar-linux-amd64
             sudo mv todo-calendar-linux-amd64 /usr/local/bin/todo-calendar
             ```
@@ -60,3 +60,10 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update latest tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f latest
+          git push -f origin latest
