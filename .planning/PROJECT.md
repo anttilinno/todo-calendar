@@ -65,11 +65,18 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 
 ### Active
 
-(None — all current requirements shipped. Use `/gsd:new-milestone` to define next goals.)
+- [ ] In weekly view, todo panel filters to show only todos dated within the visible week
+- [ ] Floating (undated) todos remain visible in weekly view
+- [ ] Todo panel updates immediately when navigating weeks with h/l keys
 
-## Current Milestone: None (v1.7 shipped)
+## Current Milestone: v1.8 Weekly Todo Filtering
 
-v1.7 Unified Add Flow & Polish shipped 2026-02-07. All requirements met. Run `/gsd:new-milestone` to start next version.
+**Goal:** Weekly view shows only that week's todos, not the entire month.
+
+**Target features:**
+- Filter todo panel to visible week in weekly view
+- Keep floating todos visible
+- Real-time updates when navigating weeks
 
 ### v2 Candidates
 
@@ -157,4 +164,4 @@ v1.7 Unified Add Flow & Polish shipped 2026-02-07. All requirements met. Run `/g
 None — JSON store removed in v1.7.
 
 ---
-*Last updated: 2026-02-07 after v1.7 milestone*
+*Last updated: 2026-02-08 after v1.8 milestone started*
