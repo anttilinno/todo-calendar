@@ -23,10 +23,10 @@
   2. Undated (floating) todos remain visible in the todo panel regardless of which week is selected
   3. When user presses `h`/`l` to navigate to a different week, the todo panel immediately updates to show only that week's dated todos
   4. When user presses `w` again to return to monthly view, the todo panel reverts to showing all todos for the full month
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 26-01: TBD
+- [ ] 26-01-PLAN.md -- Add date-range store query, calendar getter, todolist week filter, and app wiring
 
 ## Progress
 
@@ -37,4 +37,4 @@ Plans:
 | 23. Cleanup & Calendar Polish | v1.7 | 2/2 | Complete | 2026-02-07 |
 | 24. Unified Add Form | v1.7 | 1/1 | Complete | 2026-02-07 |
 | 25. Template Picker Integration | v1.7 | 1/1 | Complete | 2026-02-07 |
-| 26. Weekly Todo Filtering | v1.8 | 0/? | Not started | - |
+| 26. Weekly Todo Filtering | v1.8 | 0/1 | Not started | - |
