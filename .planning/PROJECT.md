@@ -72,20 +72,27 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - ✓ Show/hide toggles in settings for month and year todo sections with live preview — v1.9
 - ✓ Segmented date input (dd/mm/yyyy) with format-aware ordering and precision derivation — v1.9
 - ✓ Fuzzy todos visible in monthly view only, excluded from weekly view — v1.9
+- ✓ Settings overlay: Esc saves and closes (no save button, no cancel flow) — v2.0
 
 ### Active
 
-- ✓ Settings overlay: Esc saves and closes (no save button, no cancel flow) — v2.0
+- [ ] Priority levels (P1-P4) with color-coded icon prefix and text — v2.1
+- [ ] Auto-sort within sections by priority (P1 at top) — v2.1
+- [ ] Calendar day indicators reflect highest priority color — v2.1
+- [ ] Natural language date input ("tomorrow", "next fri", "jan 15", "in 3 days") — v2.1
+- [ ] NL date field with segmented input fallback (Tab to switch) — v2.1
+- [ ] Inline date parsing with resolved date preview — v2.1
 
 ### v2 Candidates
 
 - Complex recurring cadences ("every 2nd Tuesday", "last Friday of month")
+- Completed tasks archive (browse/review past completions)
 
 ### Out of Scope
 
 - Individual day selection / day-by-day arrow navigation — month-level navigation is sufficient
 - Syncing / cloud storage — local file only
-- Priority levels or tags — keep it minimal
+- Tags / labels — keep it minimal (priorities are sufficient categorization)
 - CalDAV integration — complexity explosion
 - Subtasks / nesting — flat list is sufficient
 - Notifications / reminders — out of scope for TUI
@@ -170,9 +177,17 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 
 None.
 
-## Current Milestone
+## Current Milestone: v2.1 Priorities & Smart Dates
 
-None active. All milestones through v2.0 shipped.
+**Goal:** Add priority levels (P1-P4) with visual indicators and auto-sort, plus natural language date input with inline parsing.
+
+**Target features:**
+- Priority levels (P1-P4) with color-coded flags and text
+- Auto-sort by priority within todo sections
+- Priority-colored calendar day indicators
+- Natural language date input ("tomorrow", "next fri", "in 3 days")
+- NL date field with segmented input fallback
+- Inline date parsing with resolved date preview
 
 ---
-*Last updated: 2026-02-12 after v2.0 milestone*
+*Last updated: 2026-02-12 after v2.1 milestone started*
