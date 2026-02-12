@@ -15,6 +15,8 @@ type Config struct {
 	FirstDayOfWeek string `toml:"first_day_of_week"`
 	Theme          string `toml:"theme"`
 	DateFormat     string `toml:"date_format"`
+	ShowMonthTodos bool   `toml:"show_month_todos"`
+	ShowYearTodos  bool   `toml:"show_year_todos"`
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -24,6 +26,8 @@ func DefaultConfig() Config {
 		FirstDayOfWeek: "sunday",
 		Theme:          "dark",
 		DateFormat:     "iso",
+		ShowMonthTodos: true,
+		ShowYearTodos:  true,
 	}
 }
 

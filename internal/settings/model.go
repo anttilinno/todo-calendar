@@ -38,7 +38,7 @@ type CancelMsg struct{}
 // Model represents the settings overlay.
 type Model struct {
 	options []option
-	cursor  int // which option row is selected (0-3)
+	cursor  int // which option row is selected (0-5)
 	width   int
 	height  int
 	keys    KeyMap
@@ -67,12 +67,17 @@ func New(cfg config.Config, t theme.Theme) Model {
 		fmt.Sprintf("US (%s)", now.Format("01/02/2006")),
 	}
 
+	boolValues := []string{"true", "false"}
+	boolDisplay := []string{"Show", "Hide"}
+
 	return Model{
 		options: []option{
 			{label: "Theme", values: themeNames, display: themeDisplay, index: indexOf(themeNames, cfg.Theme)},
 			{label: "Country", values: countries, display: countryDisplay, index: indexOf(countries, cfg.Country)},
 			{label: "First Day of Week", values: dayValues, display: dayDisplay, index: indexOf(dayValues, cfg.FirstDayOfWeek)},
 			{label: "Date Format", values: formatValues, display: formatDisplay, index: indexOf(formatValues, cfg.DateFormat)},
+			{label: "Show Month Todos", values: boolValues, display: boolDisplay, index: boolIndex(cfg.ShowMonthTodos)},
+			{label: "Show Year Todos", values: boolValues, display: boolDisplay, index: boolIndex(cfg.ShowYearTodos)},
 		},
 		keys:   DefaultKeyMap(),
 		styles: NewStyles(t),
@@ -86,6 +91,8 @@ func (m Model) Config() config.Config {
 		Country:        m.options[1].values[m.options[1].index],
 		FirstDayOfWeek: m.options[2].values[m.options[2].index],
 		DateFormat:     m.options[3].values[m.options[3].index],
+		ShowMonthTodos: m.options[4].values[m.options[4].index] == "true",
+		ShowYearTodos:  m.options[5].values[m.options[5].index] == "true",
 	}
 }
 
@@ -202,6 +209,14 @@ func (m Model) View() string {
 // HelpBindings returns settings-specific key bindings for help bar display.
 func (m Model) HelpBindings() []key.Binding {
 	return []key.Binding{m.keys.Left, m.keys.Right, m.keys.Up, m.keys.Down, m.keys.Save, m.keys.Cancel}
+}
+
+// boolIndex returns 0 for true, 1 for false (maps to ["true", "false"] slice).
+func boolIndex(b bool) int {
+	if b {
+		return 0
+	}
+	return 1
 }
 
 // indexOf returns the index of val in slice, or 0 if not found.
