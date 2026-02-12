@@ -5,14 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-12)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen
-**Current focus:** v1.9 Fuzzy Date Todos
+**Current focus:** Phase 27 - Date Precision & Input
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-12 — Milestone v1.9 started
+Phase: 27 (1 of 3 in v1.9)
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-02-12 -- Roadmap created for v1.9 Fuzzy Date Todos
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -38,5 +40,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-12
-Stopped at: Defining v1.9 requirements
+Stopped at: Roadmap created, ready to plan Phase 27
 Resume file: None

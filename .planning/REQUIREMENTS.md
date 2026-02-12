@@ -57,27 +57,27 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DATE-01 | — | Pending |
-| DATE-02 | — | Pending |
-| DATE-03 | — | Pending |
-| DATE-04 | — | Pending |
-| SECT-01 | — | Pending |
-| SECT-02 | — | Pending |
-| SECT-03 | — | Pending |
-| SECT-04 | — | Pending |
-| INDIC-01 | — | Pending |
-| INDIC-02 | — | Pending |
-| INDIC-03 | — | Pending |
-| SET-01 | — | Pending |
-| SET-02 | — | Pending |
-| SET-03 | — | Pending |
-| VIEW-01 | — | Pending |
+| DATE-01 | Phase 27 | Pending |
+| DATE-02 | Phase 27 | Pending |
+| DATE-03 | Phase 27 | Pending |
+| DATE-04 | Phase 27 | Pending |
+| SECT-01 | Phase 28 | Pending |
+| SECT-02 | Phase 28 | Pending |
+| SECT-03 | Phase 28 | Pending |
+| SECT-04 | Phase 28 | Pending |
+| INDIC-01 | Phase 28 | Pending |
+| INDIC-02 | Phase 28 | Pending |
+| INDIC-03 | Phase 28 | Pending |
+| SET-01 | Phase 29 | Pending |
+| SET-02 | Phase 29 | Pending |
+| SET-03 | Phase 29 | Pending |
+| VIEW-01 | Phase 28 | Pending |
 
 **Coverage:**
 - v1.9 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15 ⚠️
+- Mapped to phases: 15
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-12*
-*Last updated: 2026-02-12 after initial definition*
+*Last updated: 2026-02-12 after roadmap creation*
