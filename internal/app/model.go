@@ -83,9 +83,11 @@ type Model struct {
 func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t theme.Theme, cfg config.Config) Model {
 	cal := calendar.New(provider, mondayStart, s, t)
 	cal.SetFocused(true)
+	cal.SetShowFuzzySections(cfg.ShowMonthTodos, cfg.ShowYearTodos)
 
 	tl := todolist.New(s, t)
 	tl.SetDateFormat(cfg.DateFormat, cfg.DateLayout(), cfg.DatePlaceholder())
+	tl.SetShowFuzzySections(cfg.ShowMonthTodos, cfg.ShowYearTodos)
 	tl.SetViewMonth(cal.Year(), cal.Month())
 
 	h := help.New()
@@ -139,6 +141,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.calendar.SetMondayStart(msg.Cfg.MondayStart())
 		m.todoList.SetDateFormat(m.cfg.DateFormat, m.cfg.DateLayout(), m.cfg.DatePlaceholder())
+		m.todoList.SetShowFuzzySections(msg.Cfg.ShowMonthTodos, msg.Cfg.ShowYearTodos)
+		m.calendar.SetShowFuzzySections(msg.Cfg.ShowMonthTodos, msg.Cfg.ShowYearTodos)
 		m.calendar.RefreshIndicators()
 		return m, nil
 

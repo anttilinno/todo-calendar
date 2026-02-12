@@ -49,9 +49,11 @@ type Model struct {
 	store       store.TodoStore
 	keys        KeyMap
 	mondayStart bool
-	styles      Styles
-	viewMode    ViewMode
-	weekStart   time.Time
+	styles         Styles
+	viewMode       ViewMode
+	weekStart      time.Time
+	showMonthTodos bool
+	showYearTodos  bool
 }
 
 // New creates a new calendar model with the given holiday provider,
@@ -61,17 +63,19 @@ func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t the
 	y, m, _ := now.Date()
 
 	return Model{
-		year:        y,
-		month:       m,
-		today:       now,
-		holidays:    provider.HolidaysInMonth(y, m),
-		indicators:  s.IncompleteTodosPerDay(y, m),
-		totals:      s.TotalTodosPerDay(y, m),
-		provider:    provider,
-		store:       s,
-		keys:        DefaultKeyMap(),
-		mondayStart: mondayStart,
-		styles:      NewStyles(t),
+		year:           y,
+		month:          m,
+		today:          now,
+		holidays:       provider.HolidaysInMonth(y, m),
+		indicators:     s.IncompleteTodosPerDay(y, m),
+		totals:         s.TotalTodosPerDay(y, m),
+		provider:       provider,
+		store:          s,
+		keys:           DefaultKeyMap(),
+		mondayStart:    mondayStart,
+		styles:         NewStyles(t),
+		showMonthTodos: true,
+		showYearTodos:  true,
 	}
 }
 
@@ -153,7 +157,7 @@ func (m Model) View() string {
 		todayDay = now.Day()
 	}
 
-	grid := RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.totals, m.store, m.styles)
+	grid := RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.totals, m.store, m.showMonthTodos, m.showYearTodos, m.styles)
 	return grid + m.renderOverview()
 }
 
@@ -234,6 +238,12 @@ func (m *Model) SetProvider(p *holidays.Provider) {
 // SetMondayStart sets whether the week starts on Monday.
 func (m *Model) SetMondayStart(v bool) {
 	m.mondayStart = v
+}
+
+// SetShowFuzzySections controls visibility of fuzzy-date circle indicators.
+func (m *Model) SetShowFuzzySections(showMonth, showYear bool) {
+	m.showMonthTodos = showMonth
+	m.showYearTodos = showYear
 }
 
 // Keys returns the calendar key bindings (for help bar aggregation).
