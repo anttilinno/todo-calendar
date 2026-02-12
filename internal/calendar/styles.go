@@ -21,6 +21,8 @@ type Styles struct {
 	OverviewActive    lipgloss.Style
 	OverviewPending   lipgloss.Style
 	OverviewCompleted lipgloss.Style
+	FuzzyPending      lipgloss.Style
+	FuzzyDone         lipgloss.Style
 }
 
 // NewStyles builds calendar styles from the given theme.
@@ -40,5 +42,7 @@ func NewStyles(t theme.Theme) Styles {
 		OverviewActive:    lipgloss.NewStyle().Bold(true).Foreground(t.NormalFg),
 		OverviewPending:   lipgloss.NewStyle().Foreground(t.PendingFg),
 		OverviewCompleted: lipgloss.NewStyle().Foreground(t.CompletedCountFg),
+		FuzzyPending:      lipgloss.NewStyle().Foreground(t.PendingFg),
+		FuzzyDone:         lipgloss.NewStyle().Foreground(t.CompletedCountFg),
 	}
 }
