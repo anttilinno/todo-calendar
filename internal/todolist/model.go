@@ -46,11 +46,22 @@ const (
 	emptyItem
 )
 
+// sectionID identifies which section a visible item belongs to.
+type sectionID int
+
+const (
+	sectionDated    sectionID = iota // dated todos (month or week)
+	sectionMonth                     // "This Month" fuzzy-date todos
+	sectionYear                      // "This Year" fuzzy-date todos
+	sectionFloating                  // floating (undated) todos
+)
+
 // visibleItem is a single row in the combined todo list display.
 type visibleItem struct {
-	kind  itemKind
-	label string      // display text for headers/empty
-	todo  *store.Todo // non-nil only for todoItem
+	kind    itemKind
+	label   string      // display text for headers/empty
+	todo    *store.Todo // non-nil only for todoItem
+	section sectionID   // which section this item belongs to
 }
 
 // Model represents the todo list pane.
@@ -274,42 +285,67 @@ func (m Model) visibleItems() []visibleItem {
 		if err == nil {
 			headerLabel = fmt.Sprintf("Week of %s %d", startDate.Month().String(), startDate.Day())
 		}
-		items = append(items, visibleItem{kind: headerItem, label: headerLabel})
+		items = append(items, visibleItem{kind: headerItem, label: headerLabel, section: sectionDated})
 
 		dated := m.store.TodosForDateRange(m.weekFilterStart, m.weekFilterEnd)
 		if len(dated) == 0 {
-			items = append(items, visibleItem{kind: emptyItem, label: "(no todos this week)"})
+			items = append(items, visibleItem{kind: emptyItem, label: "(no todos this week)", section: sectionDated})
 		} else {
 			for i := range dated {
-				items = append(items, visibleItem{kind: todoItem, todo: &dated[i]})
+				items = append(items, visibleItem{kind: todoItem, todo: &dated[i], section: sectionDated})
 			}
 		}
 	} else {
 		// Month section header
 		monthLabel := fmt.Sprintf("%s %d", m.viewMonth.String(), m.viewYear)
-		items = append(items, visibleItem{kind: headerItem, label: monthLabel})
+		items = append(items, visibleItem{kind: headerItem, label: monthLabel, section: sectionDated})
 
 		// Dated todos for the viewed month
 		dated := m.store.TodosForMonth(m.viewYear, m.viewMonth)
 		if len(dated) == 0 {
-			items = append(items, visibleItem{kind: emptyItem, label: "(no todos this month)"})
+			items = append(items, visibleItem{kind: emptyItem, label: "(no todos this month)", section: sectionDated})
 		} else {
 			for i := range dated {
-				items = append(items, visibleItem{kind: todoItem, todo: &dated[i]})
+				items = append(items, visibleItem{kind: todoItem, todo: &dated[i], section: sectionDated})
+			}
+		}
+	}
+
+	// This Month and This Year sections: only in monthly view (not weekly)
+	if m.weekFilterStart == "" {
+		// This Month section
+		items = append(items, visibleItem{kind: headerItem, label: "This Month", section: sectionMonth})
+		monthTodos := m.store.MonthTodos(m.viewYear, m.viewMonth)
+		if len(monthTodos) == 0 {
+			items = append(items, visibleItem{kind: emptyItem, label: "(no month todos)", section: sectionMonth})
+		} else {
+			for i := range monthTodos {
+				items = append(items, visibleItem{kind: todoItem, todo: &monthTodos[i], section: sectionMonth})
+			}
+		}
+
+		// This Year section
+		items = append(items, visibleItem{kind: headerItem, label: "This Year", section: sectionYear})
+		yearTodos := m.store.YearTodos(m.viewYear)
+		if len(yearTodos) == 0 {
+			items = append(items, visibleItem{kind: emptyItem, label: "(no year todos)", section: sectionYear})
+		} else {
+			for i := range yearTodos {
+				items = append(items, visibleItem{kind: todoItem, todo: &yearTodos[i], section: sectionYear})
 			}
 		}
 	}
 
 	// Floating section header
-	items = append(items, visibleItem{kind: headerItem, label: "Floating"})
+	items = append(items, visibleItem{kind: headerItem, label: "Floating", section: sectionFloating})
 
 	// Floating todos
 	floating := m.store.FloatingTodos()
 	if len(floating) == 0 {
-		items = append(items, visibleItem{kind: emptyItem, label: "(no floating todos)"})
+		items = append(items, visibleItem{kind: emptyItem, label: "(no floating todos)", section: sectionFloating})
 	} else {
 		for i := range floating {
-			items = append(items, visibleItem{kind: todoItem, todo: &floating[i]})
+			items = append(items, visibleItem{kind: todoItem, todo: &floating[i], section: sectionFloating})
 		}
 	}
 
@@ -335,7 +371,7 @@ func (m Model) visibleItems() []visibleItem {
 				// Check if next item is a todoItem or another header/end
 				nextIsTodo := i+1 < len(filtered) && filtered[i+1].kind == todoItem
 				if !nextIsTodo {
-					result = append(result, visibleItem{kind: emptyItem, label: "(no matches)"})
+					result = append(result, visibleItem{kind: emptyItem, label: "(no matches)", section: item.section})
 				}
 			}
 		}
@@ -426,11 +462,11 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if len(selectable) > 0 && m.cursor > 0 && m.cursor < len(selectable) {
 			curIdx := selectable[m.cursor]
 			prevIdx := selectable[m.cursor-1]
-			curTodo := items[curIdx].todo
-			prevTodo := items[prevIdx].todo
-			if curTodo != nil && prevTodo != nil &&
-				curTodo.HasDate() == prevTodo.HasDate() {
-				m.store.SwapOrder(curTodo.ID, prevTodo.ID)
+			curItem := items[curIdx]
+			prevItem := items[prevIdx]
+			if curItem.todo != nil && prevItem.todo != nil &&
+				curItem.section == prevItem.section {
+				m.store.SwapOrder(curItem.todo.ID, prevItem.todo.ID)
 				m.cursor--
 			}
 		}
@@ -439,11 +475,11 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if len(selectable) > 0 && m.cursor >= 0 && m.cursor < len(selectable)-1 {
 			curIdx := selectable[m.cursor]
 			nextIdx := selectable[m.cursor+1]
-			curTodo := items[curIdx].todo
-			nextTodo := items[nextIdx].todo
-			if curTodo != nil && nextTodo != nil &&
-				curTodo.HasDate() == nextTodo.HasDate() {
-				m.store.SwapOrder(curTodo.ID, nextTodo.ID)
+			curItem := items[curIdx]
+			nextItem := items[nextIdx]
+			if curItem.todo != nil && nextItem.todo != nil &&
+				curItem.section == nextItem.section {
+				m.store.SwapOrder(curItem.todo.ID, nextItem.todo.ID)
 				m.cursor++
 			}
 		}
