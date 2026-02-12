@@ -1,690 +1,791 @@
-# Architecture Research: v1.6 Template Management & Recurring Todos
+# Architecture Research: Priority Levels & Natural Language Date Input
 
-**Domain:** Template management overlay, recurring schedule definitions, auto-creation of scheduled todos
-**Researched:** 2026-02-07
-**Confidence:** HIGH for integration patterns (verified against existing codebase); HIGH for schema design (established migration pattern); MEDIUM for rolling window algorithm (pattern-based, straightforward logic)
+**Domain:** Priority levels (P1-P4) and natural language date input for existing Go/Bubble Tea TUI todo-calendar app
+**Researched:** 2026-02-12
+**Confidence:** HIGH for priority integration (codebase patterns well-established, change is additive); MEDIUM for NL date parsing (library selection verified, integration design is novel for this codebase)
 
-## Current Architecture Summary (Post v1.5)
+## Current Architecture Summary (Post v2.0)
 
 ```
 main.go
   |
   app.Model (root orchestrator)
   |-- calendar.Model    (left pane: grid + overview)
-  |-- todolist.Model    (right pane: todo list + input modes)
+  |-- todolist.Model    (right pane: 4-section todo list + 4-field edit form)
   |-- settings.Model    (full-screen overlay, showSettings bool)
   |-- search.Model      (full-screen overlay, showSearch bool)
   |-- preview.Model     (full-screen overlay, showPreview bool)
+  |-- tmplmgr.Model     (full-screen overlay, showTmplMgr bool)
   |-- editor            (external process, editing bool)
   |
-  store.SQLiteStore     (TodoStore interface, SQLite with WAL)
-  config.Config         (TOML config, Save/Load)
-  theme.Theme           (14 semantic color roles)
+  store.SQLiteStore     (TodoStore interface, SQLite with WAL, PRAGMA user_version=6)
+  config.Config         (TOML config, 6 settings, Save/Load)
+  theme.Theme           (16 semantic color roles across 4 themes)
   holidays.Provider     (rickar/cal wrapper)
+  recurring             (AutoCreate engine, ScheduleRule parsing)
   tmpl                  (ExtractPlaceholders, ExecuteTemplate)
+  fuzzy                 (fuzzy text matching for search/filter)
 ```
 
-**Critical facts for v1.6 planning:**
+**Critical facts for this milestone:**
 
-1. **TodoStore interface** has 17 methods including template operations: `AddTemplate`, `ListTemplates`, `FindTemplate`, `DeleteTemplate`. No `UpdateTemplate` or `RenameTemplate` method exists.
-2. **Template struct** (store/todo.go) has 4 fields: `ID int`, `Name string`, `Content string`, `CreatedAt string`. No schedule-related fields.
-3. **Templates table** (SQLite, version 2 migration) has schema: `id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, content TEXT NOT NULL, created_at TEXT NOT NULL`.
-4. **PRAGMA user_version** is currently at 3. Next migration is version 4.
-5. **Overlay pattern** is well-established: `showX bool` in app.Model, dedicated `updateX(msg)` routing method, `SetSize(w,h)`, `SetTheme(t)`, `HelpBindings()`, custom Msg types for close/actions.
-6. **Template workflow** in todolist.Model is comprehensive: `templateSelectMode`, `placeholderInputMode`, `templateNameMode`, `templateContentMode` -- these handle selection, placeholder prompting, and inline creation.
-7. **app.Init()** currently returns `nil` -- no startup commands run.
-8. **Todo.Body** stores template-rendered markdown. The link between a todo and the template it was created from is NOT tracked -- once created, the todo is independent.
+1. **Todo struct** (store/todo.go) has 10 fields: ID, Text, Body, Date, Done, CreatedAt, SortOrder, ScheduleID, ScheduleDate, DatePrecision. No priority field.
+2. **TodoStore interface** has 27 methods. `Add(text, date, datePrecision)` and `Update(id, text, date, datePrecision)` are the creation/mutation entry points.
+3. **PRAGMA user_version** is at 6. Next migration is version 7.
+4. **todoColumns** constant lists all SELECT columns. `scanTodo` scans them. Both must be extended.
+5. **Edit form** has 4 fields: Title(0), Date segments(1), Body textarea(2), Template picker(3). `editField int` tracks focus. `SwitchField` (Tab) cycles through them.
+6. **Date input** uses 3 segmented textinputs (day/month/year) with format-aware ordering and auto-advance. `deriveDateFromSegments()` produces ISO date + precision.
+7. **renderTodo()** renders each line as: cursor + checkbox + text + [+] body indicator + [R] recurring indicator + date.
+8. **visibleItems()** builds display list from 4 sections (sectionDated, sectionMonth, sectionYear, sectionFloating). Items are sorted by sort_order within each section.
+9. **Styles struct** in todolist has 14 styles. Theme struct has 16 color roles.
+10. **Settings overlay** uses `option` structs with cycling values (h/l arrows). SettingChangedMsg propagates changes immediately.
 
 ---
 
-## Integration Architecture: Three New Capabilities
+## Feature 1: Priority Levels (P1-P4)
 
-### Capability 1: Template Management Overlay
+### Design Decision: Integer Priority with Display Mapping
 
-**What:** Full-screen overlay for listing, viewing, editing, renaming, and deleting templates. Currently, template management is buried inside todolist's inline modes (templateSelectMode, templateNameMode, templateContentMode). A dedicated overlay provides a proper management experience.
+Use an integer field `priority` with values 0-4:
+- **0** = no priority (default, backward compatible)
+- **1** = P1 (urgent/critical)
+- **2** = P2 (high)
+- **3** = P3 (medium)
+- **4** = P4 (low)
 
-### Capability 2: Recurring Schedule Definitions
+**Why integer, not string:** Integers enable `ORDER BY priority` for sorting, simple comparison for filtering, and zero-value means "no priority" (backward compatible with existing todos). String enums ("p1", "p2") require mapping and are harder to sort.
 
-**What:** Attach scheduling rules to templates. A schedule defines when a template should automatically create todos (e.g., "every weekday", "every Monday and Friday", "monthly on the 15th").
+**Why 0 = no priority, not 5:** Zero is the default for SQLite `INTEGER NOT NULL DEFAULT 0`. Existing todos automatically get "no priority" without a data backfill. If we used 5 for "none", we would need `UPDATE todos SET priority = 5` in the migration.
 
-### Capability 3: Auto-Creation Engine
+### Schema Migration (Version 7)
 
-**What:** On app launch, examine all schedules and create any missing todos for a rolling window (today + 7 days). Includes placeholder prompting for templates that have `{{.Variable}}` fields.
+```sql
+ALTER TABLE todos ADD COLUMN priority INTEGER NOT NULL DEFAULT 0;
+```
+
+Single statement. No backfill needed (DEFAULT 0 = no priority). No index needed for priority alone -- the display order within sections already uses sort_order, and priority filtering is in-app (not SQL).
+
+**Migration code follows the established pattern:**
+
+```go
+if version < 7 {
+    if _, err := s.db.Exec(`ALTER TABLE todos ADD COLUMN priority INTEGER NOT NULL DEFAULT 0`); err != nil {
+        return fmt.Errorf("add priority column: %w", err)
+    }
+    if _, err := s.db.Exec(`PRAGMA user_version = 7`); err != nil {
+        return fmt.Errorf("set user_version: %w", err)
+    }
+}
+```
+
+### Todo Struct Extension
+
+```go
+type Todo struct {
+    ID            int    `json:"id"`
+    Text          string `json:"text"`
+    Body          string `json:"body,omitempty"`
+    Date          string `json:"date,omitempty"`
+    Done          bool   `json:"done"`
+    CreatedAt     string `json:"created_at"`
+    SortOrder     int    `json:"sort_order,omitempty"`
+    ScheduleID    int    `json:"schedule_id,omitempty"`
+    ScheduleDate  string `json:"schedule_date,omitempty"`
+    DatePrecision string `json:"date_precision"`
+    Priority      int    `json:"priority"`              // NEW: 0=none, 1=P1, 2=P2, 3=P3, 4=P4
+}
+
+// PriorityLabel returns "P1"-"P4" or "" for no priority.
+func (t Todo) PriorityLabel() string {
+    if t.Priority >= 1 && t.Priority <= 4 {
+        return fmt.Sprintf("P%d", t.Priority)
+    }
+    return ""
+}
+
+// HasPriority reports whether the todo has a priority set.
+func (t Todo) HasPriority() bool {
+    return t.Priority >= 1 && t.Priority <= 4
+}
+```
+
+### TodoStore Interface Changes
+
+The `Add` and `Update` signatures must include priority:
+
+```go
+Add(text string, date string, datePrecision string, priority int) Todo
+Update(id int, text string, date string, datePrecision string, priority int)
+```
+
+**Alternatively**, add a dedicated `UpdatePriority(id, priority int)` method and keep Add/Update unchanged, adding priority as a separate step. However, this approach means two SQL roundtrips for every add/edit, and the form already saves all fields atomically.
+
+**Recommendation: Extend Add/Update signatures.** This is a breaking interface change but the interface has only 2 implementations (SQLiteStore and the compile-time check). All callers are in this codebase. The change is mechanical.
+
+Affected callers:
+- `todolist.Model.saveAdd()` -- calls `store.Add()`
+- `todolist.Model.saveEdit()` -- calls `store.Update()`
+- `store.SQLiteStore.Add()` -- implements Add
+- `store.SQLiteStore.Update()` -- implements Update
+- `store.SQLiteStore.AddScheduledTodo()` -- scheduled todos get priority 0
+
+### todoColumns and scanTodo Extension
+
+```go
+const todoColumns = "id, text, body, date, done, created_at, sort_order, schedule_id, schedule_date, date_precision, priority"
+
+func scanTodo(scanner interface{ Scan(...any) error }) (Todo, error) {
+    var t Todo
+    var date sql.NullString
+    var done int
+    var scheduleID sql.NullInt64
+    var scheduleDate sql.NullString
+    err := scanner.Scan(&t.ID, &t.Text, &t.Body, &date, &done, &t.CreatedAt, &t.SortOrder, &scheduleID, &scheduleDate, &t.DatePrecision, &t.Priority)
+    // ... rest unchanged
+}
+```
+
+### Edit Form Integration
+
+Add priority as a new field in the edit form. Current field cycle: Title(0) -> Date(1) -> Body(2) -> Template(3) -> Title(0).
+
+**New cycle:** Title(0) -> Date(1) -> Priority(2) -> Body(3) -> Template(4) -> Title(0).
+
+**Why priority before body:** Priority is a quick single-keystroke selection. Body is a large textarea. Placing priority before body keeps the "quick fields first, large fields last" ordering.
+
+**Priority input widget:** A simple cycling selector, not a text input. Display the current priority and cycle with left/right arrows or typed digits 0-4:
+
+```
+Priority: < P2 - High >
+```
+
+Or more simply, since the edit form uses Tab to advance fields:
+
+```
+Priority: [none]   (type 1-4 to set, 0 or backspace to clear)
+```
+
+**Implementation:** A single textinput with 1-character limit accepting only digits 0-4. Or simpler: a stateful field on the Model that cycles on keypress (like settings options).
+
+**Recommendation: Numeric keypress.** In the priority field, pressing 1/2/3/4 sets priority, pressing 0 or backspace clears it. No separate widget needed -- just intercept keystrokes when `editField == 2` (the new priority position).
+
+```go
+// In Model:
+editPriority int  // 0=none, 1-4=priority level
+
+// In editField routing for priority:
+case 2: // priority field
+    switch msg.String() {
+    case "1": m.editPriority = 1
+    case "2": m.editPriority = 2
+    case "3": m.editPriority = 3
+    case "4": m.editPriority = 4
+    case "0", "backspace": m.editPriority = 0
+    }
+```
+
+### Display Integration
+
+Render priority as a colored badge before the todo text:
+
+```
+> [x] [P1] Fix critical bug                    2026-02-12
+  [ ] [P2] Review pull request            [+]  2026-02-13
+  [ ]      Normal todo without priority         2026-02-14
+```
+
+**In renderTodo():**
+
+```go
+func (m Model) renderTodo(b *strings.Builder, t *store.Todo, selected bool) {
+    // Cursor indicator
+    if selected {
+        b.WriteString(m.styles.Cursor.Render("> "))
+    } else {
+        b.WriteString("  ")
+    }
+
+    // Checkbox
+    if t.Done {
+        b.WriteString(m.styles.CheckboxDone.Render("[x]"))
+    } else {
+        b.WriteString(m.styles.Checkbox.Render("[ ]"))
+    }
+    b.WriteString(" ")
+
+    // Priority badge (NEW)
+    if t.HasPriority() {
+        style := m.priorityStyle(t.Priority)
+        b.WriteString(style.Render("[" + t.PriorityLabel() + "]"))
+        b.WriteString(" ")
+    }
+
+    // Text content
+    text := t.Text
+    if t.Done {
+        text = m.styles.Completed.Render(text)
+    }
+    b.WriteString(text)
+
+    // ... body indicator, recurring indicator, date (unchanged)
+}
+```
+
+### Theme Extension for Priority Colors
+
+Add 4 new color roles to the Theme struct:
+
+```go
+type Theme struct {
+    // ... existing 16 fields ...
+
+    // Priority levels
+    PriorityP1 lipgloss.Color // P1 urgent (red/warm)
+    PriorityP2 lipgloss.Color // P2 high (orange/yellow)
+    PriorityP3 lipgloss.Color // P3 medium (blue/cyan)
+    PriorityP4 lipgloss.Color // P4 low (muted/grey)
+}
+```
+
+**Color assignments per theme:**
+
+| Theme | P1 | P2 | P3 | P4 |
+|-------|----|----|----|----|
+| Dark | `#D75F5F` (rose) | `#D7AF5F` (gold) | `#5F87D7` (blue) | `#585858` (muted) |
+| Light | `#D70000` (red) | `#AF8700` (amber) | `#005FAF` (blue) | `#8A8A8A` (grey) |
+| Nord | `#BF616A` (aurora red) | `#EBCB8B` (aurora yellow) | `#81A1C1` (frost) | `#4C566A` (polar night) |
+| Solarized | `#DC322F` (red) | `#B58900` (yellow) | `#268BD2` (blue) | `#586E75` (base01) |
+
+**Design rationale:** P1 uses the theme's "danger/alert" color (same family as HolidayFg/PendingFg). P2 uses "warning" (same family as IndicatorFg). P3 uses "info" (same family as AccentFg/BorderFocused). P4 uses "muted" (same as MutedFg). This creates a natural urgency gradient using colors already in the theme's palette.
+
+### Todolist Styles Extension
+
+Add 4 new styles:
+
+```go
+type Styles struct {
+    // ... existing 14 fields ...
+    PriorityP1 lipgloss.Style
+    PriorityP2 lipgloss.Style
+    PriorityP3 lipgloss.Style
+    PriorityP4 lipgloss.Style
+}
+
+// Helper method on Model:
+func (m Model) priorityStyle(p int) lipgloss.Style {
+    switch p {
+    case 1: return m.styles.PriorityP1
+    case 2: return m.styles.PriorityP2
+    case 3: return m.styles.PriorityP3
+    case 4: return m.styles.PriorityP4
+    default: return lipgloss.NewStyle()
+    }
+}
+```
+
+### Sort Order Consideration
+
+**Should priority affect sort order within sections?**
+
+Two approaches:
+
+**A. Visual priority only (no sort change):** Priority badges are displayed but todos remain sorted by sort_order. User manually reorders via J/K.
+
+**B. Priority-then-sort ordering:** Within each section, sort by priority (1 first, then 2, 3, 4, 0 last), then by sort_order within same priority.
+
+**Recommendation: Approach A for now (visual only).** Manual reordering via J/K is an established UX pattern in this app. Automatic priority-based sorting would fight against manual reordering -- a user who carefully arranged their todos would see them jump around when priorities change. If auto-sort is desired later, it can be added as a setting ("Sort by: manual / priority").
+
+**Search integration:** The search overlay renders todos with date. It should also show priority badges. This is a display-only change in `search/model.go`'s `View()`.
+
+---
+
+## Feature 2: Natural Language Date Input
+
+### Library Selection
+
+**Use `github.com/tj/go-naturaldate` because:**
+
+1. **Pure Go, zero transitive dependencies.** The go.mod stays clean. Compare: `olebedev/when` has rule-based architecture requiring explicit language registration; `sho0pi/naturaltime` wraps a JavaScript engine (goja) -- adding a JS runtime to a Go TUI is absurd.
+
+2. **API is minimal and correct.** One function: `Parse(s string, ref time.Time, options ...Option) (time.Time, error)`. Returns a standard `time.Time`. No custom result structs to unwrap.
+
+3. **Handles the expressions that matter for a todo app:**
+   - "today", "tomorrow", "yesterday"
+   - "next monday", "next friday"
+   - "next week", "next month"
+   - "december 25", "jan 15"
+   - "5 days from now", "in 2 weeks"
+   - "last sunday" (with configurable Past/Future direction)
+
+4. **313 stars, MIT license, stable (15 commits, no churn).** It does one thing well.
+
+5. **Direction option maps to our UX needs.** `WithDirection(naturaldate.Future)` makes "monday" mean "next monday" which is the right default for a todo app (you are scheduling future work).
+
+**Why not olebedev/when (1.5k stars):** More popular but heavier. Requires registering language-specific rule sets (`w.Add(en.All...)`). Returns a `Result` struct with `Index`, `Text`, `Source`, `Time` -- more than we need. The pluggable rule system is designed for extracting dates from prose, which is overkill for a single-purpose date input field.
+
+**Why not araddon/dateparse:** Parses date *formats* (e.g., "2006-01-02", "Jan 2 2006"), not natural language expressions. "tomorrow" and "next monday" would not parse. Wrong tool for this job.
+
+### Integration Architecture
+
+Natural language date input replaces the existing segmented date input in the edit form. The segmented input (dd/mm/yyyy fields) remains as the structured fallback. The NL input is the primary input method.
+
+**Design: Single text input with dual parsing.**
+
+The date field becomes a single textinput that accepts either:
+1. Natural language: "tomorrow", "next friday", "jan 15"
+2. Formatted date: "2026-02-15", "15.02.2026", "02/15/2026" (per user's date format setting)
+
+Parsing order:
+1. Try exact date format parse (user's configured format)
+2. Try natural language parse via go-naturaldate
+3. If both fail, show error hint
+
+```go
+func (m Model) parseDate(input string) (isoDate string, precision string, err error) {
+    input = strings.TrimSpace(input)
+    if input == "" {
+        return "", "", nil  // floating todo
+    }
+
+    // 1. Try exact format parse
+    if t, err := time.Parse(m.dateLayout, input); err == nil {
+        return t.Format("2006-01-02"), "day", nil
+    }
+
+    // 2. Try natural language parse
+    ref := time.Now()
+    t, err := naturaldate.Parse(input, ref, naturaldate.WithDirection(naturaldate.Future))
+    if err == nil {
+        // Determine precision from the input
+        precision := derivePrecisionFromNL(input, t)
+        return t.Format("2006-01-02"), precision, nil
+    }
+
+    return "", "", fmt.Errorf("unrecognized date: %q", input)
+}
+```
+
+### Precision Derivation from NL Input
+
+The existing segmented input derives precision from which segments are filled (year only = year precision, year+month = month precision, all three = day precision). With NL input, we need a different approach.
+
+**Strategy: All NL dates default to day precision.**
+
+Rationale: Natural language expressions like "tomorrow", "next friday", "jan 15" all resolve to specific days. Month-level ("this month") and year-level ("this year") expressions are unusual enough that they do not warrant special parsing. Users who want month/year precision can use the structured input mode.
+
+**Exception handling:**
+- "next month" -> could mean month precision. But `go-naturaldate` resolves it to a specific day (same day next month). Day precision is correct for this interpretation.
+- "january" -> resolves to January 1st of the appropriate year. Day precision is technically wrong (user may mean "sometime in January"), but there is no reliable way to distinguish "January the month" from "January 1st" in NL parsing. Default to day precision.
+
+**If month/year precision is needed:** The user can still enter a partial date in the structured format. The parser tries exact format first, so "2026-02" or "2026" could be caught before NL parsing. But this is a minor edge case -- the primary UX improvement is "tomorrow" and "next monday" working.
+
+### Replacing Segmented Input with NL Input
+
+**The big UX question:** Do we replace the 3-segment date input entirely, or add NL as an alternative mode?
+
+**Recommendation: Replace with a single textinput.** The segmented input was a reasonable approach before NL parsing existed. But it requires 6 Tab presses to fill (day->month->year, 2 chars each), format-aware ordering logic, backspace-to-previous-segment, and auto-advance. A single textinput where the user types "tomorrow" or "2026-02-15" is strictly better UX.
+
+**What we lose:** The segmented input had implicit precision derivation (leave day blank = month precision). The NL input cannot do this as elegantly. However, precision can be set explicitly via the priority-style approach: default to day, and add a "precision" field or allow special syntax ("~feb 2026" for month, "~2026" for year).
+
+**Practical approach:** Keep it simple. The NL textinput handles day-precision dates. For month/year precision, accept patterns like "feb 2026" (month precision) and "2026" (year precision) by checking the input format before NL parsing:
+
+```go
+func (m Model) parseDate(input string) (string, string, error) {
+    input = strings.TrimSpace(input)
+    if input == "" {
+        return "", "", nil // floating
+    }
+
+    // Check for year-only (4 digits)
+    if matched, _ := regexp.MatchString(`^\d{4}$`, input); matched {
+        return input + "-01-01", "year", nil
+    }
+
+    // Check for month+year patterns: "feb 2026", "2026-02", "02.2026"
+    if isoDate, ok := parseMonthYear(input); ok {
+        return isoDate, "month", nil
+    }
+
+    // Try exact date format (user's configured format)
+    if t, err := time.Parse(m.dateLayout, input); err == nil {
+        return t.Format("2006-01-02"), "day", nil
+    }
+
+    // Try ISO format explicitly
+    if t, err := time.Parse("2006-01-02", input); err == nil {
+        return t.Format("2006-01-02"), "day", nil
+    }
+
+    // Try natural language
+    ref := time.Now()
+    t, err := naturaldate.Parse(input, ref, naturaldate.WithDirection(naturaldate.Future))
+    if err == nil {
+        return t.Format("2006-01-02"), "day", nil
+    }
+
+    return "", "", fmt.Errorf("unrecognized date")
+}
+```
+
+### Form Field Changes
+
+**Before (current):**
+```
+Title:    [_______________]
+Date:     [yyyy] - [mm] - [dd]     (3 segmented inputs)
+Body:     [textarea]
+Template: [picker trigger]
+```
+
+**After:**
+```
+Title:    [_______________]
+Date:     [_______________________________]     (single textinput)
+          (try: tomorrow, next fri, jan 15, or 2026-02-15)
+Priority: [none]     (press 1-4 to set)
+Body:     [textarea]
+Template: [picker trigger]
+```
+
+The hint text below the date field guides users to the NL capability. It replaces the existing "(leave day blank for month todo...)" hint.
+
+### Model Changes for NL Date
+
+**Remove from todolist.Model:**
+```go
+// REMOVE these fields:
+dateSegDay   textinput.Model
+dateSegMonth textinput.Model
+dateSegYear  textinput.Model
+dateSegFocus int
+dateSegOrder [3]int
+dateFormat   string
+```
+
+**Add to todolist.Model:**
+```go
+// ADD:
+dateInput textinput.Model  // single NL date input
+```
+
+**Remove helper methods:**
+```go
+// REMOVE: renderDateSegments, deriveDateFromSegments, updateDateSegment,
+//         dateSegmentOrder, dateSegmentByPos, dateSegSeparator,
+//         dateSegPlaceholderByPos, focusDateSegment, blurAllDateSegments,
+//         clearAllDateSegments, dateSegCharLimit
+```
+
+**Add helper methods:**
+```go
+// ADD: parseDate (see above), parseMonthYear
+```
+
+This is a net reduction in code complexity. The segmented input system is ~200 lines of logic (dateSegmentOrder, auto-advance, backspace navigation, format-aware ordering). The NL input replaces it with ~50 lines of parse logic.
+
+### New Package: `internal/nldate/`
+
+**Purpose:** Isolate NL date parsing from the todolist model. Pure function, easily testable.
+
+```go
+package nldate
+
+import (
+    "time"
+    "github.com/tj/go-naturaldate"
+)
+
+// Parse attempts to parse a date string using multiple strategies:
+// 1. Year-only (4 digits) -> year precision
+// 2. Month+year patterns -> month precision
+// 3. Exact date format (user's layout) -> day precision
+// 4. ISO date format -> day precision
+// 5. Natural language -> day precision
+//
+// Returns (isoDate, precision, error). Empty input returns ("", "", nil) for floating.
+func Parse(input string, ref time.Time, userLayout string) (string, string, error) {
+    // ... implementation
+}
+```
+
+**Why a separate package:** The parsing logic is pure (no TUI state) and needs thorough unit testing with many input variations. Putting it in todolist would make it harder to test independently.
+
+### Test Strategy for NL Date Parsing
+
+```go
+func TestParse(t *testing.T) {
+    ref := time.Date(2026, 2, 12, 10, 0, 0, 0, time.Local)
+
+    tests := []struct {
+        input     string
+        wantDate  string
+        wantPrec  string
+        wantErr   bool
+    }{
+        // Empty -> floating
+        {"", "", "", false},
+        {"  ", "", "", false},
+
+        // Year-only -> year precision
+        {"2026", "2026-01-01", "year", false},
+        {"2027", "2027-01-01", "year", false},
+
+        // Month+year -> month precision
+        {"feb 2026", "2026-02-01", "month", false},
+        {"march 2027", "2027-03-01", "month", false},
+
+        // Exact ISO date -> day precision
+        {"2026-02-15", "2026-02-15", "day", false},
+        {"2026-12-25", "2026-12-25", "day", false},
+
+        // Natural language -> day precision
+        {"today", "2026-02-12", "day", false},
+        {"tomorrow", "2026-02-13", "day", false},
+        {"next friday", "2026-02-13", "day", false},  // Feb 12 2026 is Thursday
+        {"next monday", "2026-02-16", "day", false},
+
+        // Invalid
+        {"not a date at all", "", "", true},
+    }
+    // ...
+}
+```
 
 ---
 
 ## Component Analysis: New vs Modified
 
-### New Package: `internal/tmplmgr/` (Template Manager Overlay)
+### New Components
 
-**Why a new package, not extending `internal/tmpl/`:** The existing `tmpl` package is a pure utility package (ExtractPlaceholders, ExecuteTemplate) with no TUI concerns. A management overlay is a full Bubble Tea component with Model/Update/View, keys, styles -- the same structure as `settings`, `search`, and `preview`. Mixing TUI model logic into a utility package violates the project's clean separation.
+| Component | Type | Purpose |
+|-----------|------|---------|
+| `internal/nldate/` | New package | NL date parsing with multi-strategy fallback |
+| `nldate/nldate.go` | New file | `Parse()` function |
+| `nldate/nldate_test.go` | New file | Comprehensive parse tests |
 
-**Why not extending `todolist/`:** The template management modes already in todolist (templateSelectMode, templateNameMode, etc.) are tightly coupled to the "create todo from template" workflow. A management overlay is a distinct user flow: browse all templates, view their content, edit content, rename, delete, manage schedules. Cramming this into todolist would bloat an already-large model (1104 lines) and mix management concerns with todo CRUD concerns.
+### Modified Components
 
-**Structure follows the established overlay pattern:**
+| Component | Change | Impact |
+|-----------|--------|--------|
+| `store/todo.go` | Add `Priority int` field, helper methods | Low -- additive |
+| `store/iface.go` | Extend `Add()` and `Update()` signatures with priority param | Medium -- interface change, affects all callers |
+| `store/sqlite.go` | Migration v7, extend Add/Update/scanTodo/todoColumns, priority in INSERT/UPDATE | Medium -- mechanical changes |
+| `theme/theme.go` | Add 4 priority color fields to Theme, values for all 4 themes | Low -- additive |
+| `todolist/styles.go` | Add 4 PriorityP1-P4 styles | Low -- additive |
+| `todolist/model.go` | Replace segmented date input with single NL textinput, add priority field, update edit form cycle, update renderTodo, update save methods | HIGH -- most changed file |
+| `todolist/keys.go` | No changes needed (Tab/Enter/Esc handle the new fields) | None |
+| `search/model.go` | Show priority badge in search results | Low -- display only |
+| `app/model.go` | No changes needed (todo display is in todolist) | None |
+| `go.mod` | Add `github.com/tj/go-naturaldate` dependency | Low |
 
-```go
-package tmplmgr
+### Removed Code
 
-type Model struct {
-    templates    []store.Template
-    cursor       int
-    viewMode     viewMode  // list, view, edit, rename
-    store        store.TodoStore
-    width, height int
-    keys         KeyMap
-    styles       Styles
-    input        textinput.Model
-    textarea     textarea.Model
-}
-
-// Messages emitted to app.Model
-type CloseMsg struct{}
-type TemplateUpdatedMsg struct{}  // signal to refresh if todolist caches templates
-
-func New(s store.TodoStore, t theme.Theme) Model { ... }
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) { ... }
-func (m Model) View() string { ... }
-func (m *Model) SetSize(w, h int) { ... }
-func (m *Model) SetTheme(t theme.Theme) { ... }
-func (m Model) HelpBindings() []key.Binding { ... }
-```
-
-**View modes within the overlay:**
-
-| Mode | View | Keys |
-|------|------|------|
-| `listMode` | Template list with cursor, name + preview | j/k navigate, enter view, e edit, r rename, d delete, n new, esc close |
-| `viewMode` | Full template content rendered as text | esc back to list |
-| `editMode` | Textarea with template content | Ctrl+D save, esc cancel |
-| `renameMode` | Text input for new name | enter confirm, esc cancel |
-
-### Modified: `app/model.go`
-
-Add template management overlay routing, following the exact pattern of settings/search/preview:
-
-```go
-type Model struct {
-    // ... existing fields
-    showTmplMgr  bool
-    tmplMgr      tmplmgr.Model
-}
-```
-
-**Integration points in app.Model:**
-
-1. **Key binding:** New key (recommend `m` for "manage templates") in app.KeyMap, handled when `!isInputting` and no overlay is active.
-2. **Message routing:** `tmplmgr.CloseMsg` handler sets `showTmplMgr = false`. Place it alongside `preview.CloseMsg` and `search.CloseMsg`.
-3. **Update routing:** `if m.showTmplMgr { return m.updateTmplMgr(msg) }` -- placed after showSettings, showPreview, showSearch checks.
-4. **View routing:** `if m.showTmplMgr { ... }` -- same pattern as other overlays.
-5. **Theme propagation:** Add `m.tmplMgr.SetTheme(t)` to `applyTheme()`.
-
-### Modified: `store/store.go` (TodoStore Interface)
-
-Add methods needed by the management overlay and scheduling:
-
-```go
-// Template management additions
-UpdateTemplate(id int, name, content string) error
-// Note: name is separate from content to support rename-only operations
-
-// Schedule operations (new)
-AddSchedule(templateID int, rule string) (Schedule, error)
-ListSchedules() []Schedule
-ListSchedulesForTemplate(templateID int) []Schedule
-DeleteSchedule(id int)
-UpdateSchedule(id int, rule string) error
-TodoExistsForSchedule(scheduleID int, date string) bool
-```
-
-**Why TodoExistsForSchedule:** The auto-creation engine needs to check whether a todo for a given schedule+date combination already exists before creating it. Without this, restarting the app would create duplicate todos.
-
-### Modified: `store/sqlite.go`
-
-Implement the new interface methods. Add migration to version 4 (and possibly 5).
-
-### Modified: `store/todo.go`
-
-Add new struct types:
-
-```go
-// Schedule represents a recurring rule attached to a template.
-type Schedule struct {
-    ID         int
-    TemplateID int
-    Rule       string  // serialized schedule rule (see below)
-    CreatedAt  string
-}
-```
-
-### New: Auto-creation logic location
-
-**Where should auto-creation run?**
-
-Three options analyzed:
-
-| Option | Location | Mechanism | Pros | Cons |
-|--------|----------|-----------|------|------|
-| A | `app.Init()` | Return `tea.Cmd` that runs auto-creation | Runs once at startup, idiomatic Bubble Tea | Blocks first render until complete |
-| B | `main.go` before `app.New()` | Direct function call | Simple, synchronous, clear ordering | Not in the Bubble Tea lifecycle |
-| C | Background goroutine via `tea.Cmd` | Async command in `app.Init()` | Non-blocking | Complexity, race conditions with store |
-
-**Recommendation: Option B -- run in `main.go` before `app.New()`.**
-
-Rationale:
-- Auto-creation is a data preparation step, not a UI interaction. It belongs in the startup sequence alongside config loading and store initialization.
-- The store is single-connection (`MaxOpenConns(1)`), so running auto-creation before the TUI starts avoids any concurrency concerns.
-- Templates with placeholders require user prompting, which is handled separately (see "Placeholder prompting for recurring todos" below).
-- The rolling window calculation is pure logic on a small dataset -- it completes in under 1ms. No need for async execution.
-
-```go
-// In main.go, after store initialization:
-s, err := store.NewSQLiteStore(dbPath)
-if err != nil { ... }
-defer s.Close()
-
-// Auto-create scheduled todos for rolling window
-pending := recurring.GeneratePending(s, time.Now(), 7)
-// pending contains todos that need creation (some may need placeholder prompting)
-recurring.CreateSimpleTodos(s, pending.NoPlaceholders)
-// pending.NeedPrompting is passed to app.New() for UI prompting
-```
-
-Wait -- this creates a problem. Templates with placeholders need TUI interaction for prompting, but we are running before the TUI starts. Two approaches:
-
-**Approach A (recommended): Split auto-creation into two steps.**
-1. **Pre-TUI (main.go):** Create todos from templates with NO placeholders. These can be fully auto-created without user interaction.
-2. **Post-TUI-init (app.Init or first Update):** For templates WITH placeholders, show a prompting flow. Or simply skip placeholder prompting for auto-created recurring todos (use empty placeholder values).
-
-**Approach B: Skip placeholder prompting entirely for recurring todos.**
-Recurring todos created from templates execute with empty placeholder values (which text/template handles via `missingkey=zero`). The user can fill in details via the external editor. This is simpler and arguably better UX -- the recurring todo is created as a reminder, and the user fills in specifics when they get to it.
-
-**Recommendation: Approach B.** Auto-created recurring todos use templates with empty placeholder values. The todo title comes from the template name or a configured title, and the body is the template content with blanks. User can edit via the external editor. This keeps auto-creation fully synchronous and pre-TUI.
-
-Revised startup:
-
-```go
-// In main.go, after store initialization:
-recurring.AutoCreate(s, time.Now(), 7)  // creates any missing scheduled todos
-```
+| Code | Reason |
+|------|--------|
+| `dateSegDay`, `dateSegMonth`, `dateSegYear` fields | Replaced by single `dateInput` |
+| `dateSegFocus`, `dateSegOrder`, `dateFormat` fields | No longer needed |
+| `renderDateSegments()` | Replaced by `dateInput.View()` |
+| `deriveDateFromSegments()` | Replaced by `nldate.Parse()` |
+| `updateDateSegment()` | Standard textinput handles everything |
+| `dateSegmentOrder()`, `dateSegmentByPos()`, etc. | All segmented input helpers removed |
+| ~200 lines of segmented input logic | Net simplification |
 
 ---
 
-## Schema Design
+## Data Flow Changes
 
-### Migration Version 4: Add schedules table
-
-```sql
-CREATE TABLE IF NOT EXISTS schedules (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    template_id INTEGER NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
-    rule        TEXT    NOT NULL,
-    created_at  TEXT    NOT NULL
-);
-
-CREATE INDEX idx_schedules_template ON schedules(template_id);
-```
-
-**Key decisions:**
-
-- **Foreign key to templates with CASCADE delete:** When a template is deleted, its schedules are automatically removed. This prevents orphaned schedules. `foreign_keys(ON)` is already set in the SQLite DSN.
-- **`rule` is a TEXT column** storing a serialized schedule rule (see "Schedule Rule Format" below). A structured TEXT format is simpler than multiple columns (`frequency`, `day_of_week`, `day_of_month`, etc.) and more extensible.
-
-### Migration Version 5: Add schedule tracking to todos
-
-```sql
-ALTER TABLE todos ADD COLUMN schedule_id INTEGER REFERENCES schedules(id) ON DELETE SET NULL;
-ALTER TABLE todos ADD COLUMN schedule_date TEXT;
-
-CREATE INDEX idx_todos_schedule ON todos(schedule_id, schedule_date);
-```
-
-**Key decisions:**
-
-- **`schedule_id` nullable FK with SET NULL on delete:** When a schedule is deleted, existing todos created by it remain (they are valid todos) but lose the schedule link. This is the right behavior -- deleting a recurring rule should not delete already-created todos.
-- **`schedule_date` stores the logical date** the todo was created for (the date from the rolling window), not the creation timestamp. This is the deduplication key: `TodoExistsForSchedule(scheduleID, date)` checks `WHERE schedule_id = ? AND schedule_date = ?`.
-- **Why not a junction table:** A todo is created by at most one schedule on a specific date. The 1:1 relationship is cleanly modeled as columns on the todos table. A junction table adds complexity for no benefit.
-
-### Schedule Rule Format
-
-**Use a structured string format rather than cron expressions.**
-
-Cron is overkill and unfamiliar to most users. The supported recurrence patterns are simple enough for a custom format:
+### Add Todo Flow (Before)
 
 ```
-daily                       -- every day
-weekdays                    -- Mon-Fri
-weekly:mon,wed,fri          -- specific days of week
-monthly:15                  -- 15th of each month
-monthly:last                -- last day of each month
+User types title -> Tab -> types dd -> auto-advance -> types mm -> auto-advance -> types yyyy -> Tab -> types body -> Enter
+  |
+  deriveDateFromSegments() -> isoDate, precision
+  |
+  store.Add(text, isoDate, precision)
 ```
 
-Serialization/deserialization is trivial:
+### Add Todo Flow (After)
+
+```
+User types title -> Tab -> types "tomorrow" or "2026-02-15" -> Tab -> types 1-4 for priority -> Tab -> types body -> Enter
+  |
+  nldate.Parse(dateInput.Value(), time.Now(), userLayout) -> isoDate, precision
+  |
+  store.Add(text, isoDate, precision, priority)
+```
+
+### Edit Todo Flow Changes
+
+When entering edit mode, populate the date field with a human-readable date string instead of splitting into segments:
 
 ```go
-type ScheduleRule struct {
-    Type      string   // "daily", "weekdays", "weekly", "monthly"
-    Days      []string // for weekly: ["mon", "wed", "fri"]
-    DayOfMonth int     // for monthly: 1-31 or -1 for last
+// Before (populating segments):
+parts := strings.SplitN(fresh.Date, "-", 3)
+if len(parts) == 3 {
+    m.dateSegYear.SetValue(parts[0])
+    m.dateSegMonth.SetValue(parts[1])
+    m.dateSegDay.SetValue(parts[2])
 }
 
-func ParseRule(s string) (ScheduleRule, error) { ... }
-func (r ScheduleRule) String() string { ... }
-func (r ScheduleRule) MatchesDate(d time.Time) bool { ... }
+// After (populating NL input):
+if fresh.Date != "" {
+    m.dateInput.SetValue(config.FormatDate(fresh.Date, m.dateLayout))
+}
+m.editPriority = fresh.Priority
 ```
 
-**Why not cron:** Cron expressions (`0 9 * * 1-5`) are powerful but opaque. The target user is someone managing personal todos in a terminal, not scheduling infrastructure jobs. "weekdays" and "weekly:mon,fri" are self-documenting. Cron is a v2 consideration if users demand complex schedules.
+### SetDateFormat Impact
 
----
+The `SetDateFormat(format, layout, placeholder)` method currently updates segment ordering. After the change, it only needs to update the `dateLayout` for the parser and the display format:
 
-## Data Flow: Recurring Todo Auto-Creation
-
-### Startup Flow
-
-```
-main.go
-  |
-  1. config.Load()
-  2. store.NewSQLiteStore(dbPath)
-     |-- migrate() runs v4+v5 if needed
-  3. recurring.AutoCreate(store, time.Now(), 7)
-     |
-     |-- store.ListSchedules()
-     |   returns all schedules with their template_id and rule
-     |
-     |-- For each schedule:
-     |   |-- ParseRule(schedule.Rule)
-     |   |-- For each date in [today, today+7]:
-     |       |-- rule.MatchesDate(date)?
-     |       |   NO  -> skip
-     |       |   YES -> store.TodoExistsForSchedule(schedule.ID, date)?
-     |              |   YES -> skip (already created)
-     |              |   NO  -> Create todo:
-     |                    |-- store.FindTemplate(schedule.TemplateID)
-     |                    |-- tmpl.ExecuteTemplate(content, {})  // empty placeholders
-     |                    |-- store.AddWithSchedule(title, date, body, scheduleID, scheduleDate)
-     |
-  4. app.New(provider, mondayStart, store, theme, cfg)
-  5. tea.NewProgram(model).Run()
-```
-
-### Template Management Flow
-
-```
-User presses 'm' (manage templates)
-  |
-  app.Model:
-    m.tmplMgr = tmplmgr.New(m.store, theme.ForName(m.cfg.Theme))
-    m.tmplMgr.SetSize(m.width, m.height)
-    m.showTmplMgr = true
-  |
-  tmplmgr.Model (overlay active):
-    |-- List view: shows all templates with names
-    |-- View mode: shows template content + attached schedules
-    |-- Edit mode: textarea for content editing
-    |-- Rename mode: text input for name change
-    |-- Schedule mode: add/remove recurring rules
-    |
-    On close:
-      emits tmplmgr.CloseMsg
-  |
-  app.Model:
-    m.showTmplMgr = false
-```
-
-### Schedule Attachment Flow (within tmplmgr overlay)
-
-```
-User on template list view, presses 'r' (recurring/schedule):
-  |
-  tmplmgr.Model enters scheduleMode:
-    |-- Shows existing schedules for this template
-    |-- 'a' to add new schedule:
-    |     Enters scheduleInputMode
-    |     Presents options: daily / weekdays / weekly / monthly
-    |     For weekly: prompts for day selection (toggle Mon-Sun)
-    |     For monthly: prompts for day number
-    |     Confirm creates schedule via store.AddSchedule()
-    |-- 'd' to delete selected schedule
-    |-- 'esc' back to template detail
+```go
+func (m *Model) SetDateFormat(format, layout, placeholder string) {
+    m.dateLayout = layout
+    // dateSegOrder no longer needed
+}
 ```
 
 ---
 
 ## Integration Points Detailed
 
-### 1. app.Model Overlay Routing
+### 1. Store Interface Change (Priority Parameter)
 
-The routing priority for overlays must be defined. Current order in `Update()`:
+This is the highest-impact change. Every caller of `Add()` and `Update()` must pass a priority.
 
-```
-1. Settings-specific messages (ThemeChangedMsg, SaveMsg, CancelMsg) -- always
-2. search.JumpMsg, search.CloseMsg -- always
-3. preview.CloseMsg -- always
-4. todolist.PreviewMsg, todolist.OpenEditorMsg -- always
-5. editor.EditorFinishedMsg -- always
-6. if showSettings -> updateSettings(msg)
-7. if showPreview -> updatePreview(msg)
-8. if showSearch -> updateSearch(msg)
-9. Normal routing (key handling, pane routing)
-```
+**Callers of Add():**
+- `todolist.Model.saveAdd()` -> pass `m.editPriority`
+- `store.SQLiteStore.AddScheduledTodo()` -> pass `0` (scheduled todos get no priority by default)
 
-**Template manager fits at position 6.5:**
+**Callers of Update():**
+- `todolist.Model.saveEdit()` -> pass `m.editPriority`
 
-```
-6. if showSettings -> updateSettings(msg)
-7. if showTmplMgr -> updateTmplMgr(msg)    // NEW
-8. if showPreview -> updatePreview(msg)
-9. if showSearch -> updateSearch(msg)
-10. Normal routing
-```
+### 2. todoColumns / scanTodo (Column Addition)
 
-**Add tmplmgr.CloseMsg handling alongside other close messages:**
+Add `priority` to the end of the column list. This is the same pattern used when `date_precision` was added in v1.9.
 
-```go
-case tmplmgr.CloseMsg:
-    m.showTmplMgr = false
-    return m, nil
-```
+### 3. Theme Propagation (4 New Colors)
 
-### 2. TodoStore Interface Extension
+Every theme constructor (`Dark()`, `Light()`, `Nord()`, `Solarized()`) must return the 4 new color fields. `NewStyles()` in todolist must create 4 new style objects.
 
-New methods needed (all added to interface, implemented in SQLiteStore, stubbed in JSON Store):
+### 4. Edit Form Field Count
 
-```go
-// Template management
-UpdateTemplate(id int, name, content string) error
+`editField` range changes from 0-3 to 0-4. The `SwitchField` handler in both `updateInputMode` and `updateEditMode` must be updated to include the new priority field at position 2.
 
-// Schedule CRUD
-AddSchedule(templateID int, rule string) (Schedule, error)
-ListSchedules() []Schedule
-ListSchedulesForTemplate(templateID int) []Schedule
-DeleteSchedule(id int)
-UpdateSchedule(id int, rule string) error
+### 5. NL Date Dependency
 
-// Auto-creation support
-TodoExistsForSchedule(scheduleID int, date string) bool
-AddScheduledTodo(text, date, body string, scheduleID int, scheduleDate string) Todo
-```
+`go.mod` gains one new direct dependency. Install: `go get github.com/tj/go-naturaldate@latest`
 
-**Why `AddScheduledTodo` separate from `Add`:** The existing `Add(text, date)` method creates a plain todo. Scheduled todos need additional fields (`schedule_id`, `schedule_date`). Rather than changing the signature of `Add` (which would break all existing callers), a separate method is cleaner.
+### 6. Search Results Display
 
-### 3. Theme Propagation
-
-Add to `app.Model.applyTheme()`:
-
-```go
-m.tmplMgr.SetTheme(t)
-```
-
-This follows the established pattern used by all other overlay components.
-
-### 4. Help Bar Integration
-
-Add to `app.Model.currentHelpKeys()`:
-
-```go
-if m.showTmplMgr {
-    return helpKeyMap{bindings: m.tmplMgr.HelpBindings()}
-}
-```
-
-Place after `showPreview` check, before `showSearch` check.
-
-### 5. Window Resize Propagation
-
-Add `updateTmplMgr()` method to app.Model following the established pattern:
-
-```go
-func (m Model) updateTmplMgr(msg tea.Msg) (tea.Model, tea.Cmd) {
-    if wsm, ok := msg.(tea.WindowSizeMsg); ok {
-        m.width = wsm.Width
-        m.height = wsm.Height
-        m.ready = true
-        m.help.Width = wsm.Width
-        m.tmplMgr.SetSize(wsm.Width, wsm.Height)
-
-        var calCmd tea.Cmd
-        m.calendar, calCmd = m.calendar.Update(msg)
-        m.syncTodoSize()
-        return m, calCmd
-    }
-
-    var cmd tea.Cmd
-    m.tmplMgr, cmd = m.tmplMgr.Update(msg)
-    return m, cmd
-}
-```
-
----
-
-## New Package: `internal/recurring/`
-
-**Purpose:** Schedule rule parsing, date matching logic, and auto-creation orchestration. This is pure business logic with no TUI concerns.
-
-```
-internal/recurring/
-    rule.go       -- ScheduleRule type, ParseRule, String, MatchesDate
-    generate.go   -- AutoCreate function, rolling window logic
-    rule_test.go  -- Unit tests for rule parsing and date matching
-    generate_test.go -- Unit tests for auto-creation logic
-```
-
-**Why separate from tmplmgr:** The auto-creation logic runs in `main.go` before the TUI starts. It has no TUI dependency. The `tmplmgr` package is a Bubble Tea component. Mixing them would create an unnecessary dependency chain.
-
-**Why separate from store:** The recurring logic uses the store but is not the store. It orchestrates reads (ListSchedules, FindTemplate, TodoExistsForSchedule) and writes (AddScheduledTodo). This is application logic, not persistence logic.
-
-### Rolling Window Algorithm
-
-```go
-func AutoCreate(s store.TodoStore, now time.Time, windowDays int) {
-    schedules := s.ListSchedules()
-    for _, sched := range schedules {
-        rule, err := ParseRule(sched.Rule)
-        if err != nil {
-            continue // skip malformed rules
-        }
-        tpl := s.FindTemplate(sched.TemplateID)
-        if tpl == nil {
-            continue // template was deleted but CASCADE didn't fire (shouldn't happen)
-        }
-
-        for d := 0; d < windowDays; d++ {
-            date := now.AddDate(0, 0, d)
-            dateStr := date.Format("2006-01-02")
-
-            if !rule.MatchesDate(date) {
-                continue
-            }
-            if s.TodoExistsForSchedule(sched.ID, dateStr) {
-                continue
-            }
-
-            // Execute template with empty placeholders
-            body, _ := tmpl.ExecuteTemplate(tpl.Content, map[string]string{})
-            title := tpl.Name // use template name as todo title
-            s.AddScheduledTodo(title, dateStr, body, sched.ID, dateStr)
-        }
-    }
-}
-```
-
-**Window size of 7 days:** Creates todos for today through 6 days from now. This means:
-- User sees upcoming scheduled todos when they navigate to those dates.
-- If the user does not open the app for a week, they get 7 days of catch-up on next launch.
-- Missing days beyond 7 are not retroactively created (this is intentional -- stale recurring todos for missed days are noise, not value).
-
-**Edge cases:**
-- Template deleted between schedule check and template lookup: `FindTemplate` returns nil, skip.
-- Schedule rule malformed: `ParseRule` returns error, skip. Log to stderr if desired.
-- App opened multiple times per day: `TodoExistsForSchedule` deduplicates -- no duplicates created.
-
----
-
-## Relationship Between Templates and Recurring Todos
-
-```
-templates (1) --- (0..N) schedules (1) --- (0..N) todos
-    |                        |                      |
-    | has content +          | has rule string       | has schedule_id
-    | placeholders           | + template_id FK      | + schedule_date
-    |                        |                      | + body (rendered from template)
-```
-
-**Key design principle: Todos are independent after creation.**
-
-Once a recurring todo is created from a template, it is a regular todo. If the template content changes later, existing todos are NOT retroactively updated. This is the correct behavior because:
-1. The user may have already edited the todo body via the external editor.
-2. Retroactive updates would destroy user customizations.
-3. The template is a starting point, not a live binding.
-
-**Tracking lineage:** `schedule_id` on the todo tracks which schedule created it, not which template. This is for deduplication only. The user never sees this linkage in the UI.
+`search/model.go` View() needs to show priority badges. This means the search model needs access to priority styles, which come from the theme. The search model already has a Styles struct and SetTheme() -- add priority styles there.
 
 ---
 
 ## Suggested Build Order
 
-The features have clear dependencies. Build order minimizes risk and ensures each step is independently testable.
+Dependencies flow: Schema -> Store methods -> NL parse package -> UI integration. Priority and NL date are independent features that share the edit form. Build order minimizes merge conflicts by doing schema first, then the two features in parallel or sequence.
 
-### Phase A: Template Management Overlay (Foundation)
+### Phase 1: Priority Data Layer
 
-**What:** Create `tmplmgr` package with full overlay UI. Add `UpdateTemplate` to store interface. Wire into app.Model.
+**What:** Migration v7 (add priority column), extend Todo struct, extend Add/Update/scan, add Priority helper methods.
 
-**Why first:** This is a standalone feature with no dependency on recurring/scheduling. It provides value immediately (users can manage templates in a proper UI instead of the cramped inline modes). It also establishes the UI infrastructure that the schedule management UI will be built into.
-
-**New/Modified:**
-- NEW: `internal/tmplmgr/model.go`, `keys.go`, `styles.go`
-- MOD: `store/store.go` (add `UpdateTemplate` to interface)
-- MOD: `store/sqlite.go` (implement `UpdateTemplate`)
-- MOD: `app/model.go` (add overlay routing, key binding)
-- MOD: `app/keys.go` (add template management key)
-
-**Risk:** Low. Follows established overlay pattern exactly.
-
-### Phase B: Schedule Schema + CRUD
-
-**What:** Add schedules table (migration v4), schedule tracking columns on todos (migration v5). Implement schedule CRUD in store. Create `internal/recurring/rule.go` with rule parsing and date matching.
-
-**Why second:** The schema and data layer must exist before either the UI for schedule management or the auto-creation engine can work. This phase is all backend -- no UI changes.
+**Why first:** Schema migration must exist before any UI can read/write priority. This is backend-only, no UI changes, easily testable in isolation.
 
 **New/Modified:**
-- NEW: `internal/recurring/rule.go`, `rule_test.go`
-- MOD: `store/todo.go` (add Schedule struct, update Todo with schedule fields)
-- MOD: `store/store.go` (add schedule methods to interface)
-- MOD: `store/sqlite.go` (implement schedule methods, migrations v4+v5)
+- MOD: `store/todo.go` (Priority field, helper methods)
+- MOD: `store/iface.go` (Add/Update signatures)
+- MOD: `store/sqlite.go` (migration v7, todoColumns, scanTodo, Add, Update implementations)
+- MOD: `store/sqlite_test.go` (priority roundtrip tests)
 
-**Risk:** Medium. Schema migrations need careful testing. Rule parsing is straightforward but edge cases exist (e.g., monthly:31 on February).
+**Risk:** Low. Follows the established migration pattern (v6 added date_precision the same way).
 
-### Phase C: Auto-Creation + Schedule UI
+### Phase 2: Priority UI + Theme
 
-**What:** Implement `recurring.AutoCreate()` in `main.go` startup. Add schedule management UI to the `tmplmgr` overlay (new modes for viewing/adding/deleting schedules on a template).
+**What:** Add 4 priority colors to Theme, 4 styles to Styles, priority field in edit form, priority badge in renderTodo, priority in search results.
 
-**Why third:** Depends on both the overlay (Phase A) and the schema/CRUD (Phase B). This is where everything comes together.
+**Why second:** Depends on Phase 1 (store must read/write priority). Self-contained UI feature.
 
 **New/Modified:**
-- NEW: `internal/recurring/generate.go`, `generate_test.go`
-- MOD: `main.go` (add auto-creation call before app.New)
-- MOD: `internal/tmplmgr/model.go` (add schedule management modes)
+- MOD: `theme/theme.go` (4 new color fields in Theme struct + all 4 theme constructors)
+- MOD: `todolist/styles.go` (4 new style fields in Styles struct + NewStyles)
+- MOD: `todolist/model.go` (editPriority field, priority in edit form cycle, priority input handling, priority in renderTodo, priority in saveAdd/saveEdit)
+- MOD: `search/model.go` + `search/styles.go` (priority badge in search results)
 
-**Risk:** Medium. The auto-creation algorithm is simple but the schedule UI adds more modes to the overlay. Integration testing (does a scheduled todo actually appear on the calendar?) requires end-to-end verification.
+**Risk:** Low-Medium. The edit form field cycling logic is the most complex change but follows the existing pattern.
+
+### Phase 3: Natural Language Date Input
+
+**What:** Create nldate package, replace segmented date input with single NL textinput, update form field handling, remove segmented input code.
+
+**Why third:** Independent of priority (could be parallel), but putting it last means the priority form changes are stable before refactoring the date input. The date input replacement is a larger refactor that touches more of the edit form logic.
+
+**New/Modified:**
+- NEW: `internal/nldate/nldate.go` (Parse function)
+- NEW: `internal/nldate/nldate_test.go` (comprehensive tests)
+- MOD: `go.mod` (add go-naturaldate dependency)
+- MOD: `todolist/model.go` (replace dateSegDay/Month/Year with dateInput, replace deriveDateFromSegments with nldate.Parse, update form rendering, remove all segmented input helpers)
+
+**Risk:** Medium. The segmented input replacement is a significant refactor that touches many methods. The NL parsing library is third-party and needs edge case testing. The edit form hint text needs care to guide users.
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Storing Schedules as Cron Strings
+### Anti-Pattern 1: Storing Priority as a String
 
-**What:** Using full cron syntax (`0 9 * * 1-5`) for schedule rules.
+**What:** Using `TEXT` column with values "p1", "p2", "p3", "p4", "none".
+**Why bad:** Can not sort by priority with `ORDER BY`. Wastes storage (5 bytes vs 1). Requires mapping on every read.
+**Instead:** `INTEGER NOT NULL DEFAULT 0`. Zero = no priority, 1-4 = priority levels.
 
-**Why bad:** Cron is powerful but opaque for this use case. The supported recurrence types (daily, weekdays, specific weekdays, monthly) are simple enough to warrant a custom format that is human-readable. Cron also has no standard Go library that doesn't pull in significant dependencies.
+### Anti-Pattern 2: Adding NL Date Parsing Inline in todolist.Model
 
-**Instead:** Use the custom rule format (`daily`, `weekdays`, `weekly:mon,fri`, `monthly:15`). It is self-documenting, trivial to parse, and covers all v1.6 use cases. Complex cadences like "every 2nd Tuesday" are explicitly out of scope (v2 candidate per PROJECT.md).
+**What:** Putting the `naturaldate.Parse()` call directly in the save methods with all the format detection logic.
+**Why bad:** Untestable without spinning up the full TUI model. Many edge cases in date parsing need isolated unit tests.
+**Instead:** `internal/nldate/` package with a pure `Parse()` function. todolist calls `nldate.Parse()`.
 
-### Anti-Pattern 2: Live-Binding Todos to Templates
+### Anti-Pattern 3: Keeping Segmented Input Alongside NL Input
 
-**What:** Making todos maintain a live link to their source template, automatically updating when the template changes.
+**What:** Offering both segmented (dd/mm/yyyy) and NL input as separate modes or fields.
+**Why bad:** Two ways to do the same thing creates confusion ("which should I use?"). The segmented input is strictly inferior once NL parsing exists. Maintaining both doubles the code surface.
+**Instead:** Single textinput that accepts both NL and formatted dates. The parser handles format detection transparently.
 
-**Why bad:** Destroys user edits. If a user creates a recurring todo from "Daily Plan" template and then customizes the body via the external editor, a template change would overwrite their work. Also introduces synchronization complexity (when to sync? on view? on edit?).
+### Anti-Pattern 4: Auto-Sorting by Priority
 
-**Instead:** Todos are independent after creation. The template is a stamp, not a link. `schedule_id` exists for deduplication only.
+**What:** Automatically reordering todos within a section by priority level (P1 first, P4 last).
+**Why bad:** Conflicts with manual J/K reordering, which is the established pattern. A user who carefully arranged todos by context (e.g., "morning tasks first") would see their order destroyed when they set a priority.
+**Instead:** Priority is visual-only (colored badge). Sort order remains manual (sort_order column). Auto-sort by priority can be a settings option in a future milestone if users request it.
 
-### Anti-Pattern 3: Retroactive Todo Creation for Missed Days
+### Anti-Pattern 5: Complex Priority Cycling in Normal Mode
 
-**What:** When the app is opened after being closed for 2 weeks, creating recurring todos for all 14 missed days.
-
-**Why bad:** Creates a flood of stale todos that are no longer relevant. A "Daily Plan" todo for 10 days ago is noise, not value. The user did not open the app; they presumably had a different workflow those days.
-
-**Instead:** Use a rolling window from today forward only (7 days). Do NOT create todos for past days. If the user needs to catch up, they can manually create todos. The rolling window is a prospective tool, not a retroactive one.
-
-### Anti-Pattern 4: Putting Auto-Creation in app.Init()
-
-**What:** Running auto-creation as a `tea.Cmd` from `app.Init()`.
-
-**Why bad:** Mixes data preparation with TUI lifecycle. Creates timing complexity (what if the user navigates before auto-creation completes?). The store is single-connection, so concurrent access from a background command and the render loop could cause "database is locked" errors.
-
-**Instead:** Run auto-creation synchronously in `main.go` before the TUI starts. It completes in under 1ms for reasonable schedule counts. The TUI sees a fully prepared dataset from frame one.
-
-### Anti-Pattern 5: Adding Schedule Fields to the Template Struct
-
-**What:** Putting `ScheduleRule`, `ScheduleDays`, etc. directly on the Template struct.
-
-**Why bad:** Conflates two concerns (template content and recurrence rules). A template can have zero or multiple schedules (e.g., "Daily Plan" might recur on weekdays AND monthly on the 1st as a "Monthly Plan" variant). Embedding schedule in template limits to 1:1.
-
-**Instead:** Separate `schedules` table with `template_id` FK. Clean 1:N relationship. Each schedule has its own rule, ID, and lifecycle.
-
-### Anti-Pattern 6: Rebuilding Template Select in the Overlay
-
-**What:** Duplicating the template selection UI that already exists in todolist.Model.
-
-**Why bad:** The todolist template workflow (select template -> fill placeholders -> create todo) is a distinct user flow from template management. Combining them in one place creates confusion about intent (am I creating a todo or managing templates?).
-
-**Instead:** Keep both entry points: `t` in todolist for "use template to create todo" and `m` in app for "manage templates and schedules". They serve different purposes.
+**What:** Adding a keybinding in normal mode to cycle priority on the selected todo (e.g., pressing "p" cycles through P1->P2->P3->P4->none).
+**Why bad:** Conflicts with the existing "p" key (preview). Adds accidental priority changes from a single keypress. Priority is not something you change as frequently as toggling done/not-done.
+**Instead:** Priority is set in the edit form only. Press "e" to edit, Tab to priority field, type 1-4. Intentional, not accidental.
 
 ---
 
-## Component Dependency Map (After v1.6)
+## Scalability Considerations
 
-```
-main.go
-  |
-  +-- config.Load() -> config.Config
-  |
-  +-- store.NewSQLiteStore(dbPath) -> store.TodoStore
-  |     +-- migrate() runs v4 (schedules table), v5 (todo schedule columns)
-  |
-  +-- recurring.AutoCreate(store, time.Now(), 7)              [NEW]
-  |     +-- store.ListSchedules()
-  |     +-- recurring.ParseRule()
-  |     +-- store.FindTemplate()
-  |     +-- tmpl.ExecuteTemplate()
-  |     +-- store.TodoExistsForSchedule()
-  |     +-- store.AddScheduledTodo()
-  |
-  +-- app.New(provider, mondayStart, store, theme, cfg) -> app.Model
-        |
-        +-- calendar.Model     (unchanged)
-        +-- todolist.Model     (unchanged -- existing template workflow stays)
-        +-- settings.Model     (unchanged)
-        +-- search.Model       (unchanged)
-        +-- preview.Model      (unchanged)
-        +-- tmplmgr.Model      [NEW -- template management overlay]
-        |     +-- store.TodoStore (ListTemplates, UpdateTemplate, DeleteTemplate)
-        |     +-- store.TodoStore (ListSchedulesForTemplate, AddSchedule, DeleteSchedule)
-        |
-        +-- recurring package  [NEW -- used only in main.go, not in app.Model]
-```
+| Concern | At 100 todos | At 1K todos | At 10K todos |
+|---------|-------------|-------------|-------------- |
+| Priority column impact | Negligible | Negligible | Add index if filtering by priority in SQL |
+| NL date parsing | < 1ms | N/A (one parse per input, not per todo) | N/A |
+| Priority badge rendering | Negligible | Minimal overhead (1 style.Render per todo) | May need viewport (already an issue without priority) |
+| Migration v7 | Instant | < 100ms | < 1s |
 
 ---
 
 ## Sources
 
-- Codebase analysis: `internal/app/model.go` (overlay routing pattern) -- HIGH confidence, direct inspection
-- Codebase analysis: `internal/settings/model.go` (overlay component pattern) -- HIGH confidence, direct inspection
-- Codebase analysis: `internal/store/sqlite.go` (migration pattern, PRAGMA user_version) -- HIGH confidence, direct inspection
-- Codebase analysis: `internal/store/store.go` (TodoStore interface, current method set) -- HIGH confidence, direct inspection
-- Codebase analysis: `internal/todolist/model.go` (template workflow modes) -- HIGH confidence, direct inspection
-- Codebase analysis: `internal/tmpl/tmpl.go` (ExtractPlaceholders, ExecuteTemplate) -- HIGH confidence, direct inspection
-- Codebase analysis: `internal/store/todo.go` (Template struct, Todo struct) -- HIGH confidence, direct inspection
-- Codebase analysis: `main.go` (startup sequence, Init returns nil) -- HIGH confidence, direct inspection
-- PROJECT.md: Active requirements and v2 candidates -- HIGH confidence, project specification
-- SQLite foreign key documentation (sqlite.org/foreignkeys.html) -- HIGH confidence for CASCADE behavior
+- Codebase analysis: `store/todo.go` (Todo struct, 10 fields, helper methods) -- HIGH confidence
+- Codebase analysis: `store/iface.go` (TodoStore interface, 27 methods, Add/Update signatures) -- HIGH confidence
+- Codebase analysis: `store/sqlite.go` (migration pattern v1-v6, todoColumns, scanTodo, Add/Update implementations) -- HIGH confidence
+- Codebase analysis: `todolist/model.go` (edit form fields 0-3, segmented date input system, renderTodo, save methods) -- HIGH confidence
+- Codebase analysis: `theme/theme.go` (16 color roles, 4 theme constructors) -- HIGH confidence
+- Codebase analysis: `todolist/styles.go` (14 styles, NewStyles pattern) -- HIGH confidence
+- Codebase analysis: `search/model.go` (search result rendering, SetTheme pattern) -- HIGH confidence
+- Library: [tj/go-naturaldate](https://github.com/tj/go-naturaldate) -- 313 stars, MIT, Parse() API, WithDirection option -- MEDIUM confidence (not tested locally)
+- Library: [olebedev/when](https://github.com/olebedev/when) -- 1.5k stars, evaluated and rejected for complexity -- MEDIUM confidence
+- Library: [sho0pi/naturaltime](https://github.com/sho0pi/naturaltime) -- wraps JS runtime, rejected -- MEDIUM confidence
+- Library: [araddon/dateparse](https://github.com/araddon/dateparse) -- format parsing not NL, rejected -- MEDIUM confidence
+- [go-naturaldate pkg.go.dev](https://pkg.go.dev/github.com/tj/go-naturaldate) -- API documentation verified -- MEDIUM confidence
