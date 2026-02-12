@@ -45,15 +45,17 @@ func fakeKey(scheduleID int, date string) string {
 }
 
 // Stub methods to satisfy store.TodoStore interface.
-func (f *fakeStore) Add(text, date string) store.Todo                 { return store.Todo{} }
-func (f *fakeStore) Toggle(id int)                                    {}
-func (f *fakeStore) Delete(id int)                                    {}
-func (f *fakeStore) Find(id int) *store.Todo                          { return nil }
-func (f *fakeStore) Update(id int, text, date string)                 {}
-func (f *fakeStore) Todos() []store.Todo                              { return nil }
-func (f *fakeStore) TodosForMonth(y int, m time.Month) []store.Todo   { return nil }
+func (f *fakeStore) Add(text, date, datePrecision string) store.Todo   { return store.Todo{} }
+func (f *fakeStore) Toggle(id int)                                     {}
+func (f *fakeStore) Delete(id int)                                     {}
+func (f *fakeStore) Find(id int) *store.Todo                           { return nil }
+func (f *fakeStore) Update(id int, text, date, datePrecision string)   {}
+func (f *fakeStore) Todos() []store.Todo                               { return nil }
+func (f *fakeStore) TodosForMonth(y int, m time.Month) []store.Todo    { return nil }
 func (f *fakeStore) TodosForDateRange(startDate, endDate string) []store.Todo { return nil }
-func (f *fakeStore) FloatingTodos() []store.Todo                      { return nil }
+func (f *fakeStore) MonthTodos(y int, m time.Month) []store.Todo       { return nil }
+func (f *fakeStore) YearTodos(y int) []store.Todo                      { return nil }
+func (f *fakeStore) FloatingTodos() []store.Todo                       { return nil }
 func (f *fakeStore) IncompleteTodosPerDay(y int, m time.Month) map[int]int { return nil }
 func (f *fakeStore) TotalTodosPerDay(y int, m time.Month) map[int]int { return nil }
 func (f *fakeStore) TodoCountsByMonth() []store.MonthCount            { return nil }
