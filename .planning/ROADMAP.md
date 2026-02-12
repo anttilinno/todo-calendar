@@ -45,10 +45,11 @@ Plans:
   2. Year-level todos appear in a "This Year" section that updates when navigating to a different year
   3. Calendar displays a left circle indicator for month-todo status and a right circle for year-todo status (red = pending, green = all done), only when relevant todos exist
   4. Fuzzy-date todos (month/year) do not appear in weekly view
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 28-01: TBD
+- [ ] 28-01-PLAN.md -- Todo panel sections for month-level and year-level fuzzy todos
+- [ ] 28-02-PLAN.md -- Calendar circle indicators for month/year todo status
 
 ### Phase 29: Settings & View Filtering
 **Goal**: Users can toggle visibility of month and year todo sections from the settings overlay
@@ -71,5 +72,5 @@ Phases execute in numeric order: 27 -> 28 -> 29
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 27. Date Precision & Input | 2/2 | Complete | 2026-02-12 |
-| 28. Display & Indicators | 0/? | Not started | - |
+| 28. Display & Indicators | 0/2 | Not started | - |
 | 29. Settings & View Filtering | 0/? | Not started | - |
