@@ -75,7 +75,7 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 
 ### Active
 
-- [ ] Settings overlay: Esc saves and closes (no save button, no cancel flow)
+- ✓ Settings overlay: Esc saves and closes (no save button, no cancel flow) — v2.0
 
 ### v2 Candidates
 
@@ -97,7 +97,7 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - **Holidays:** rickar/cal/v2 with 11-country registry (de, dk, ee, es, fi, fr, gb, it, no, se, us)
 - **Config:** TOML at ~/.config/todo-calendar/config.toml (BurntSushi/toml v1.6.0)
 - **Storage:** SQLite at ~/.config/todo-calendar/todos.db (modernc.org/sqlite, pure Go, WAL mode)
-- **Codebase:** 8,179 lines of Go across 35 source files
+- **Codebase:** 8,177 lines of Go across 35 source files
 - **Architecture:** Elm Architecture (Bubble Tea), pure rendering functions, constructor DI, TodoStore interface
 
 ## Constraints
@@ -123,7 +123,7 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 | Semantic theme color roles (14 fields) | Named by role not component, decoupled from UI structure | ✓ Good — clean theme propagation |
 | Styles struct + constructor DI over package-level vars | Enables runtime theme switching, testable | ✓ Good — no global state |
 | Empty string = terminal default in Dark theme | Respects user's terminal palette | ✓ Good — non-invasive default |
-| Settings as full-screen overlay with live preview | User wants to see changes immediately; overlay avoids cramming into split pane | ✓ Good — clean UX with save/cancel |
+| Settings as full-screen overlay with live preview | User wants to see changes immediately; overlay avoids cramming into split pane | ✓ Good — clean UX, save-on-close since v2.0 |
 | SortOrder field with gap-10 spacing | Efficient reordering without renumbering all items | ✓ Good — simple swap-based reorder |
 | No caching of overview data; fresh from store | Tiny dataset, no cache invalidation complexity | ✓ Good — always correct |
 | Dedicated PendingFg/CompletedCountFg theme roles | Avoid coupling unrelated UI elements by reusing colors | ✓ Good — clean separation |
@@ -164,17 +164,15 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 | sectionID enum for 4-section todo panel | Boundary-aware reordering without HasDate() | ✓ Good — extensible section model |
 | Reuse PendingFg/CompletedCountFg for circle indicators | No new theme roles needed | ✓ Good — consistent palette |
 | boolIndex() helper for settings toggle mapping | Clean bool-to-option-index conversion | ✓ Good — reusable pattern |
+| Settings save-on-close (no Enter/cancel) | Immediate feedback, fewer keystrokes, simpler mental model | ✓ Good — SettingChangedMsg on every cycle |
 
 ## Known Tech Debt
 
 None.
 
-## Current Milestone: v2.0 Settings UX
+## Current Milestone
 
-**Goal:** Make settings overlay save-on-close — Esc saves and dismisses, no explicit save button needed.
-
-**Target features:**
-- Esc saves settings and closes overlay (replaces save button + cancel flow)
+None active. All milestones through v2.0 shipped.
 
 ---
-*Last updated: 2026-02-12 after v2.0 milestone started*
+*Last updated: 2026-02-12 after v2.0 milestone*

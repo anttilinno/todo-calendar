@@ -1,5 +1,27 @@
 # Project Milestones: Todo Calendar
 
+## v2.0 Settings UX (Shipped: 2026-02-12)
+
+**Delivered:** Settings overlay now applies changes immediately on value cycle and closes with Esc — no save button or cancel flow
+
+**Phases completed:** 30 (1 phase, implemented directly)
+
+**Key accomplishments:**
+- Settings save-on-close: every value change (h/l arrows) immediately persists to config.toml via SettingChangedMsg
+- Removed Save/Cancel key bindings and savedConfig revert mechanism
+- Footer updated from "enter save / esc cancel" to "esc close"
+
+**Stats:**
+- 3 files changed, 22 insertions(+), 54 deletions(-)
+- 8,177 lines of Go across 35 source files
+- 1 phase, 2 requirements
+
+**Git range:** `cfd7fad` → `1f47fd3`
+
+**What's next:** New feature milestones
+
+---
+
 ## v1.9 Fuzzy Date Todos (Shipped: 2026-02-12)
 
 **Delivered:** Month-level and year-level todo precision with dedicated sections, calendar circle indicators, and configurable show/hide toggles in the settings overlay
@@ -247,6 +269,16 @@
 **Git range:** `0a2acaf` → `b9bfca7`
 
 **What's next:** Project functionally complete for v1. Potential v2 enhancements: todo editing, reordering, calendar date indicators, color themes, configurable first day of week.
+
+---
+
+
+## v2.0 Settings UX (Shipped: 2026-02-12)
+
+**Phases completed:** 29 phases, 50 plans, 23 tasks
+
+**Key accomplishments:**
+- (none recorded)
 
 ---
 
