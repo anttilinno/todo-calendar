@@ -9,10 +9,10 @@ Requirements for fuzzy date todos milestone. Each maps to roadmap phases.
 
 ### Date Precision
 
-- [ ] **DATE-01**: User can create a month-level todo by filling only mm + yyyy fields (dd left blank)
-- [ ] **DATE-02**: User can create a year-level todo by filling only yyyy field (mm and dd left blank)
-- [ ] **DATE-03**: Date input uses segmented fields (dd / mm / yyyy) with Tab navigation between them instead of typed separators
-- [ ] **DATE-04**: Segmented date field respects configured date format (ISO: yyyy-mm-dd, EU: dd.mm.yyyy, US: mm/dd/yyyy) for field order
+- [x] **DATE-01**: User can create a month-level todo by filling only mm + yyyy fields (dd left blank)
+- [x] **DATE-02**: User can create a year-level todo by filling only yyyy field (mm and dd left blank)
+- [x] **DATE-03**: Date input uses segmented fields (dd / mm / yyyy) with Tab navigation between them instead of typed separators
+- [x] **DATE-04**: Segmented date field respects configured date format (ISO: yyyy-mm-dd, EU: dd.mm.yyyy, US: mm/dd/yyyy) for field order
 
 ### Todo Sections
 
@@ -57,10 +57,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DATE-01 | Phase 27 | Pending |
-| DATE-02 | Phase 27 | Pending |
-| DATE-03 | Phase 27 | Pending |
-| DATE-04 | Phase 27 | Pending |
+| DATE-01 | Phase 27 | Done |
+| DATE-02 | Phase 27 | Done |
+| DATE-03 | Phase 27 | Done |
+| DATE-04 | Phase 27 | Done |
 | SECT-01 | Phase 28 | Pending |
 | SECT-02 | Phase 28 | Pending |
 | SECT-03 | Phase 28 | Pending |

@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-12)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen
-**Current focus:** Phase 27 - Date Precision & Input
+**Current focus:** Phase 28 - Display & Indicators
 
 ## Current Position
 
-Phase: 27 (1 of 3 in v1.9)
-Plan: 2 of 2 in current phase
-Status: Phase 27 Complete
-Last activity: 2026-02-12 -- Completed 27-02 (segmented date input)
+Phase: 28 (2 of 3 in v1.9)
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-02-12 -- Phase 27 verified and complete
 
-Progress: [██████████] 100%
+Progress: [███░░░░░░░] 33%
 
 ## Performance Metrics
 
@@ -51,5 +51,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-12
-Stopped at: Completed 27-02-PLAN.md (Phase 27 complete)
+Stopped at: Phase 27 complete, ready to plan Phase 28
 Resume file: None
