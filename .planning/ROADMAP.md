@@ -17,7 +17,7 @@
 
 - [x] **Phase 27: Date Precision & Input** - Storage schema for date precision and segmented date field UI
 - [x] **Phase 28: Display & Indicators** - Todo panel sections and calendar circle indicators for fuzzy todos
-- [ ] **Phase 29: Settings & View Filtering** - Show/hide toggles and weekly view exclusion
+- [x] **Phase 29: Settings & View Filtering** - Show/hide toggles and weekly view exclusion
 
 ## Phase Details
 
@@ -62,7 +62,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 29-01-PLAN.md -- Show/hide toggles in settings for month and year todo sections with live preview
+- [x] 29-01-PLAN.md -- Show/hide toggles in settings for month and year todo sections with live preview
 
 ## Progress
 
@@ -73,4 +73,4 @@ Phases execute in numeric order: 27 -> 28 -> 29
 |-------|----------------|--------|-----------|
 | 27. Date Precision & Input | 2/2 | Complete | 2026-02-12 |
 | 28. Display & Indicators | 2/2 | Complete | 2026-02-12 |
-| 29. Settings & View Filtering | 0/1 | Not started | - |
+| 29. Settings & View Filtering | 1/1 | Complete | 2026-02-12 |

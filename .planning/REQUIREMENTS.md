@@ -29,9 +29,9 @@ Requirements for fuzzy date todos milestone. Each maps to roadmap phases.
 
 ### Settings
 
-- [ ] **SET-01**: Setting to show/hide month-level todo section in the todo panel
-- [ ] **SET-02**: Setting to show/hide year-level todo section in the todo panel
-- [ ] **SET-03**: Settings accessible in the existing settings overlay with live preview
+- [x] **SET-01**: Setting to show/hide month-level todo section in the todo panel
+- [x] **SET-02**: Setting to show/hide year-level todo section in the todo panel
+- [x] **SET-03**: Settings accessible in the existing settings overlay with live preview
 
 ### View Integration
 
@@ -68,9 +68,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INDIC-01 | Phase 28 | Done |
 | INDIC-02 | Phase 28 | Done |
 | INDIC-03 | Phase 28 | Done |
-| SET-01 | Phase 29 | Pending |
-| SET-02 | Phase 29 | Pending |
-| SET-03 | Phase 29 | Pending |
+| SET-01 | Phase 29 | Done |
+| SET-02 | Phase 29 | Done |
+| SET-03 | Phase 29 | Done |
 | VIEW-01 | Phase 28 | Done |
 
 **Coverage:**
