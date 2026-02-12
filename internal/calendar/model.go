@@ -153,7 +153,7 @@ func (m Model) View() string {
 		todayDay = now.Day()
 	}
 
-	grid := RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.totals, m.styles)
+	grid := RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.totals, m.store, m.styles)
 	return grid + m.renderOverview()
 }
 

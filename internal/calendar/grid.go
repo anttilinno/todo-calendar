@@ -13,6 +13,19 @@ import (
 // 7 cells x 4 chars + 6 separators x 1 char = 34.
 const gridWidth = 34
 
+// fuzzyStatus returns "pending", "done", or "" based on whether any todos are incomplete.
+func fuzzyStatus(todos []store.Todo) string {
+	if len(todos) == 0 {
+		return ""
+	}
+	for _, t := range todos {
+		if !t.Done {
+			return "pending"
+		}
+	}
+	return "done"
+}
+
 // RenderGrid produces a 34-character wide calendar month grid with 4-char cells.
 // It is a pure function with no side effects.
 //
@@ -22,17 +35,56 @@ const gridWidth = 34
 //   - holidays: map of day numbers that are holidays
 //   - mondayStart: if true, weeks start on Monday; otherwise Sunday
 //   - indicators: map of day numbers to count of incomplete todos (nil safe)
-func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mondayStart bool, indicators map[int]int, totals map[int]int, s Styles) string {
+//   - st: store for querying month/year fuzzy todos (nil safe)
+func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mondayStart bool, indicators map[int]int, totals map[int]int, st store.TodoStore, s Styles) string {
 	var b strings.Builder
 
 	// Title line: month and year, centered in grid width.
 	title := fmt.Sprintf("%s %d", month.String(), year)
-	pad := (gridWidth - len(title)) / 2
+
+	// Determine circle indicators for fuzzy-date todos.
+	var monthCircle, yearCircle string
+	// visibleExtra tracks the number of extra visible characters added by circles + spaces.
+	visibleExtra := 0
+	if st != nil {
+		ms := fuzzyStatus(st.MonthTodos(year, month))
+		switch ms {
+		case "pending":
+			monthCircle = s.FuzzyPending.Render("\u25cf")
+		case "done":
+			monthCircle = s.FuzzyDone.Render("\u25cf")
+		}
+
+		ys := fuzzyStatus(st.YearTodos(year))
+		switch ys {
+		case "pending":
+			yearCircle = s.FuzzyPending.Render("\u25cf")
+		case "done":
+			yearCircle = s.FuzzyDone.Render("\u25cf")
+		}
+	}
+
+	// Build composed title with optional circles.
+	var composed string
+	if monthCircle != "" {
+		composed = monthCircle + " " + s.Header.Render(title)
+		visibleExtra += 2 // "● " = 1 circle + 1 space
+	} else {
+		composed = s.Header.Render(title)
+	}
+	if yearCircle != "" {
+		composed = composed + " " + yearCircle
+		visibleExtra += 2 // " ●" = 1 space + 1 circle
+	}
+
+	// Center based on visible width (title text + circle chars + spaces).
+	visibleWidth := len(title) + visibleExtra
+	pad := (gridWidth - visibleWidth) / 2
 	if pad < 0 {
 		pad = 0
 	}
 	b.WriteString(strings.Repeat(" ", pad))
-	b.WriteString(s.Header.Render(title))
+	b.WriteString(composed)
 	b.WriteString("\n")
 
 	// Weekday header (4 chars per day label, 1 char separator = 34 chars total).
