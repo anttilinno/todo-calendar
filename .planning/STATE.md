@@ -2,19 +2,17 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-08)
+See: .planning/PROJECT.md (updated 2026-02-12)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen
-**Current focus:** Planning next milestone
+**Current focus:** v1.9 Fuzzy Date Todos
 
 ## Current Position
 
-Phase: None (v1.8 complete)
-Plan: Not started
-Status: Ready for next milestone
-Last activity: 2026-02-08 — v1.8 milestone complete
-
-Progress: [##########] 100% (v1.8 complete, 1 plan shipped)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-12 — Milestone v1.9 started
 
 ## Performance Metrics
 
@@ -39,6 +37,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-08
-Stopped at: v1.8 milestone complete
+Last session: 2026-02-12
+Stopped at: Defining v1.9 requirements
 Resume file: None
