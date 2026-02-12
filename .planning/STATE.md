@@ -5,14 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-12)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen
-**Current focus:** v2.1 Priorities & Smart Dates
+**Current focus:** v2.1 Phase 31 - Priority Data Layer
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-12 — Milestone v2.1 started
+Phase: 31 of 33 (Priority Data Layer)
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-02-12 — Roadmap created for v2.1
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -27,6 +29,12 @@ Last activity: 2026-02-12 — Milestone v2.1 started
 
 See PROJECT.md Key Decisions table for complete log.
 
+Recent decisions from research:
+- Priority is visual-only (no auto-sort) to preserve manual J/K reordering
+- Use tj/go-naturaldate with precision-aware wrapper for NL dates
+- Replace segmented 3-field date input with single NL text field
+- Map priority colors to existing theme palette where possible (P1=red, P2=orange, P3=blue, P4=grey)
+
 ### Pending Todos
 
 None.
@@ -38,5 +46,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-12
-Stopped at: Starting v2.1 milestone
+Stopped at: Roadmap created for v2.1 milestone
 Resume file: None

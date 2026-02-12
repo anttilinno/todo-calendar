@@ -62,35 +62,33 @@ Deferred to future releases.
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PRIO-01 | — | Pending |
-| PRIO-02 | — | Pending |
-| PRIO-03 | — | Pending |
-| PRIO-04 | — | Pending |
-| PRIO-05 | — | Pending |
-| PRIO-06 | — | Pending |
-| PRIO-07 | — | Pending |
-| PRIO-08 | — | Pending |
-| PRIO-09 | — | Pending |
-| NLDT-01 | — | Pending |
-| NLDT-02 | — | Pending |
-| NLDT-03 | — | Pending |
-| NLDT-04 | — | Pending |
-| NLDT-05 | — | Pending |
-| NLDT-06 | — | Pending |
-| NLDT-07 | — | Pending |
-| NLDT-08 | — | Pending |
-| NLDT-09 | — | Pending |
-| NLDT-10 | — | Pending |
+| PRIO-01 | Phase 32 | Pending |
+| PRIO-02 | Phase 32 | Pending |
+| PRIO-03 | Phase 32 | Pending |
+| PRIO-04 | Phase 32 | Pending |
+| PRIO-05 | Phase 32 | Pending |
+| PRIO-06 | Phase 32 | Pending |
+| PRIO-07 | Phase 32 | Pending |
+| PRIO-08 | Phase 31 | Pending |
+| PRIO-09 | Phase 31 | Pending |
+| NLDT-01 | Phase 33 | Pending |
+| NLDT-02 | Phase 33 | Pending |
+| NLDT-03 | Phase 33 | Pending |
+| NLDT-04 | Phase 33 | Pending |
+| NLDT-05 | Phase 33 | Pending |
+| NLDT-06 | Phase 33 | Pending |
+| NLDT-07 | Phase 33 | Pending |
+| NLDT-08 | Phase 33 | Pending |
+| NLDT-09 | Phase 33 | Pending |
+| NLDT-10 | Phase 33 | Pending |
 
 **Coverage:**
 - v2.1 requirements: 19 total
-- Mapped to phases: 0
-- Unmapped: 19
+- Mapped to phases: 19
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-12*
-*Last updated: 2026-02-12 after initial definition*
+*Last updated: 2026-02-12 after roadmap creation*
