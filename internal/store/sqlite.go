@@ -140,6 +140,19 @@ func (s *SQLiteStore) migrate() error {
 		}
 	}
 
+	if version < 6 {
+		if _, err := s.db.Exec(`ALTER TABLE todos ADD COLUMN date_precision TEXT NOT NULL DEFAULT 'day'`); err != nil {
+			return fmt.Errorf("add date_precision column: %w", err)
+		}
+		// Floating todos (date IS NULL) should have empty date_precision, not 'day'.
+		if _, err := s.db.Exec(`UPDATE todos SET date_precision = '' WHERE date IS NULL`); err != nil {
+			return fmt.Errorf("fix floating date_precision: %w", err)
+		}
+		if _, err := s.db.Exec(`PRAGMA user_version = 6`); err != nil {
+			return fmt.Errorf("set user_version: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -149,7 +162,7 @@ func (s *SQLiteStore) Close() error {
 }
 
 // todoColumns is the column list used in SELECT statements.
-const todoColumns = "id, text, body, date, done, created_at, sort_order, schedule_id, schedule_date"
+const todoColumns = "id, text, body, date, done, created_at, sort_order, schedule_id, schedule_date, date_precision"
 
 // scanTodo scans a single todo row from the given scanner.
 func scanTodo(scanner interface{ Scan(...any) error }) (Todo, error) {
@@ -158,7 +171,7 @@ func scanTodo(scanner interface{ Scan(...any) error }) (Todo, error) {
 	var done int
 	var scheduleID sql.NullInt64
 	var scheduleDate sql.NullString
-	err := scanner.Scan(&t.ID, &t.Text, &t.Body, &date, &done, &t.CreatedAt, &t.SortOrder, &scheduleID, &scheduleDate)
+	err := scanner.Scan(&t.ID, &t.Text, &t.Body, &date, &done, &t.CreatedAt, &t.SortOrder, &scheduleID, &scheduleDate, &t.DatePrecision)
 	if err != nil {
 		return Todo{}, err
 	}
@@ -189,7 +202,8 @@ func scanTodos(rows *sql.Rows) ([]Todo, error) {
 }
 
 // Add creates a new todo and returns it. Date="" means floating (NULL in DB).
-func (s *SQLiteStore) Add(text string, date string) Todo {
+// datePrecision is "day", "month", "year", or "" (floating).
+func (s *SQLiteStore) Add(text string, date string, datePrecision string) Todo {
 	createdAt := time.Now().Format(dateFormat)
 
 	// Compute next sort_order as MAX(sort_order) + 10.
@@ -202,9 +216,14 @@ func (s *SQLiteStore) Add(text string, date string) Todo {
 		dateVal = date
 	}
 
+	// Floating todos get empty precision.
+	if date == "" {
+		datePrecision = ""
+	}
+
 	result, err := s.db.Exec(
-		"INSERT INTO todos (text, body, date, done, created_at, sort_order) VALUES (?, '', ?, 0, ?, ?)",
-		text, dateVal, createdAt, sortOrder,
+		"INSERT INTO todos (text, body, date, done, created_at, sort_order, date_precision) VALUES (?, '', ?, 0, ?, ?, ?)",
+		text, dateVal, createdAt, sortOrder, datePrecision,
 	)
 	if err != nil {
 		return Todo{}
@@ -212,12 +231,13 @@ func (s *SQLiteStore) Add(text string, date string) Todo {
 
 	id, _ := result.LastInsertId()
 	return Todo{
-		ID:        int(id),
-		Text:      text,
-		Date:      date,
-		Done:      false,
-		CreatedAt: createdAt,
-		SortOrder: sortOrder,
+		ID:            int(id),
+		Text:          text,
+		Date:          date,
+		Done:          false,
+		CreatedAt:     createdAt,
+		SortOrder:     sortOrder,
+		DatePrecision: datePrecision,
 	}
 }
 
@@ -241,14 +261,18 @@ func (s *SQLiteStore) Find(id int) *Todo {
 	return &t
 }
 
-// Update modifies the text and date of the todo with the given ID.
-// Date="" means floating (NULL in DB).
-func (s *SQLiteStore) Update(id int, text string, date string) {
+// Update modifies the text, date, and date precision of the todo with the given ID.
+// Date="" means floating (NULL in DB). datePrecision is "day", "month", "year", or "" (floating).
+func (s *SQLiteStore) Update(id int, text string, date string, datePrecision string) {
 	var dateVal any
 	if date != "" {
 		dateVal = date
 	}
-	s.db.Exec("UPDATE todos SET text = ?, date = ? WHERE id = ?", text, dateVal, id)
+	// Floating todos get empty precision.
+	if date == "" {
+		datePrecision = ""
+	}
+	s.db.Exec("UPDATE todos SET text = ?, date = ?, date_precision = ? WHERE id = ?", text, dateVal, datePrecision, id)
 }
 
 // UpdateBody sets the markdown body of the todo with the given ID.
@@ -267,15 +291,15 @@ func (s *SQLiteStore) Todos() []Todo {
 	return todos
 }
 
-// TodosForMonth returns todos whose date falls in the given year and month,
-// sorted by sort_order, date, then id.
+// TodosForMonth returns day-precision todos whose date falls in the given year and month,
+// sorted by sort_order, date, then id. Excludes fuzzy-date (month/year precision) todos.
 func (s *SQLiteStore) TodosForMonth(year int, month time.Month) []Todo {
 	start := fmt.Sprintf("%04d-%02d-01", year, month)
 	// Last day: go to first of next month, subtract one day.
 	end := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Format(dateFormat)
 
 	rows, err := s.db.Query(
-		"SELECT "+todoColumns+" FROM todos WHERE date >= ? AND date <= ? ORDER BY sort_order, date, id",
+		"SELECT "+todoColumns+" FROM todos WHERE date >= ? AND date <= ? AND date_precision = 'day' ORDER BY sort_order, date, id",
 		start, end,
 	)
 	if err != nil {
@@ -286,12 +310,45 @@ func (s *SQLiteStore) TodosForMonth(year int, month time.Month) []Todo {
 	return todos
 }
 
-// TodosForDateRange returns todos whose date falls within [startDate, endDate] inclusive,
+// TodosForDateRange returns day-precision todos whose date falls within [startDate, endDate] inclusive,
 // sorted by sort_order, date, then id. Parameters are ISO date strings ("YYYY-MM-DD").
+// Excludes fuzzy-date (month/year precision) todos.
 func (s *SQLiteStore) TodosForDateRange(startDate, endDate string) []Todo {
 	rows, err := s.db.Query(
-		"SELECT "+todoColumns+" FROM todos WHERE date >= ? AND date <= ? ORDER BY sort_order, date, id",
+		"SELECT "+todoColumns+" FROM todos WHERE date >= ? AND date <= ? AND date_precision = 'day' ORDER BY sort_order, date, id",
 		startDate, endDate,
+	)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	todos, _ := scanTodos(rows)
+	return todos
+}
+
+// MonthTodos returns month-precision todos for the given year and month,
+// sorted by sort_order, then id.
+func (s *SQLiteStore) MonthTodos(year int, month time.Month) []Todo {
+	ym := fmt.Sprintf("%04d-%02d", year, month)
+	rows, err := s.db.Query(
+		"SELECT "+todoColumns+" FROM todos WHERE date_precision = 'month' AND substr(date, 1, 7) = ? ORDER BY sort_order, id",
+		ym,
+	)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	todos, _ := scanTodos(rows)
+	return todos
+}
+
+// YearTodos returns year-precision todos for the given year,
+// sorted by sort_order, then id.
+func (s *SQLiteStore) YearTodos(year int) []Todo {
+	y := fmt.Sprintf("%04d", year)
+	rows, err := s.db.Query(
+		"SELECT "+todoColumns+" FROM todos WHERE date_precision = 'year' AND substr(date, 1, 4) = ? ORDER BY sort_order, id",
+		y,
 	)
 	if err != nil {
 		return nil
@@ -319,7 +376,7 @@ func (s *SQLiteStore) IncompleteTodosPerDay(year int, month time.Month) map[int]
 	end := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Format(dateFormat)
 
 	rows, err := s.db.Query(
-		"SELECT CAST(substr(date, 9, 2) AS INTEGER) AS day, COUNT(*) FROM todos WHERE done = 0 AND date >= ? AND date <= ? GROUP BY day",
+		"SELECT CAST(substr(date, 9, 2) AS INTEGER) AS day, COUNT(*) FROM todos WHERE done = 0 AND date >= ? AND date <= ? AND date_precision = 'day' GROUP BY day",
 		start, end,
 	)
 	if err != nil {
@@ -339,12 +396,13 @@ func (s *SQLiteStore) IncompleteTodosPerDay(year int, month time.Month) map[int]
 
 // TotalTodosPerDay returns a map from day-of-month to count of all todos
 // (both done and not done) for the specified year and month.
+// Excludes fuzzy-date (month/year precision) todos.
 func (s *SQLiteStore) TotalTodosPerDay(year int, month time.Month) map[int]int {
 	start := fmt.Sprintf("%04d-%02d-01", year, month)
 	end := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Format(dateFormat)
 
 	rows, err := s.db.Query(
-		"SELECT CAST(substr(date, 9, 2) AS INTEGER) AS day, COUNT(*) FROM todos WHERE date >= ? AND date <= ? GROUP BY day",
+		"SELECT CAST(substr(date, 9, 2) AS INTEGER) AS day, COUNT(*) FROM todos WHERE date >= ? AND date <= ? AND date_precision = 'day' GROUP BY day",
 		start, end,
 	)
 	if err != nil {
@@ -625,6 +683,7 @@ func (s *SQLiteStore) TodoExistsForSchedule(scheduleID int, date string) bool {
 }
 
 // AddScheduledTodo creates a todo linked to a schedule with schedule_date set.
+// Scheduled todos are always day-precision.
 func (s *SQLiteStore) AddScheduledTodo(text, date, body string, scheduleID int) Todo {
 	createdAt := time.Now().Format(dateFormat)
 
@@ -639,7 +698,7 @@ func (s *SQLiteStore) AddScheduledTodo(text, date, body string, scheduleID int) 
 	}
 
 	result, err := s.db.Exec(
-		"INSERT INTO todos (text, body, date, done, created_at, sort_order, schedule_id, schedule_date) VALUES (?, ?, ?, 0, ?, ?, ?, ?)",
+		"INSERT INTO todos (text, body, date, done, created_at, sort_order, schedule_id, schedule_date, date_precision) VALUES (?, ?, ?, 0, ?, ?, ?, ?, 'day')",
 		text, body, dateVal, createdAt, sortOrder, scheduleID, date,
 	)
 	if err != nil {
@@ -648,14 +707,15 @@ func (s *SQLiteStore) AddScheduledTodo(text, date, body string, scheduleID int) 
 
 	id, _ := result.LastInsertId()
 	return Todo{
-		ID:           int(id),
-		Text:         text,
-		Body:         body,
-		Date:         date,
-		Done:         false,
-		CreatedAt:    createdAt,
-		SortOrder:    sortOrder,
-		ScheduleID:   scheduleID,
-		ScheduleDate: date,
+		ID:            int(id),
+		Text:          text,
+		Body:          body,
+		Date:          date,
+		Done:          false,
+		CreatedAt:     createdAt,
+		SortOrder:     sortOrder,
+		ScheduleID:    scheduleID,
+		ScheduleDate:  date,
+		DatePrecision: "day",
 	}
 }

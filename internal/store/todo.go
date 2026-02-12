@@ -9,15 +9,16 @@ const dateFormat = "2006-01-02"
 // Date is stored as a plain string ("YYYY-MM-DD") to avoid timezone
 // corruption during JSON round-trips.
 type Todo struct {
-	ID        int    `json:"id"`
-	Text      string `json:"text"`
-	Body      string `json:"body,omitempty"`
-	Date      string `json:"date,omitempty"`
-	Done      bool   `json:"done"`
-	CreatedAt string `json:"created_at"`
-	SortOrder    int    `json:"sort_order,omitempty"`
-	ScheduleID   int    `json:"schedule_id,omitempty"`
-	ScheduleDate string `json:"schedule_date,omitempty"`
+	ID            int    `json:"id"`
+	Text          string `json:"text"`
+	Body          string `json:"body,omitempty"`
+	Date          string `json:"date,omitempty"`
+	Done          bool   `json:"done"`
+	CreatedAt     string `json:"created_at"`
+	SortOrder     int    `json:"sort_order,omitempty"`
+	ScheduleID    int    `json:"schedule_id,omitempty"`
+	ScheduleDate  string `json:"schedule_date,omitempty"`
+	DatePrecision string `json:"date_precision"`
 }
 
 // HasBody reports whether the todo has a non-empty markdown body.
@@ -43,12 +44,29 @@ type Schedule struct {
 	CreatedAt          string
 }
 
+// IsMonthPrecision reports whether this todo has month-level date precision.
+func (t Todo) IsMonthPrecision() bool {
+	return t.DatePrecision == "month"
+}
+
+// IsYearPrecision reports whether this todo has year-level date precision.
+func (t Todo) IsYearPrecision() bool {
+	return t.DatePrecision == "year"
+}
+
+// IsFuzzy reports whether this todo has a fuzzy (non-day) date precision.
+func (t Todo) IsFuzzy() bool {
+	return t.DatePrecision == "month" || t.DatePrecision == "year"
+}
+
 // HasDate reports whether the todo has a date assigned.
 func (t Todo) HasDate() bool {
 	return t.Date != ""
 }
 
 // InMonth reports whether the todo's date falls in the given year and month.
+// Month-precision todos match if year and month match.
+// Year-precision todos match if the year matches.
 // Returns false if the todo has no date or the date cannot be parsed.
 func (t Todo) InMonth(year int, month time.Month) bool {
 	if t.Date == "" {
@@ -59,13 +77,24 @@ func (t Todo) InMonth(year int, month time.Month) bool {
 		return false
 	}
 	y, m, _ := d.Date()
-	return y == year && m == month
+	switch t.DatePrecision {
+	case "year":
+		return y == year
+	case "month":
+		return y == year && m == month
+	default:
+		return y == year && m == month
+	}
 }
 
 // InDateRange reports whether the todo's date falls within [startDate, endDate] inclusive.
+// Fuzzy-date todos (month/year precision) are excluded from date range matching.
 // Returns false if the todo has no date or any date cannot be parsed.
 func (t Todo) InDateRange(startDate, endDate string) bool {
 	if t.Date == "" {
+		return false
+	}
+	if t.IsFuzzy() {
 		return false
 	}
 	d, err := time.Parse(dateFormat, t.Date)
