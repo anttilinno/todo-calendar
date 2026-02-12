@@ -15,7 +15,7 @@
 - Integer phases (27, 28, 29): Planned milestone work
 - Decimal phases (27.1, 27.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 27: Date Precision & Input** - Storage schema for date precision and segmented date field UI
+- [x] **Phase 27: Date Precision & Input** - Storage schema for date precision and segmented date field UI
 - [ ] **Phase 28: Display & Indicators** - Todo panel sections and calendar circle indicators for fuzzy todos
 - [ ] **Phase 29: Settings & View Filtering** - Show/hide toggles and weekly view exclusion
 
@@ -33,8 +33,8 @@
 **Plans**: 2 plans
 
 Plans:
-- [ ] 27-01-PLAN.md -- Schema migration, date precision storage, and precision-aware store queries
-- [ ] 27-02-PLAN.md -- Segmented date input UI with format-aware ordering and precision derivation
+- [x] 27-01-PLAN.md -- Schema migration, date precision storage, and precision-aware store queries
+- [x] 27-02-PLAN.md -- Segmented date input UI with format-aware ordering and precision derivation
 
 ### Phase 28: Display & Indicators
 **Goal**: Users can see their fuzzy-date todos in dedicated sections and spot month/year status at a glance on the calendar
@@ -70,6 +70,6 @@ Phases execute in numeric order: 27 -> 28 -> 29
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 27. Date Precision & Input | 0/2 | In progress | - |
+| 27. Date Precision & Input | 2/2 | Complete | 2026-02-12 |
 | 28. Display & Indicators | 0/? | Not started | - |
 | 29. Settings & View Filtering | 0/? | Not started | - |
