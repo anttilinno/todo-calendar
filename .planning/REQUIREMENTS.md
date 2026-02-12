@@ -29,14 +29,14 @@ Requirements for v2.0 Settings UX milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SET-01 | — | Pending |
-| SET-02 | — | Pending |
+| SET-01 | Phase 30 | Pending |
+| SET-02 | Phase 30 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 2 total
-- Mapped to phases: 0
-- Unmapped: 2 ⚠️
+- Mapped to phases: 2
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-12*
-*Last updated: 2026-02-12 after initial definition*
+*Last updated: 2026-02-12 after roadmap creation*

@@ -5,14 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-12)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen
-**Current focus:** v2.0 Settings UX
+**Current focus:** Phase 30 - Save-on-Close Settings (v2.0)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-12 — Milestone v2.0 started
+Phase: 30 of 30 (Save-on-Close Settings)
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-02-12 — Roadmap created for v2.0
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -38,5 +40,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-12
-Stopped at: Defining v2.0 requirements
+Stopped at: Roadmap created for v2.0, ready to plan Phase 30
 Resume file: None
