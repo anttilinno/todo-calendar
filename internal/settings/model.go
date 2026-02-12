@@ -21,19 +21,14 @@ type option struct {
 	index   int      // currently selected index
 }
 
-// ThemeChangedMsg is emitted when the user cycles the theme option.
-// The parent model uses this to trigger live preview.
-type ThemeChangedMsg struct {
-	Theme theme.Theme
-}
-
-// SaveMsg is emitted when the user presses Enter to save settings.
-type SaveMsg struct {
+// SettingChangedMsg is emitted whenever the user changes any setting value.
+// The parent model uses this to apply and persist changes immediately.
+type SettingChangedMsg struct {
 	Cfg config.Config
 }
 
-// CancelMsg is emitted when the user presses Escape to cancel settings.
-type CancelMsg struct{}
+// CloseMsg is emitted when the user presses Escape to close settings.
+type CloseMsg struct{}
 
 // Model represents the settings overlay.
 type Model struct {
@@ -128,11 +123,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if opt.index < 0 {
 				opt.index = len(opt.values) - 1
 			}
-			if m.cursor == 0 {
-				newTheme := theme.ForName(opt.values[opt.index])
-				return m, func() tea.Msg {
-					return ThemeChangedMsg{Theme: newTheme}
-				}
+			cfg := m.Config()
+			return m, func() tea.Msg {
+				return SettingChangedMsg{Cfg: cfg}
 			}
 
 		case key.Matches(msg, m.keys.Right):
@@ -141,22 +134,14 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if opt.index >= len(opt.values) {
 				opt.index = 0
 			}
-			if m.cursor == 0 {
-				newTheme := theme.ForName(opt.values[opt.index])
-				return m, func() tea.Msg {
-					return ThemeChangedMsg{Theme: newTheme}
-				}
-			}
-
-		case key.Matches(msg, m.keys.Save):
 			cfg := m.Config()
 			return m, func() tea.Msg {
-				return SaveMsg{Cfg: cfg}
+				return SettingChangedMsg{Cfg: cfg}
 			}
 
-		case key.Matches(msg, m.keys.Cancel):
+		case key.Matches(msg, m.keys.Close):
 			return m, func() tea.Msg {
-				return CancelMsg{}
+				return CloseMsg{}
 			}
 		}
 
@@ -208,7 +193,7 @@ func (m Model) View() string {
 
 // HelpBindings returns settings-specific key bindings for help bar display.
 func (m Model) HelpBindings() []key.Binding {
-	return []key.Binding{m.keys.Left, m.keys.Right, m.keys.Up, m.keys.Down, m.keys.Save, m.keys.Cancel}
+	return []key.Binding{m.keys.Left, m.keys.Right, m.keys.Up, m.keys.Down, m.keys.Close}
 }
 
 // boolIndex returns 0 for true, 1 for false (maps to ["true", "false"] slice).
