@@ -59,10 +59,10 @@ Plans:
   1. Settings overlay has toggles to show or hide the month-level todo section
   2. Settings overlay has toggles to show or hide the year-level todo section
   3. Toggling settings takes effect immediately with live preview, and persists after save
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 29-01: TBD
+- [ ] 29-01-PLAN.md -- Show/hide toggles in settings for month and year todo sections with live preview
 
 ## Progress
 
@@ -73,4 +73,4 @@ Phases execute in numeric order: 27 -> 28 -> 29
 |-------|----------------|--------|-----------|
 | 27. Date Precision & Input | 2/2 | Complete | 2026-02-12 |
 | 28. Display & Indicators | 2/2 | Complete | 2026-02-12 |
-| 29. Settings & View Filtering | 0/? | Not started | - |
+| 29. Settings & View Filtering | 0/1 | Not started | - |
