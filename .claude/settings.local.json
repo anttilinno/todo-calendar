@@ -4,5 +4,10 @@
       "WebFetch(domain:docs.rs)",
       "Bash(cargo run:*)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "linear",
+    "postgres"
+  ],
+  "enableAllProjectMcpServers": true
 }
