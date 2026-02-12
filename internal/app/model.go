@@ -501,6 +501,11 @@ func (m *Model) syncTodoSize() {
 	}
 
 	m.todoList.SetSize(todoInnerWidth, contentHeight)
+
+	// Calendar content width = pane width minus horizontal padding (not border).
+	paneStyle := m.styles.Pane(true)
+	hPad := paneStyle.GetPaddingLeft() + paneStyle.GetPaddingRight()
+	m.calendar.SetContentWidth(calendarInnerWidth - hPad)
 }
 
 // applyTheme updates all component styles with the given theme.
@@ -621,11 +626,13 @@ func (m Model) View() string {
 
 	calStyle := m.styles.Pane(m.activePane == calendarPane).
 		Width(calendarInnerWidth).
-		Height(contentHeight)
+		Height(contentHeight).
+		MaxHeight(contentHeight + frameV) // truncate overflow including border
 
 	todoStyle := m.styles.Pane(m.activePane == todoPane).
 		Width(todoInnerWidth).
-		Height(contentHeight)
+		Height(contentHeight).
+		MaxHeight(contentHeight + frameV) // truncate overflow including border
 
 	top := lipgloss.JoinHorizontal(lipgloss.Top,
 		calStyle.Render(m.calendar.View()),

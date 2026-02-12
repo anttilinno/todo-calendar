@@ -37,8 +37,6 @@ func weekStartFor(t time.Time, mondayStart bool) time.Time {
 // Model represents the calendar pane.
 type Model struct {
 	focused     bool
-	width       int
-	height      int
 	year        int
 	month       time.Month
 	today       time.Time
@@ -54,6 +52,7 @@ type Model struct {
 	weekStart      time.Time
 	showMonthTodos bool
 	showYearTodos  bool
+	contentWidth   int // pane text content width (pane width minus padding)
 }
 
 // New creates a new calendar model with the given holiday provider,
@@ -136,9 +135,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.totals = m.store.TotalTodosPerDay(m.year, m.month)
 		}
 
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
 	}
 
 	return m, nil
@@ -146,19 +142,22 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 // View renders the calendar pane content including the overview section.
 func (m Model) View() string {
+	var content string
 	if m.viewMode == WeekView {
 		grid := RenderWeekGrid(m.weekStart, time.Now(), m.provider, m.mondayStart, m.store, m.styles)
-		return grid + m.renderOverview()
+		content = grid + m.renderOverview()
+	} else {
+		todayDay := 0
+		now := time.Now()
+		if now.Year() == m.year && now.Month() == m.month {
+			todayDay = now.Day()
+		}
+
+		grid := RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.totals, m.store, m.showMonthTodos, m.showYearTodos, m.contentWidth, m.styles)
+		content = grid + m.renderOverview()
 	}
 
-	todayDay := 0
-	now := time.Now()
-	if now.Year() == m.year && now.Month() == m.month {
-		todayDay = now.Day()
-	}
-
-	grid := RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.totals, m.store, m.showMonthTodos, m.showYearTodos, m.styles)
-	return grid + m.renderOverview()
+	return content
 }
 
 // renderOverview builds the overview section showing per-month todo counts
@@ -215,6 +214,11 @@ func (m *Model) RefreshIndicators() {
 // SetFocused sets whether this pane is focused.
 func (m *Model) SetFocused(f bool) {
 	m.focused = f
+}
+
+// SetContentWidth sets the pane text content width (pane width minus padding).
+func (m *Model) SetContentWidth(w int) {
+	m.contentWidth = w
 }
 
 // Year returns the currently viewed year.
