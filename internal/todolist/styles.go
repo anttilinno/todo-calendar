@@ -20,6 +20,7 @@ type Styles struct {
 	EditTitle     lipgloss.Style
 	FieldLabel    lipgloss.Style
 	EditHint      lipgloss.Style
+	DateSeparator lipgloss.Style
 }
 
 // NewStyles builds todo list styles from the given theme.
@@ -38,5 +39,6 @@ func NewStyles(t theme.Theme) Styles {
 		EditTitle:     lipgloss.NewStyle().Bold(true).Foreground(t.AccentFg),
 		FieldLabel:    lipgloss.NewStyle().Bold(true).Foreground(t.NormalFg),
 		EditHint:      lipgloss.NewStyle().Foreground(t.MutedFg),
+		DateSeparator: lipgloss.NewStyle().Foreground(t.MutedFg),
 	}
 }

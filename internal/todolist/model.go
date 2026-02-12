@@ -72,10 +72,17 @@ type Model struct {
 	styles          Styles
 
 	// Full-pane edit fields
-	dateInput     textinput.Model // separate input for date field in full-pane mode
 	bodyTextarea  textarea.Model  // textarea for body editing in edit mode
 	editField     int             // 0 = title, 1 = date, 2 = body, 3 = template
 	templateInput textinput.Model // placeholder input for template field (Phase 25 adds picker)
+
+	// Segmented date input (replaces dateInput)
+	dateSegDay   textinput.Model
+	dateSegMonth textinput.Model
+	dateSegYear  textinput.Model
+	dateSegFocus int    // 0, 1, 2 = which segment is focused (left to right)
+	dateSegOrder [3]int // maps visual position to semantic: 0=day, 1=month, 2=year
+	dateFormat   string // "iso", "eu", or "us"
 
 	// Week filter state (empty = no filter, set by app model when calendar is in weekly view)
 	weekFilterStart string
@@ -100,10 +107,23 @@ func New(s store.TodoStore, t theme.Theme) Model {
 	ti.CharLimit = 120
 	ti.Prompt = "> "
 
-	di := textinput.New()
-	di.Placeholder = "YYYY-MM-DD"
-	di.Prompt = "Date: "
-	di.CharLimit = 10
+	segDay := textinput.New()
+	segDay.Placeholder = "dd"
+	segDay.CharLimit = 2
+	segDay.Width = 4
+	segDay.Prompt = ""
+
+	segMonth := textinput.New()
+	segMonth.Placeholder = "mm"
+	segMonth.CharLimit = 2
+	segMonth.Width = 4
+	segMonth.Prompt = ""
+
+	segYear := textinput.New()
+	segYear.Placeholder = "yyyy"
+	segYear.CharLimit = 4
+	segYear.Width = 6
+	segYear.Prompt = ""
 
 	ba := textarea.New()
 	ba.Placeholder = "Body text (markdown supported)"
@@ -118,7 +138,11 @@ func New(s store.TodoStore, t theme.Theme) Model {
 	return Model{
 		store:            s,
 		input:            ti,
-		dateInput:        di,
+		dateSegDay:       segDay,
+		dateSegMonth:     segMonth,
+		dateSegYear:      segYear,
+		dateSegOrder:     dateSegmentOrder("iso"),
+		dateFormat:       "iso",
 		bodyTextarea:     ba,
 		templateInput:    tmplInput,
 		viewYear:         now.Year(),
@@ -351,7 +375,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				case 3:
 					m.templateInput, cmd = m.templateInput.Update(msg)
 				case 1:
-					m.dateInput, cmd = m.dateInput.Update(msg)
+					seg := m.dateSegmentByPos(m.dateSegFocus)
+					*seg, cmd = seg.Update(msg)
 				default:
 					m.input, cmd = m.input.Update(msg)
 				}
@@ -429,8 +454,8 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.input.Placeholder = "What needs doing?"
 		m.input.Prompt = "> "
 		m.input.SetValue("")
-		m.dateInput.SetValue("")
-		m.dateInput.Placeholder = m.datePlaceholder + " (empty = floating)"
+		m.clearAllDateSegments()
+		m.blurAllDateSegments()
 		m.bodyTextarea.SetValue("")
 		return m, m.input.Focus()
 
@@ -470,9 +495,25 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.input.Prompt = "> "
 			m.input.SetValue(fresh.Text)
 			m.input.CursorEnd()
-			m.dateInput.Placeholder = m.datePlaceholder + " (empty = floating)"
-			m.dateInput.Prompt = "> "
-			m.dateInput.SetValue(config.FormatDate(fresh.Date, m.dateLayout))
+			// Populate date segments from existing todo
+			m.clearAllDateSegments()
+			m.blurAllDateSegments()
+			if fresh.Date != "" {
+				parts := strings.SplitN(fresh.Date, "-", 3)
+				if len(parts) == 3 {
+					switch fresh.DatePrecision {
+					case "day":
+						m.dateSegYear.SetValue(parts[0])
+						m.dateSegMonth.SetValue(parts[1])
+						m.dateSegDay.SetValue(parts[2])
+					case "month":
+						m.dateSegYear.SetValue(parts[0])
+						m.dateSegMonth.SetValue(parts[1])
+					case "year":
+						m.dateSegYear.SetValue(parts[0])
+					}
+				}
+			}
 			m.bodyTextarea.SetValue(fresh.Body)
 			return m, m.input.Focus()
 		}
@@ -577,15 +618,20 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.saveAdd()
 
 	case key.Matches(msg, m.keys.SwitchField):
-		// Cycle: title(0) -> date(1) -> body(2) -> template(3) -> title(0)
+		// Cycle: title(0) -> date segments(1) -> body(2) -> template(3) -> title(0)
 		switch m.editField {
 		case 0:
 			m.editField = 1
 			m.input.Blur()
-			return m, m.dateInput.Focus()
+			return m, m.focusDateSegment(0)
 		case 1:
+			if m.dateSegFocus < 2 {
+				// Advance to next date segment
+				return m, m.focusDateSegment(m.dateSegFocus + 1)
+			}
+			// Past last segment -> body
 			m.editField = 2
-			m.dateInput.Blur()
+			m.blurAllDateSegments()
 			return m, m.bodyTextarea.Focus()
 		case 2:
 			m.editField = 3
@@ -604,6 +650,7 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.editField = 0
 			m.bodyTextarea.Blur()
 			m.templateInput.Blur()
+			m.blurAllDateSegments()
 			m.pickingTemplate = false
 			m.promptingPlaceholders = false
 			m.pickerSelectedTemplate = nil
@@ -615,11 +662,11 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		// Esc in title/date cancels entirely
 		m.mode = normalMode
 		m.input.Blur()
-		m.dateInput.Blur()
+		m.blurAllDateSegments()
 		m.bodyTextarea.Blur()
 		m.templateInput.Blur()
 		m.input.SetValue("")
-		m.dateInput.SetValue("")
+		m.clearAllDateSegments()
 		m.bodyTextarea.SetValue("")
 		m.templateInput.SetValue("")
 		m.pickingTemplate = false
@@ -638,7 +685,7 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case 0:
 		m.input, cmd = m.input.Update(msg)
 	case 1:
-		m.dateInput, cmd = m.dateInput.Update(msg)
+		return m.updateDateSegment(msg)
 	case 2:
 		m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
 	case 3:
@@ -666,15 +713,18 @@ func (m Model) updateEditMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.saveEdit()
 
 	case key.Matches(msg, m.keys.SwitchField):
-		// Cycle: title(0) → date(1) → body(2) → title(0)
+		// Cycle: title(0) → date segments(1) → body(2) → title(0)
 		switch m.editField {
 		case 0:
 			m.editField = 1
 			m.input.Blur()
-			return m, m.dateInput.Focus()
+			return m, m.focusDateSegment(0)
 		case 1:
+			if m.dateSegFocus < 2 {
+				return m, m.focusDateSegment(m.dateSegFocus + 1)
+			}
 			m.editField = 2
-			m.dateInput.Blur()
+			m.blurAllDateSegments()
 			return m, m.bodyTextarea.Focus()
 		case 2:
 			m.editField = 0
@@ -692,10 +742,10 @@ func (m Model) updateEditMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		}
 		m.mode = normalMode
 		m.input.Blur()
-		m.dateInput.Blur()
+		m.blurAllDateSegments()
 		m.bodyTextarea.Blur()
 		m.input.SetValue("")
-		m.dateInput.SetValue("")
+		m.clearAllDateSegments()
 		m.bodyTextarea.SetValue("")
 		m.editField = 0
 		return m, nil
@@ -707,7 +757,7 @@ func (m Model) updateEditMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case 0:
 		m.input, cmd = m.input.Update(msg)
 	case 1:
-		m.dateInput, cmd = m.dateInput.Update(msg)
+		return m.updateDateSegment(msg)
 	case 2:
 		m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
 	}
@@ -721,34 +771,26 @@ func (m Model) saveEdit() (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	date := strings.TrimSpace(m.dateInput.Value())
-	isoDate := ""
-	if date != "" {
-		var err error
-		isoDate, err = config.ParseUserDate(date, m.dateLayout)
-		if err != nil {
-			// Invalid date — focus date field
-			m.editField = 1
-			m.input.Blur()
-			return m, m.dateInput.Focus()
-		}
+	isoDate, precision, errPos := m.deriveDateFromSegments()
+	if errPos >= 0 {
+		// Invalid/incomplete date -- focus the problematic segment
+		m.editField = 1
+		m.input.Blur()
+		m.bodyTextarea.Blur()
+		return m, m.focusDateSegment(errPos)
 	}
 
 	body := m.bodyTextarea.Value()
 
-	precision := "day"
-	if isoDate == "" {
-		precision = ""
-	}
 	m.store.Update(m.editingID, text, isoDate, precision)
 	m.store.UpdateBody(m.editingID, body)
 
 	m.mode = normalMode
 	m.input.Blur()
-	m.dateInput.Blur()
+	m.blurAllDateSegments()
 	m.bodyTextarea.Blur()
 	m.input.SetValue("")
-	m.dateInput.SetValue("")
+	m.clearAllDateSegments()
 	m.bodyTextarea.SetValue("")
 	m.editField = 0
 
@@ -767,25 +809,16 @@ func (m Model) saveAdd() (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	date := strings.TrimSpace(m.dateInput.Value())
-	isoDate := ""
-	if date != "" {
-		var err error
-		isoDate, err = config.ParseUserDate(date, m.dateLayout)
-		if err != nil {
-			// Invalid date -- focus date field
-			m.editField = 1
-			m.input.Blur()
-			m.bodyTextarea.Blur()
-			m.templateInput.Blur()
-			return m, m.dateInput.Focus()
-		}
+	isoDate, precision, errPos := m.deriveDateFromSegments()
+	if errPos >= 0 {
+		// Invalid/incomplete date -- focus the problematic segment
+		m.editField = 1
+		m.input.Blur()
+		m.bodyTextarea.Blur()
+		m.templateInput.Blur()
+		return m, m.focusDateSegment(errPos)
 	}
 
-	precision := "day"
-	if isoDate == "" {
-		precision = ""
-	}
 	todo := m.store.Add(text, isoDate, precision)
 
 	body := m.bodyTextarea.Value()
@@ -795,11 +828,11 @@ func (m Model) saveAdd() (Model, tea.Cmd) {
 
 	m.mode = normalMode
 	m.input.Blur()
-	m.dateInput.Blur()
+	m.blurAllDateSegments()
 	m.bodyTextarea.Blur()
 	m.templateInput.Blur()
 	m.input.SetValue("")
-	m.dateInput.SetValue("")
+	m.clearAllDateSegments()
 	m.bodyTextarea.SetValue("")
 	m.templateInput.SetValue("")
 	m.pickingTemplate = false
@@ -841,14 +874,16 @@ func (m Model) editView() string {
 	// Field(s)
 	switch m.mode {
 	case editMode:
-		// Three fields: Title, Date, Body
+		// Three fields: Title, Date (segmented), Body
 		b.WriteString(m.styles.FieldLabel.Render("Title"))
 		b.WriteString("\n")
 		b.WriteString(m.input.View())
 		b.WriteString("\n\n")
 		b.WriteString(m.styles.FieldLabel.Render("Date"))
 		b.WriteString("\n")
-		b.WriteString(m.dateInput.View())
+		b.WriteString(m.renderDateSegments())
+		b.WriteString("\n")
+		b.WriteString(m.styles.EditHint.Render("(leave day blank for month todo, leave day+month blank for year todo)"))
 		b.WriteString("\n\n")
 		b.WriteString(m.styles.FieldLabel.Render("Body"))
 		b.WriteString("\n")
@@ -890,14 +925,16 @@ func (m Model) editView() string {
 			b.WriteString(m.input.View())
 			b.WriteString("\n")
 		} else {
-			// Normal 4-field form: Title, Date, Body, Template
+			// Normal 4-field form: Title, Date (segmented), Body, Template
 			b.WriteString(m.styles.FieldLabel.Render("Title"))
 			b.WriteString("\n")
 			b.WriteString(m.input.View())
 			b.WriteString("\n\n")
 			b.WriteString(m.styles.FieldLabel.Render("Date"))
 			b.WriteString("\n")
-			b.WriteString(m.dateInput.View())
+			b.WriteString(m.renderDateSegments())
+			b.WriteString("\n")
+			b.WriteString(m.styles.EditHint.Render("(leave day blank for month todo, leave day+month blank for year todo)"))
 			b.WriteString("\n\n")
 			b.WriteString(m.styles.FieldLabel.Render("Body"))
 			b.WriteString("\n")
@@ -1003,7 +1040,7 @@ func (m Model) renderTodo(b *strings.Builder, t *store.Todo, selected bool) {
 
 	// Date (after text, not affected by completed styling)
 	if t.HasDate() {
-		b.WriteString(" " + m.styles.Date.Render(config.FormatDate(t.Date, m.dateLayout)))
+		b.WriteString(" " + m.styles.Date.Render(renderFuzzyDate(t, m.dateLayout)))
 	}
 
 	b.WriteString("\n")
@@ -1015,10 +1052,12 @@ func (m *Model) SetTheme(t theme.Theme) {
 	m.styles = NewStyles(t)
 }
 
-// SetDateFormat updates the date display layout and input placeholder.
-func (m *Model) SetDateFormat(layout, placeholder string) {
+// SetDateFormat updates the date display layout, input placeholder, and segment ordering.
+func (m *Model) SetDateFormat(format, layout, placeholder string) {
+	m.dateFormat = format
 	m.dateLayout = layout
 	m.datePlaceholder = placeholder
+	m.dateSegOrder = dateSegmentOrder(format)
 }
 
 // updateTemplatePicker handles key events in the template picker sub-state.
@@ -1120,6 +1159,271 @@ func (m Model) prefillFromTemplate(t *store.Template, renderedBody string) Model
 	m.pickerPlaceholderIndex = 0
 	m.pickerPlaceholderValues = nil
 	return m
+}
+
+// renderDateSegments renders the three date segment inputs in format-aware order with separators.
+func (m Model) renderDateSegments() string {
+	sep := m.styles.DateSeparator.Render(" " + m.dateSegSeparator() + " ")
+	var parts []string
+	for i := 0; i < 3; i++ {
+		seg := m.dateSegmentByPos(i)
+		parts = append(parts, seg.View())
+	}
+	return parts[0] + sep + parts[1] + sep + parts[2]
+}
+
+// renderFuzzyDate formats a todo's date for display, respecting its precision level.
+// Day-precision: formatted per user's date format. Month-precision: "March 2026". Year-precision: "2026".
+func renderFuzzyDate(t *store.Todo, dateLayout string) string {
+	if t.Date == "" {
+		return ""
+	}
+	switch t.DatePrecision {
+	case "year":
+		parsed, err := time.Parse("2006-01-02", t.Date)
+		if err != nil {
+			return t.Date
+		}
+		return fmt.Sprintf("%d", parsed.Year())
+	case "month":
+		parsed, err := time.Parse("2006-01-02", t.Date)
+		if err != nil {
+			return t.Date
+		}
+		return fmt.Sprintf("%s %d", parsed.Month().String(), parsed.Year())
+	default:
+		return config.FormatDate(t.Date, dateLayout)
+	}
+}
+
+// deriveDateFromSegments reads the three date segment values and derives the ISO date
+// string and date precision. Returns (isoDate, precision, errSegPos) where errSegPos >= 0
+// indicates which visual segment needs attention (-1 means success).
+func (m Model) deriveDateFromSegments() (string, string, int) {
+	day := strings.TrimSpace(m.dateSegDay.Value())
+	month := strings.TrimSpace(m.dateSegMonth.Value())
+	year := strings.TrimSpace(m.dateSegYear.Value())
+
+	// All empty: floating todo
+	if year == "" && month == "" && day == "" {
+		return "", "", -1
+	}
+
+	// Year is required for any dated todo
+	if year == "" {
+		// Find the visual position of the year segment
+		for i := 0; i < 3; i++ {
+			if m.dateSegOrder[i] == 2 {
+				return "", "", i
+			}
+		}
+		return "", "", 0
+	}
+
+	// Validate year is 4 digits
+	if len(year) != 4 {
+		for i := 0; i < 3; i++ {
+			if m.dateSegOrder[i] == 2 {
+				return "", "", i
+			}
+		}
+	}
+	for _, c := range year {
+		if c < '0' || c > '9' {
+			for i := 0; i < 3; i++ {
+				if m.dateSegOrder[i] == 2 {
+					return "", "", i
+				}
+			}
+		}
+	}
+
+	// Year only: year precision
+	if month == "" && day == "" {
+		return year + "-01-01", "year", -1
+	}
+
+	// Day filled but no month: invalid
+	if month == "" && day != "" {
+		for i := 0; i < 3; i++ {
+			if m.dateSegOrder[i] == 1 {
+				return "", "", i
+			}
+		}
+	}
+
+	// Validate month
+	monthNum := 0
+	for _, c := range month {
+		if c < '0' || c > '9' {
+			for i := 0; i < 3; i++ {
+				if m.dateSegOrder[i] == 1 {
+					return "", "", i
+				}
+			}
+		}
+		monthNum = monthNum*10 + int(c-'0')
+	}
+	if monthNum < 1 || monthNum > 12 {
+		for i := 0; i < 3; i++ {
+			if m.dateSegOrder[i] == 1 {
+				return "", "", i
+			}
+		}
+	}
+	paddedMonth := fmt.Sprintf("%02d", monthNum)
+
+	// Year + month only: month precision
+	if day == "" {
+		return year + "-" + paddedMonth + "-01", "month", -1
+	}
+
+	// All three filled: day precision - validate as real date
+	dayNum := 0
+	for _, c := range day {
+		if c < '0' || c > '9' {
+			for i := 0; i < 3; i++ {
+				if m.dateSegOrder[i] == 0 {
+					return "", "", i
+				}
+			}
+		}
+		dayNum = dayNum*10 + int(c-'0')
+	}
+	paddedDay := fmt.Sprintf("%02d", dayNum)
+	isoDate := year + "-" + paddedMonth + "-" + paddedDay
+
+	// Validate the full date
+	_, err := time.Parse("2006-01-02", isoDate)
+	if err != nil {
+		for i := 0; i < 3; i++ {
+			if m.dateSegOrder[i] == 0 {
+				return "", "", i
+			}
+		}
+	}
+
+	return isoDate, "day", -1
+}
+
+// updateDateSegment handles key events forwarded to the focused date segment.
+// It intercepts separator chars, handles auto-advance on full segment, and backspace navigation.
+func (m Model) updateDateSegment(msg tea.KeyMsg) (Model, tea.Cmd) {
+	key := msg.String()
+
+	// Block separator characters (handled visually)
+	if key == "-" || key == "." || key == "/" {
+		return m, nil
+	}
+
+	seg := m.dateSegmentByPos(m.dateSegFocus)
+	prevLen := len(seg.Value())
+
+	// Backspace on empty segment: move back to previous segment
+	if key == "backspace" && seg.Value() == "" && m.dateSegFocus > 0 {
+		return m, m.focusDateSegment(m.dateSegFocus - 1)
+	}
+
+	// Forward the key to the focused segment
+	var cmd tea.Cmd
+	*seg, cmd = seg.Update(msg)
+
+	// Auto-advance: if segment just reached its char limit, move to next
+	newLen := len(seg.Value())
+	limit := m.dateSegCharLimit(m.dateSegFocus)
+	if newLen >= limit && newLen > prevLen && m.dateSegFocus < 2 {
+		cmd2 := m.focusDateSegment(m.dateSegFocus + 1)
+		return m, tea.Batch(cmd, cmd2)
+	}
+
+	return m, cmd
+}
+
+// dateSegmentOrder returns the visual-to-semantic mapping for date segments.
+// Semantic: 0=day, 1=month, 2=year. The returned array maps visual positions (left-to-right) to semantic meaning.
+func dateSegmentOrder(format string) [3]int {
+	switch format {
+	case "eu":
+		return [3]int{0, 1, 2} // dd mm yyyy
+	case "us":
+		return [3]int{1, 0, 2} // mm dd yyyy
+	default: // iso
+		return [3]int{2, 1, 0} // yyyy mm dd
+	}
+}
+
+// dateSegmentByPos returns the textinput for a visual position using dateSegOrder.
+func (m *Model) dateSegmentByPos(pos int) *textinput.Model {
+	switch m.dateSegOrder[pos] {
+	case 0:
+		return &m.dateSegDay
+	case 1:
+		return &m.dateSegMonth
+	case 2:
+		return &m.dateSegYear
+	default:
+		return &m.dateSegDay
+	}
+}
+
+// dateSegSeparator returns the separator character for the configured date format.
+func (m *Model) dateSegSeparator() string {
+	switch m.dateFormat {
+	case "eu":
+		return "."
+	case "us":
+		return "/"
+	default:
+		return "-"
+	}
+}
+
+// dateSegPlaceholderByPos returns the placeholder text for a visual position.
+func (m *Model) dateSegPlaceholderByPos(pos int) string {
+	switch m.dateSegOrder[pos] {
+	case 0:
+		return "dd"
+	case 1:
+		return "mm"
+	case 2:
+		return "yyyy"
+	default:
+		return "dd"
+	}
+}
+
+// focusDateSegment focuses the segment at the given visual position and blurs all others.
+func (m *Model) focusDateSegment(pos int) tea.Cmd {
+	m.dateSegDay.Blur()
+	m.dateSegMonth.Blur()
+	m.dateSegYear.Blur()
+	m.dateSegFocus = pos
+	return m.dateSegmentByPos(pos).Focus()
+}
+
+// blurAllDateSegments blurs all three date segments.
+func (m *Model) blurAllDateSegments() {
+	m.dateSegDay.Blur()
+	m.dateSegMonth.Blur()
+	m.dateSegYear.Blur()
+}
+
+// clearAllDateSegments clears all three date segments and resets focus.
+func (m *Model) clearAllDateSegments() {
+	m.dateSegDay.SetValue("")
+	m.dateSegMonth.SetValue("")
+	m.dateSegYear.SetValue("")
+	m.dateSegFocus = 0
+}
+
+// dateSegCharLimit returns the character limit for the segment at the given visual position.
+func (m *Model) dateSegCharLimit(pos int) int {
+	switch m.dateSegOrder[pos] {
+	case 2:
+		return 4 // year
+	default:
+		return 2 // day or month
+	}
 }
 
 func max(a, b int) int {
