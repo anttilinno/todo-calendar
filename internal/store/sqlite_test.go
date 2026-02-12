@@ -366,3 +366,161 @@ func TestAddScheduledTodo(t *testing.T) {
 		t.Error("scheduled todo should have non-zero sort_order")
 	}
 }
+
+func TestDatePrecision(t *testing.T) {
+	s, err := NewSQLiteStore(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("create store: %v", err)
+	}
+	defer s.Close()
+
+	// Day-level todo
+	day := s.Add("Day task", "2026-03-15", "day")
+	if day.DatePrecision != "day" {
+		t.Errorf("day todo: want precision 'day', got %q", day.DatePrecision)
+	}
+
+	// Month-level todo
+	month := s.Add("Month task", "2026-03-01", "month")
+	if month.DatePrecision != "month" {
+		t.Errorf("month todo: want precision 'month', got %q", month.DatePrecision)
+	}
+	if month.Date != "2026-03-01" {
+		t.Errorf("month todo: want date '2026-03-01', got %q", month.Date)
+	}
+
+	// Year-level todo
+	year := s.Add("Year task", "2026-01-01", "year")
+	if year.DatePrecision != "year" {
+		t.Errorf("year todo: want precision 'year', got %q", year.DatePrecision)
+	}
+	if year.Date != "2026-01-01" {
+		t.Errorf("year todo: want date '2026-01-01', got %q", year.Date)
+	}
+
+	// Floating todo
+	floating := s.Add("Float", "", "")
+	if floating.DatePrecision != "" {
+		t.Errorf("floating todo: want precision '', got %q", floating.DatePrecision)
+	}
+	if floating.Date != "" {
+		t.Errorf("floating todo: want date '', got %q", floating.Date)
+	}
+
+	// Verify round-trip through Find
+	found := s.Find(month.ID)
+	if found == nil {
+		t.Fatal("month todo not found via Find")
+	}
+	if found.DatePrecision != "month" {
+		t.Errorf("found month todo: want precision 'month', got %q", found.DatePrecision)
+	}
+}
+
+func TestMonthTodosQuery(t *testing.T) {
+	s, err := NewSQLiteStore(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("create store: %v", err)
+	}
+	defer s.Close()
+
+	// Add month-precision todo for March 2026
+	s.Add("Month task", "2026-03-01", "month")
+	// Add day-precision todo for March 15 2026
+	s.Add("Day task", "2026-03-15", "day")
+
+	// MonthTodos should return only the month-precision todo
+	monthTodos := s.MonthTodos(2026, time.March)
+	if len(monthTodos) != 1 {
+		t.Fatalf("MonthTodos(2026, March): want 1, got %d", len(monthTodos))
+	}
+	if monthTodos[0].Text != "Month task" {
+		t.Errorf("MonthTodos: want 'Month task', got %q", monthTodos[0].Text)
+	}
+
+	// MonthTodos for April should return empty
+	aprilTodos := s.MonthTodos(2026, time.April)
+	if len(aprilTodos) != 0 {
+		t.Errorf("MonthTodos(2026, April): want 0, got %d", len(aprilTodos))
+	}
+}
+
+func TestYearTodosQuery(t *testing.T) {
+	s, err := NewSQLiteStore(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("create store: %v", err)
+	}
+	defer s.Close()
+
+	// Add year-precision todo for 2026
+	s.Add("Year task", "2026-01-01", "year")
+	// Add day-precision todo for 2026-03-15
+	s.Add("Day task", "2026-03-15", "day")
+
+	// YearTodos should return only the year-precision todo
+	yearTodos := s.YearTodos(2026)
+	if len(yearTodos) != 1 {
+		t.Fatalf("YearTodos(2026): want 1, got %d", len(yearTodos))
+	}
+	if yearTodos[0].Text != "Year task" {
+		t.Errorf("YearTodos: want 'Year task', got %q", yearTodos[0].Text)
+	}
+
+	// YearTodos for 2027 should return empty
+	nextYear := s.YearTodos(2027)
+	if len(nextYear) != 0 {
+		t.Errorf("YearTodos(2027): want 0, got %d", len(nextYear))
+	}
+}
+
+func TestDayQueriesExcludeFuzzy(t *testing.T) {
+	s, err := NewSQLiteStore(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("create store: %v", err)
+	}
+	defer s.Close()
+
+	// Add day-level todo in March 2026
+	s.Add("Day task", "2026-03-15", "day")
+	// Add month-level todo in March 2026
+	s.Add("Month task", "2026-03-01", "month")
+	// Add year-level todo in 2026
+	s.Add("Year task", "2026-01-01", "year")
+
+	// TodosForMonth should return only day-level todo
+	monthTodos := s.TodosForMonth(2026, time.March)
+	if len(monthTodos) != 1 {
+		t.Fatalf("TodosForMonth: want 1, got %d", len(monthTodos))
+	}
+	if monthTodos[0].Text != "Day task" {
+		t.Errorf("TodosForMonth: want 'Day task', got %q", monthTodos[0].Text)
+	}
+
+	// IncompleteTodosPerDay should count only day-level todo
+	incomplete := s.IncompleteTodosPerDay(2026, time.March)
+	if incomplete[15] != 1 {
+		t.Errorf("IncompleteTodosPerDay[15]: want 1, got %d", incomplete[15])
+	}
+	// Day 1 should not be counted (month-precision todo lives on day 1 but should be excluded)
+	if incomplete[1] != 0 {
+		t.Errorf("IncompleteTodosPerDay[1]: want 0, got %d", incomplete[1])
+	}
+
+	// TotalTodosPerDay should count only day-level todo
+	total := s.TotalTodosPerDay(2026, time.March)
+	if total[15] != 1 {
+		t.Errorf("TotalTodosPerDay[15]: want 1, got %d", total[15])
+	}
+	if total[1] != 0 {
+		t.Errorf("TotalTodosPerDay[1]: want 0, got %d", total[1])
+	}
+
+	// TodosForDateRange should exclude fuzzy todos
+	rangeTodos := s.TodosForDateRange("2026-01-01", "2026-12-31")
+	if len(rangeTodos) != 1 {
+		t.Fatalf("TodosForDateRange: want 1, got %d", len(rangeTodos))
+	}
+	if rangeTodos[0].Text != "Day task" {
+		t.Errorf("TodosForDateRange: want 'Day task', got %q", rangeTodos[0].Text)
+	}
+}
