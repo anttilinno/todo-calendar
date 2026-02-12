@@ -76,7 +76,6 @@ type Model struct {
 	editorErr     string
 	store         store.TodoStore
 	cfg           config.Config
-	savedConfig   config.Config
 }
 
 // New creates a new root application model with the given dependencies.
@@ -121,19 +120,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// because they arrive as commands from the settings model in the next
 	// Update cycle.
 	switch msg := msg.(type) {
-	case settings.ThemeChangedMsg:
-		m.applyTheme(msg.Theme)
-		return m, nil
-
-	case settings.SaveMsg:
-		m.showSettings = false
+	case settings.SettingChangedMsg:
 		oldCountry := m.cfg.Country
 		m.cfg = msg.Cfg
 		_ = config.Save(m.cfg)
-		// Apply the saved theme (may differ from live preview if user cycled
-		// theme multiple times before saving).
 		m.applyTheme(theme.ForName(msg.Cfg.Theme))
-		// Rebuild provider if country changed
 		if msg.Cfg.Country != oldCountry {
 			if p, err := holidays.NewProvider(msg.Cfg.Country); err == nil {
 				m.calendar.SetProvider(p)
@@ -146,10 +137,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.calendar.RefreshIndicators()
 		return m, nil
 
-	case settings.CancelMsg:
+	case settings.CloseMsg:
 		m.showSettings = false
-		m.cfg = m.savedConfig
-		m.applyTheme(theme.ForName(m.savedConfig.Theme))
 		return m, nil
 
 	case search.JumpMsg:
@@ -280,7 +269,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.help.ShowAll = false
 			return m, nil
 		case key.Matches(msg, m.keys.Settings) && !isInputting:
-			m.savedConfig = m.cfg
 			m.settings = settings.New(m.cfg, theme.ForName(m.cfg.Theme))
 			m.settings.SetSize(m.width, m.height)
 			m.showSettings = true
