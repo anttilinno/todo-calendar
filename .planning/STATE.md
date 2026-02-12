@@ -5,13 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-12)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen
-**Current focus:** Planning next milestone
+**Current focus:** v2.0 Settings UX
 
 ## Current Position
 
-Phase: None (between milestones)
-Status: v1.9 shipped, ready for next milestone
-Last activity: 2026-02-12 -- v1.9 Fuzzy Date Todos milestone completed
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-12 — Milestone v2.0 started
 
 ## Performance Metrics
 
@@ -37,5 +38,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-12
-Stopped at: v1.9 milestone completed and archived
+Stopped at: Defining v2.0 requirements
 Resume file: None

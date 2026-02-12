@@ -75,7 +75,7 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 
 ### Active
 
-(None — planning next milestone)
+- [ ] Settings overlay: Esc saves and closes (no save button, no cancel flow)
 
 ### v2 Candidates
 
@@ -169,5 +169,12 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 
 None.
 
+## Current Milestone: v2.0 Settings UX
+
+**Goal:** Make settings overlay save-on-close — Esc saves and dismisses, no explicit save button needed.
+
+**Target features:**
+- Esc saves settings and closes overlay (replaces save button + cancel flow)
+
 ---
-*Last updated: 2026-02-12 after v1.9 milestone shipped*
+*Last updated: 2026-02-12 after v2.0 milestone started*
