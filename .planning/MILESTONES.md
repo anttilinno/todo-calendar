@@ -1,5 +1,30 @@
 # Project Milestones: Todo Calendar
 
+## v1.9 Fuzzy Date Todos (Shipped: 2026-02-12)
+
+**Delivered:** Month-level and year-level todo precision with dedicated sections, calendar circle indicators, and configurable show/hide toggles in the settings overlay
+
+**Phases completed:** 27-29 (5 plans total)
+
+**Key accomplishments:**
+- Date precision storage schema with SQLite migration, MonthTodos/YearTodos queries, and day-query exclusion for clean separation
+- Segmented 3-field date input (dd/mm/yyyy) with format-aware ordering (ISO/EU/US) and precision derivation from empty segments
+- 4-section todo panel (dated, This Month, This Year, Floating) with section-aware reordering boundaries
+- Calendar circle indicators on title line showing month/year todo status (red = pending, green = all done)
+- Show/hide toggles in settings overlay with TOML persistence and live preview on save
+
+**Stats:**
+- 29 files changed, 2,458 insertions(+), 209 deletions(-)
+- 8,179 lines of Go across 35 source files
+- 3 phases, 5 plans, 8 tasks
+- 7 days (2026-02-05 → 2026-02-12)
+
+**Git range:** `929eb3a` → `854f160`
+
+**What's next:** v2 candidates or new feature milestones
+
+---
+
 ## v1.8 Weekly Todo Filtering (Shipped: 2026-02-08)
 
 **Delivered:** Weekly view now filters todo panel to show only that week's dated todos plus floating items, with instant updates on navigation
@@ -224,3 +249,4 @@
 **What's next:** Project functionally complete for v1. Potential v2 enhancements: todo editing, reordering, calendar date indicators, color themes, configurable first day of week.
 
 ---
+
