@@ -99,6 +99,10 @@ type Model struct {
 	weekFilterStart string
 	weekFilterEnd   string
 
+	// Fuzzy-date section visibility
+	showMonthTodos bool
+	showYearTodos  bool
+
 	// Template picker sub-state (within inputMode)
 	pickingTemplate         bool
 	pickerTemplates         []store.Template
@@ -160,6 +164,8 @@ func New(s store.TodoStore, t theme.Theme) Model {
 		viewMonth:        now.Month(),
 		dateLayout:       "2006-01-02",
 		datePlaceholder:  "YYYY-MM-DD",
+		showMonthTodos:   true,
+		showYearTodos:    true,
 		keys:             DefaultKeyMap(),
 		styles:           NewStyles(t),
 	}
@@ -311,27 +317,31 @@ func (m Model) visibleItems() []visibleItem {
 		}
 	}
 
-	// This Month and This Year sections: only in monthly view (not weekly)
+	// This Month and This Year sections: only in monthly view (not weekly), gated by visibility settings
 	if m.weekFilterStart == "" {
-		// This Month section
-		items = append(items, visibleItem{kind: headerItem, label: "This Month", section: sectionMonth})
-		monthTodos := m.store.MonthTodos(m.viewYear, m.viewMonth)
-		if len(monthTodos) == 0 {
-			items = append(items, visibleItem{kind: emptyItem, label: "(no month todos)", section: sectionMonth})
-		} else {
-			for i := range monthTodos {
-				items = append(items, visibleItem{kind: todoItem, todo: &monthTodos[i], section: sectionMonth})
+		if m.showMonthTodos {
+			// This Month section
+			items = append(items, visibleItem{kind: headerItem, label: "This Month", section: sectionMonth})
+			monthTodos := m.store.MonthTodos(m.viewYear, m.viewMonth)
+			if len(monthTodos) == 0 {
+				items = append(items, visibleItem{kind: emptyItem, label: "(no month todos)", section: sectionMonth})
+			} else {
+				for i := range monthTodos {
+					items = append(items, visibleItem{kind: todoItem, todo: &monthTodos[i], section: sectionMonth})
+				}
 			}
 		}
 
-		// This Year section
-		items = append(items, visibleItem{kind: headerItem, label: "This Year", section: sectionYear})
-		yearTodos := m.store.YearTodos(m.viewYear)
-		if len(yearTodos) == 0 {
-			items = append(items, visibleItem{kind: emptyItem, label: "(no year todos)", section: sectionYear})
-		} else {
-			for i := range yearTodos {
-				items = append(items, visibleItem{kind: todoItem, todo: &yearTodos[i], section: sectionYear})
+		if m.showYearTodos {
+			// This Year section
+			items = append(items, visibleItem{kind: headerItem, label: "This Year", section: sectionYear})
+			yearTodos := m.store.YearTodos(m.viewYear)
+			if len(yearTodos) == 0 {
+				items = append(items, visibleItem{kind: emptyItem, label: "(no year todos)", section: sectionYear})
+			} else {
+				for i := range yearTodos {
+					items = append(items, visibleItem{kind: todoItem, todo: &yearTodos[i], section: sectionYear})
+				}
 			}
 		}
 	}
@@ -1086,6 +1096,12 @@ func (m Model) renderTodo(b *strings.Builder, t *store.Todo, selected bool) {
 // This preserves all model state (cursor, mode, input).
 func (m *Model) SetTheme(t theme.Theme) {
 	m.styles = NewStyles(t)
+}
+
+// SetShowFuzzySections controls visibility of the "This Month" and "This Year" sections.
+func (m *Model) SetShowFuzzySections(showMonth, showYear bool) {
+	m.showMonthTodos = showMonth
+	m.showYearTodos = showYear
 }
 
 // SetDateFormat updates the date display layout, input placeholder, and segment ordering.

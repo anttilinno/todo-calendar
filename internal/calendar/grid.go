@@ -36,7 +36,7 @@ func fuzzyStatus(todos []store.Todo) string {
 //   - mondayStart: if true, weeks start on Monday; otherwise Sunday
 //   - indicators: map of day numbers to count of incomplete todos (nil safe)
 //   - st: store for querying month/year fuzzy todos (nil safe)
-func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mondayStart bool, indicators map[int]int, totals map[int]int, st store.TodoStore, s Styles) string {
+func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mondayStart bool, indicators map[int]int, totals map[int]int, st store.TodoStore, showMonthTodos bool, showYearTodos bool, s Styles) string {
 	var b strings.Builder
 
 	// Title line: month and year, centered in grid width.
@@ -47,20 +47,24 @@ func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mo
 	// visibleExtra tracks the number of extra visible characters added by circles + spaces.
 	visibleExtra := 0
 	if st != nil {
-		ms := fuzzyStatus(st.MonthTodos(year, month))
-		switch ms {
-		case "pending":
-			monthCircle = s.FuzzyPending.Render("\u25cf")
-		case "done":
-			monthCircle = s.FuzzyDone.Render("\u25cf")
+		if showMonthTodos {
+			ms := fuzzyStatus(st.MonthTodos(year, month))
+			switch ms {
+			case "pending":
+				monthCircle = s.FuzzyPending.Render("\u25cf")
+			case "done":
+				monthCircle = s.FuzzyDone.Render("\u25cf")
+			}
 		}
 
-		ys := fuzzyStatus(st.YearTodos(year))
-		switch ys {
-		case "pending":
-			yearCircle = s.FuzzyPending.Render("\u25cf")
-		case "done":
-			yearCircle = s.FuzzyDone.Render("\u25cf")
+		if showYearTodos {
+			ys := fuzzyStatus(st.YearTodos(year))
+			switch ys {
+			case "pending":
+				yearCircle = s.FuzzyPending.Render("\u25cf")
+			case "done":
+				yearCircle = s.FuzzyDone.Render("\u25cf")
+			}
 		}
 	}
 
