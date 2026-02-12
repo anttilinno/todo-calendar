@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 ## Current Position
 
 Phase: 29 (3 of 3 in v1.9)
-Plan: 0 of ? in current phase
-Status: Ready to plan
-Last activity: 2026-02-12 -- Phase 28 verified and complete
+Plan: 1 of 1 in current phase
+Status: Phase 29 complete
+Last activity: 2026-02-12 -- Phase 29 plan 01 executed
 
-Progress: [██████░░░░] 67%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 49 (v1.0 through v1.8, plus 27-01, 27-02, 28-01, 28-02)
+- Total plans completed: 50 (v1.0 through v1.8, plus 27-01, 27-02, 28-01, 28-02, 29-01)
 - Average duration: 2 min
 - Total execution time: ~1.5 hours
 
@@ -29,6 +29,7 @@ Progress: [██████░░░░] 67%
 | 27    | 02   | 4min     | 1     | 3     |
 | 28    | 01   | 2min     | 1     | 1     |
 | 28    | 02   | 2min     | 2     | 3     |
+| 29    | 01   | 3min     | 2     | 6     |
 
 ## Accumulated Context
 
@@ -45,6 +46,8 @@ See PROJECT.md Key Decisions table for complete log.
 - Phase 28-01: Fuzzy-date sections gated on weekFilterStart == '' (monthly view only)
 - Phase 28-02: Reuse PendingFg/CompletedCountFg for fuzzy circle indicators (no new theme roles)
 - Phase 28-02: nil-safe store param in RenderGrid for backward compatibility
+- Phase 29-01: Boolean toggles use Show/Hide display labels with true/false config values
+- Phase 29-01: Visibility gating at visibleItems() level (todolist) and RenderGrid() level (calendar)
 
 ### Pending Todos
 
@@ -57,5 +60,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-12
-Stopped at: Phase 28 complete, ready to plan Phase 29
+Stopped at: Completed 29-01-PLAN.md
 Resume file: None
