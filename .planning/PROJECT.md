@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A terminal-based (TUI) application that combines a monthly/weekly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, date indicators for pending work, color-coded overview counts, blended today+status highlighting, and weekly view toggle. The right panel displays todos for the visible month alongside undated (floating) items with inline filter support. Includes full-screen cross-month search, editing and reordering todos, configurable date format and first day of week, 4 color themes, and an in-app settings overlay with live preview. Todos are stored in SQLite with support for rich markdown bodies, reusable templates with placeholder prompting, and external editor integration ($EDITOR). Templates can be managed in a dedicated overlay and have recurring schedules (daily, weekdays, weekly, monthly) that auto-create todos on app launch. A unified add form (`a` key) with title, date, body, and template picker fields replaces the previous multi-key entry points. Built with Go and Bubble Tea for personal use.
+A terminal-based (TUI) application that combines a monthly/weekly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, date indicators for pending work, color-coded overview counts, blended today+status highlighting, circle indicators for month/year todo status, and weekly view toggle. The right panel displays todos in 4 sections (dated, This Month, This Year, Floating) with inline filter support and configurable section visibility. Includes full-screen cross-month search, editing and reordering todos, configurable date format and first day of week, 4 color themes, and an in-app settings overlay with live preview. Todos support day, month, or year date precision via a segmented date input. Stored in SQLite with support for rich markdown bodies, reusable templates with placeholder prompting, and external editor integration ($EDITOR). Templates can be managed in a dedicated overlay and have recurring schedules (daily, weekdays, weekly, monthly) that auto-create todos on app launch. A unified add form (`a` key) with title, date, body, and template picker fields replaces the previous multi-key entry points. Built with Go and Bubble Tea for personal use.
 
 ## Core Value
 
@@ -66,25 +66,16 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - Floating (undated) todos remain visible in weekly view — v1.8
 - Todo panel updates immediately when navigating weeks with h/l keys — v1.8
 - Improved contrast for MutedFg/EmptyFg in Nord and Solarized themes — v1.8
+- ✓ Month-level todos with segmented date input and dedicated "This Month" section — v1.9
+- ✓ Year-level todos with dedicated "This Year" section — v1.9
+- ✓ Calendar circle indicators: left (month) and right (year) status, red pending / green done — v1.9
+- ✓ Show/hide toggles in settings for month and year todo sections with live preview — v1.9
+- ✓ Segmented date input (dd/mm/yyyy) with format-aware ordering and precision derivation — v1.9
+- ✓ Fuzzy todos visible in monthly view only, excluded from weekly view — v1.9
 
 ### Active
 
-- [ ] Month-level todos (date precision: month) with own section in todo panel
-- [ ] Year-level todos (date precision: year) with own section in todo panel
-- [ ] Calendar status indicators: left circle (month), right circle (year) — red pending, green all done
-- [ ] Show/hide toggles in settings for month and year todo sections
-- [ ] Date field auto-detection: existing input parses day/month/year precision from format
-- [ ] Fuzzy todos visible in monthly view only (not weekly)
-
-## Current Milestone: v1.9 Fuzzy Date Todos
-
-**Goal:** Support month-level and year-level todos with calendar indicators and visibility toggles
-
-**Target features:**
-- Month and year date precision for todos
-- Calendar status circle indicators (left=month, right=year)
-- Independent show/hide settings for month and year sections
-- Date field auto-detects precision from input format
+(None — planning next milestone)
 
 ### v2 Candidates
 
@@ -106,7 +97,7 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - **Holidays:** rickar/cal/v2 with 11-country registry (de, dk, ee, es, fi, fr, gb, it, no, se, us)
 - **Config:** TOML at ~/.config/todo-calendar/config.toml (BurntSushi/toml v1.6.0)
 - **Storage:** SQLite at ~/.config/todo-calendar/todos.db (modernc.org/sqlite, pure Go, WAL mode)
-- **Codebase:** 7,239 lines of Go across 35 source files
+- **Codebase:** 8,179 lines of Go across 35 source files
 - **Architecture:** Elm Architecture (Bubble Tea), pure rendering functions, constructor DI, TodoStore interface
 
 ## Constraints
@@ -167,10 +158,16 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 | Shared m.input for title field and placeholder prompting | Avoids extra textinput; explicit state restore after pre-fill | ✓ Good — no duplication, state properly managed |
 | Blended today+status styles (foreground=status, background=today) | Users see pending/done at a glance without losing today context | ✓ Good — clean visual hierarchy |
 | Nord/Solarized MutedFg/EmptyFg use lighter colors (nord9, base00) | nord3 (#4C566A) and base01 (#586E75) too dark on typical dark backgrounds | ✓ Good — empty states and hints now readable |
+| date_precision column: 'day', 'month', 'year', '' | Clean schema for multi-precision todos | ✓ Good — extensible, clean queries |
+| Fuzzy dates stored as first-of-period (YYYY-MM-01, YYYY-01-01) | Valid SQL dates for range queries | ✓ Good — no special date handling needed |
+| Segmented date input with auto-advance | More intuitive than typing separators | ✓ Good — natural tab flow |
+| sectionID enum for 4-section todo panel | Boundary-aware reordering without HasDate() | ✓ Good — extensible section model |
+| Reuse PendingFg/CompletedCountFg for circle indicators | No new theme roles needed | ✓ Good — consistent palette |
+| boolIndex() helper for settings toggle mapping | Clean bool-to-option-index conversion | ✓ Good — reusable pattern |
 
 ## Known Tech Debt
 
-None — JSON store removed in v1.7.
+None.
 
 ---
-*Last updated: 2026-02-12 after v1.9 milestone started*
+*Last updated: 2026-02-12 after v1.9 milestone shipped*
