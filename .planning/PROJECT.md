@@ -69,11 +69,22 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 
 ### Active
 
-(None — all current requirements shipped. Use `/gsd:new-milestone` to define next goals.)
+- [ ] Month-level todos (date precision: month) with own section in todo panel
+- [ ] Year-level todos (date precision: year) with own section in todo panel
+- [ ] Calendar status indicators: left circle (month), right circle (year) — red pending, green all done
+- [ ] Show/hide toggles in settings for month and year todo sections
+- [ ] Date field auto-detection: existing input parses day/month/year precision from format
+- [ ] Fuzzy todos visible in monthly view only (not weekly)
 
-## Current Milestone: None (v1.8 shipped)
+## Current Milestone: v1.9 Fuzzy Date Todos
 
-v1.8 Weekly Todo Filtering shipped 2026-02-08. All requirements met. Run `/gsd:new-milestone` to start next version.
+**Goal:** Support month-level and year-level todos with calendar indicators and visibility toggles
+
+**Target features:**
+- Month and year date precision for todos
+- Calendar status circle indicators (left=month, right=year)
+- Independent show/hide settings for month and year sections
+- Date field auto-detects precision from input format
 
 ### v2 Candidates
 
@@ -162,4 +173,4 @@ v1.8 Weekly Todo Filtering shipped 2026-02-08. All requirements met. Run `/gsd:n
 None — JSON store removed in v1.7.
 
 ---
-*Last updated: 2026-02-08 after v1.8 milestone complete*
+*Last updated: 2026-02-12 after v1.9 milestone started*
