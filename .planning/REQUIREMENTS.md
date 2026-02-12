@@ -16,16 +16,16 @@ Requirements for fuzzy date todos milestone. Each maps to roadmap phases.
 
 ### Todo Sections
 
-- [ ] **SECT-01**: Month-level todos appear in a dedicated "This Month" section in the todo panel
-- [ ] **SECT-02**: Year-level todos appear in a dedicated "This Year" section in the todo panel
-- [ ] **SECT-03**: Month section shows todos matching the currently viewed month
-- [ ] **SECT-04**: Year section shows todos matching the currently viewed year
+- [x] **SECT-01**: Month-level todos appear in a dedicated "This Month" section in the todo panel
+- [x] **SECT-02**: Year-level todos appear in a dedicated "This Year" section in the todo panel
+- [x] **SECT-03**: Month section shows todos matching the currently viewed month
+- [x] **SECT-04**: Year section shows todos matching the currently viewed year
 
 ### Calendar Indicators
 
-- [ ] **INDIC-01**: Left-side circle indicator on calendar shows month-todo status (red = pending, green = all done)
-- [ ] **INDIC-02**: Right-side circle indicator on calendar shows year-todo status (red = pending, green = all done)
-- [ ] **INDIC-03**: Indicators only appear when there are month/year todos for the viewed period
+- [x] **INDIC-01**: Left-side circle indicator on calendar shows month-todo status (red = pending, green = all done)
+- [x] **INDIC-02**: Right-side circle indicator on calendar shows year-todo status (red = pending, green = all done)
+- [x] **INDIC-03**: Indicators only appear when there are month/year todos for the viewed period
 
 ### Settings
 
@@ -35,7 +35,7 @@ Requirements for fuzzy date todos milestone. Each maps to roadmap phases.
 
 ### View Integration
 
-- [ ] **VIEW-01**: Fuzzy date todos (month/year) only appear in monthly calendar view, not weekly view
+- [x] **VIEW-01**: Fuzzy date todos (month/year) only appear in monthly calendar view, not weekly view
 
 ## Future Requirements
 
@@ -61,17 +61,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DATE-02 | Phase 27 | Done |
 | DATE-03 | Phase 27 | Done |
 | DATE-04 | Phase 27 | Done |
-| SECT-01 | Phase 28 | Pending |
-| SECT-02 | Phase 28 | Pending |
-| SECT-03 | Phase 28 | Pending |
-| SECT-04 | Phase 28 | Pending |
-| INDIC-01 | Phase 28 | Pending |
-| INDIC-02 | Phase 28 | Pending |
-| INDIC-03 | Phase 28 | Pending |
+| SECT-01 | Phase 28 | Done |
+| SECT-02 | Phase 28 | Done |
+| SECT-03 | Phase 28 | Done |
+| SECT-04 | Phase 28 | Done |
+| INDIC-01 | Phase 28 | Done |
+| INDIC-02 | Phase 28 | Done |
+| INDIC-03 | Phase 28 | Done |
 | SET-01 | Phase 29 | Pending |
 | SET-02 | Phase 29 | Pending |
 | SET-03 | Phase 29 | Pending |
-| VIEW-01 | Phase 28 | Pending |
+| VIEW-01 | Phase 28 | Done |
 
 **Coverage:**
 - v1.9 requirements: 15 total
