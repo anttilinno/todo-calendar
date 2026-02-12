@@ -30,10 +30,11 @@
   2. User can create a year-level todo by entering only the year (leaving day and month blank)
   3. Date input shows three separate segments (dd / mm / yyyy) with Tab moving between them instead of typing separators
   4. Segment order matches the configured date format (ISO shows yyyy-mm-dd segments, EU shows dd.mm.yyyy, US shows mm/dd/yyyy)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 27-01: TBD
+- [ ] 27-01-PLAN.md -- Schema migration, date precision storage, and precision-aware store queries
+- [ ] 27-02-PLAN.md -- Segmented date input UI with format-aware ordering and precision derivation
 
 ### Phase 28: Display & Indicators
 **Goal**: Users can see their fuzzy-date todos in dedicated sections and spot month/year status at a glance on the calendar
@@ -69,6 +70,6 @@ Phases execute in numeric order: 27 -> 28 -> 29
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 27. Date Precision & Input | 0/? | Not started | - |
+| 27. Date Precision & Input | 0/2 | In progress | - |
 | 28. Display & Indicators | 0/? | Not started | - |
 | 29. Settings & View Filtering | 0/? | Not started | - |
