@@ -21,6 +21,10 @@ type Styles struct {
 	FieldLabel    lipgloss.Style
 	EditHint      lipgloss.Style
 	DateSeparator lipgloss.Style
+	PriorityP1    lipgloss.Style
+	PriorityP2    lipgloss.Style
+	PriorityP3    lipgloss.Style
+	PriorityP4    lipgloss.Style
 }
 
 // NewStyles builds todo list styles from the given theme.
@@ -40,5 +44,25 @@ func NewStyles(t theme.Theme) Styles {
 		FieldLabel:    lipgloss.NewStyle().Bold(true).Foreground(t.NormalFg),
 		EditHint:      lipgloss.NewStyle().Foreground(t.MutedFg),
 		DateSeparator: lipgloss.NewStyle().Foreground(t.MutedFg),
+		PriorityP1:    lipgloss.NewStyle().Bold(true).Foreground(t.PriorityP1Fg),
+		PriorityP2:    lipgloss.NewStyle().Bold(true).Foreground(t.PriorityP2Fg),
+		PriorityP3:    lipgloss.NewStyle().Bold(true).Foreground(t.PriorityP3Fg),
+		PriorityP4:    lipgloss.NewStyle().Bold(true).Foreground(t.PriorityP4Fg),
+	}
+}
+
+// priorityBadgeStyle returns the appropriate priority badge style for the given level (1-4).
+func (s Styles) priorityBadgeStyle(level int) lipgloss.Style {
+	switch level {
+	case 1:
+		return s.PriorityP1
+	case 2:
+		return s.PriorityP2
+	case 3:
+		return s.PriorityP3
+	case 4:
+		return s.PriorityP4
+	default:
+		return s.PriorityP4
 	}
 }

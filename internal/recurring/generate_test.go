@@ -75,6 +75,7 @@ func (f *fakeStore) DeleteSchedule(id int)                                    {}
 func (f *fakeStore) UpdateSchedule(id int, cadenceType, cadenceValue, placeholderDefaults string) error {
 	return nil
 }
+func (f *fakeStore) HighestPriorityPerDay(y int, m time.Month) map[int]int { return nil }
 func (f *fakeStore) SwapOrder(id1, id2 int)      {}
 func (f *fakeStore) SearchTodos(query string) []store.Todo { return nil }
 func (f *fakeStore) EnsureSortOrder()             {}

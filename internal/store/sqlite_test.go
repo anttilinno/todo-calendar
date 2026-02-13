@@ -525,6 +525,67 @@ func TestDayQueriesExcludeFuzzy(t *testing.T) {
 	}
 }
 
+func TestHighestPriorityPerDay(t *testing.T) {
+	s, err := NewSQLiteStore(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("create store: %v", err)
+	}
+	defer s.Close()
+
+	// Day 10: P2 and P3 -- highest (lowest number) should be P2
+	s.Add("Task A", "2026-04-10", "day", 2)
+	s.Add("Task B", "2026-04-10", "day", 3)
+
+	// Day 12: P1 only
+	s.Add("Task C", "2026-04-12", "day", 1)
+
+	// Day 15: P4 only
+	s.Add("Task D", "2026-04-15", "day", 4)
+
+	// Day 20: completed P1 -- should be excluded
+	done := s.Add("Task E", "2026-04-20", "day", 1)
+	s.Toggle(done.ID)
+
+	// Day 20: also has a non-prioritized todo -- should be excluded (priority 0)
+	s.Add("Task F", "2026-04-20", "day", 0)
+
+	// Day 25: non-prioritized todo only -- should not appear
+	s.Add("Task G", "2026-04-25", "day", 0)
+
+	result := s.HighestPriorityPerDay(2026, time.April)
+
+	// Day 10: P2 wins (lower number = higher priority)
+	if result[10] != 2 {
+		t.Errorf("day 10: want priority 2, got %d", result[10])
+	}
+
+	// Day 12: P1
+	if result[12] != 1 {
+		t.Errorf("day 12: want priority 1, got %d", result[12])
+	}
+
+	// Day 15: P4
+	if result[15] != 4 {
+		t.Errorf("day 15: want priority 4, got %d", result[15])
+	}
+
+	// Day 20: completed P1 excluded, non-prioritized excluded -> no entry
+	if _, ok := result[20]; ok {
+		t.Errorf("day 20: should not have entry (completed P1 + non-prioritized), got %d", result[20])
+	}
+
+	// Day 25: non-prioritized only -> no entry
+	if _, ok := result[25]; ok {
+		t.Errorf("day 25: should not have entry (non-prioritized only), got %d", result[25])
+	}
+
+	// Empty month: no entries
+	empty := s.HighestPriorityPerDay(2026, time.January)
+	if len(empty) != 0 {
+		t.Errorf("empty month: want 0 entries, got %d", len(empty))
+	}
+}
+
 func TestPriorityRoundtrip(t *testing.T) {
 	s, err := NewSQLiteStore(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {

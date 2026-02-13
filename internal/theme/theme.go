@@ -34,6 +34,12 @@ type Theme struct {
 	// Overview
 	PendingFg        lipgloss.Color // pending todo count in overview
 	CompletedCountFg lipgloss.Color // completed todo count in overview
+
+	// Priority levels
+	PriorityP1Fg lipgloss.Color // P1 (urgent/critical) -- red family
+	PriorityP2Fg lipgloss.Color // P2 (high) -- orange family
+	PriorityP3Fg lipgloss.Color // P3 (medium) -- blue family
+	PriorityP4Fg lipgloss.Color // P4 (low) -- grey/muted family
 }
 
 // Dark returns the default dark theme matching the original hardcoded colors.
@@ -55,6 +61,10 @@ func Dark() Theme {
 		NormalBg:        lipgloss.Color(""),         // terminal default
 		PendingFg:        lipgloss.Color("#D75F5F"), // warm rose
 		CompletedCountFg: lipgloss.Color("#87AF87"), // soft sage green
+		PriorityP1Fg:    lipgloss.Color("#FF5F5F"), // bright red
+		PriorityP2Fg:    lipgloss.Color("#FFAF5F"), // orange
+		PriorityP3Fg:    lipgloss.Color("#5F87FF"), // blue
+		PriorityP4Fg:    lipgloss.Color("#808080"), // grey
 	}
 }
 
@@ -77,6 +87,10 @@ func Light() Theme {
 		NormalBg:        lipgloss.Color(""),         // terminal default
 		PendingFg:        lipgloss.Color("#D70000"), // medium red
 		CompletedCountFg: lipgloss.Color("#008700"), // forest green
+		PriorityP1Fg:    lipgloss.Color("#D70000"), // dark red
+		PriorityP2Fg:    lipgloss.Color("#AF5F00"), // dark orange
+		PriorityP3Fg:    lipgloss.Color("#005FAF"), // dark blue
+		PriorityP4Fg:    lipgloss.Color("#8A8A8A"), // medium grey
 	}
 }
 
@@ -100,6 +114,10 @@ func Nord() Theme {
 		NormalBg:        lipgloss.Color(""),         // terminal default
 		PendingFg:        lipgloss.Color("#BF616A"), // nord11 aurora red
 		CompletedCountFg: lipgloss.Color("#A3BE8C"), // nord14 aurora green
+		PriorityP1Fg:    lipgloss.Color("#BF616A"), // nord11 aurora red
+		PriorityP2Fg:    lipgloss.Color("#D08770"), // nord12 aurora orange
+		PriorityP3Fg:    lipgloss.Color("#5E81AC"), // nord10 frost blue
+		PriorityP4Fg:    lipgloss.Color("#4C566A"), // nord3 polar night
 	}
 }
 
@@ -123,6 +141,10 @@ func Solarized() Theme {
 		NormalBg:        lipgloss.Color(""),         // terminal default
 		PendingFg:        lipgloss.Color("#DC322F"), // solarized red
 		CompletedCountFg: lipgloss.Color("#859900"), // solarized green
+		PriorityP1Fg:    lipgloss.Color("#DC322F"), // solarized red
+		PriorityP2Fg:    lipgloss.Color("#CB4B16"), // solarized orange
+		PriorityP3Fg:    lipgloss.Color("#268BD2"), // solarized blue
+		PriorityP4Fg:    lipgloss.Color("#586E75"), // solarized base01
 	}
 }
 
