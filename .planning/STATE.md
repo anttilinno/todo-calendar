@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 ## Current Position
 
 Phase: 32 of 32 (Priority UI + Theme)
-Plan: 1 of 2 in current phase
-Status: Plan 01 complete
-Last activity: 2026-02-13 — Completed 32-01 Priority UI + Theme
+Plan: 2 of 2 in current phase
+Status: Phase 32 complete -- v2.1 milestone done
+Last activity: 2026-02-13 — Completed 32-02 Priority Calendar + Search
 
-Progress: [#########-] 90%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 50 (v1.0 through v1.9) + 1 direct (v2.0) + 2 (v2.1)
+- Total plans completed: 50 (v1.0 through v1.9) + 1 direct (v2.0) + 3 (v2.1)
 - Average duration: 2 min
 - Total execution time: ~1.5 hours
 
@@ -27,6 +27,7 @@ Progress: [#########-] 90%
 |-------|------|----------|-------|-------|
 | 31    | 01   | 3min     | 2     | 6     |
 | 32    | 01   | 6min     | 2     | 7     |
+| 32    | 02   | 3min     | 2     | 5     |
 
 ## Accumulated Context
 
@@ -50,6 +51,10 @@ Phase 32-01 decisions:
 - Completed todos keep colored badge with grey strikethrough text
 - HighestPriorityPerDay uses MIN(priority) GROUP BY for efficient lookup
 
+Phase 32-02 decisions:
+- RenderWeekGrid uses priority cache (like indicator cache) rather than parameter for cross-month spans
+- Search badge follows same cursor > badge > checkbox > text rendering order as todolist
+
 ### Pending Todos
 
 None.
@@ -61,5 +66,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 32-01-PLAN.md
+Stopped at: Completed 32-02-PLAN.md -- Phase 32 and v2.1 milestone complete
 Resume file: None
