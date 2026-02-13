@@ -828,7 +828,7 @@ func (m Model) saveEdit() (Model, tea.Cmd) {
 
 	body := m.bodyTextarea.Value()
 
-	m.store.Update(m.editingID, text, isoDate, precision)
+	m.store.Update(m.editingID, text, isoDate, precision, 0)
 	m.store.UpdateBody(m.editingID, body)
 
 	m.mode = normalMode
@@ -865,7 +865,7 @@ func (m Model) saveAdd() (Model, tea.Cmd) {
 		return m, m.focusDateSegment(errPos)
 	}
 
-	todo := m.store.Add(text, isoDate, precision)
+	todo := m.store.Add(text, isoDate, precision, 0)
 
 	body := m.bodyTextarea.Value()
 	if strings.TrimSpace(body) != "" {

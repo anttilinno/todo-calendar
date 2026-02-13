@@ -45,11 +45,11 @@ func fakeKey(scheduleID int, date string) string {
 }
 
 // Stub methods to satisfy store.TodoStore interface.
-func (f *fakeStore) Add(text, date, datePrecision string) store.Todo   { return store.Todo{} }
+func (f *fakeStore) Add(text, date, datePrecision string, priority int) store.Todo { return store.Todo{} }
 func (f *fakeStore) Toggle(id int)                                     {}
 func (f *fakeStore) Delete(id int)                                     {}
 func (f *fakeStore) Find(id int) *store.Todo                           { return nil }
-func (f *fakeStore) Update(id int, text, date, datePrecision string)   {}
+func (f *fakeStore) Update(id int, text, date, datePrecision string, priority int) {}
 func (f *fakeStore) Todos() []store.Todo                               { return nil }
 func (f *fakeStore) TodosForMonth(y int, m time.Month) []store.Todo    { return nil }
 func (f *fakeStore) TodosForDateRange(startDate, endDate string) []store.Todo { return nil }

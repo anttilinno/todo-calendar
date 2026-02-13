@@ -153,6 +153,15 @@ func (s *SQLiteStore) migrate() error {
 		}
 	}
 
+	if version < 7 {
+		if _, err := s.db.Exec(`ALTER TABLE todos ADD COLUMN priority INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return fmt.Errorf("add priority column: %w", err)
+		}
+		if _, err := s.db.Exec(`PRAGMA user_version = 7`); err != nil {
+			return fmt.Errorf("set user_version: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -162,7 +171,7 @@ func (s *SQLiteStore) Close() error {
 }
 
 // todoColumns is the column list used in SELECT statements.
-const todoColumns = "id, text, body, date, done, created_at, sort_order, schedule_id, schedule_date, date_precision"
+const todoColumns = "id, text, body, date, done, created_at, sort_order, schedule_id, schedule_date, date_precision, priority"
 
 // scanTodo scans a single todo row from the given scanner.
 func scanTodo(scanner interface{ Scan(...any) error }) (Todo, error) {
@@ -171,7 +180,7 @@ func scanTodo(scanner interface{ Scan(...any) error }) (Todo, error) {
 	var done int
 	var scheduleID sql.NullInt64
 	var scheduleDate sql.NullString
-	err := scanner.Scan(&t.ID, &t.Text, &t.Body, &date, &done, &t.CreatedAt, &t.SortOrder, &scheduleID, &scheduleDate, &t.DatePrecision)
+	err := scanner.Scan(&t.ID, &t.Text, &t.Body, &date, &done, &t.CreatedAt, &t.SortOrder, &scheduleID, &scheduleDate, &t.DatePrecision, &t.Priority)
 	if err != nil {
 		return Todo{}, err
 	}
@@ -203,7 +212,8 @@ func scanTodos(rows *sql.Rows) ([]Todo, error) {
 
 // Add creates a new todo and returns it. Date="" means floating (NULL in DB).
 // datePrecision is "day", "month", "year", or "" (floating).
-func (s *SQLiteStore) Add(text string, date string, datePrecision string) Todo {
+// priority is 0 (none) or 1-4.
+func (s *SQLiteStore) Add(text string, date string, datePrecision string, priority int) Todo {
 	createdAt := time.Now().Format(dateFormat)
 
 	// Compute next sort_order as MAX(sort_order) + 10.
@@ -222,8 +232,8 @@ func (s *SQLiteStore) Add(text string, date string, datePrecision string) Todo {
 	}
 
 	result, err := s.db.Exec(
-		"INSERT INTO todos (text, body, date, done, created_at, sort_order, date_precision) VALUES (?, '', ?, 0, ?, ?, ?)",
-		text, dateVal, createdAt, sortOrder, datePrecision,
+		"INSERT INTO todos (text, body, date, done, created_at, sort_order, date_precision, priority) VALUES (?, '', ?, 0, ?, ?, ?, ?)",
+		text, dateVal, createdAt, sortOrder, datePrecision, priority,
 	)
 	if err != nil {
 		return Todo{}
@@ -238,6 +248,7 @@ func (s *SQLiteStore) Add(text string, date string, datePrecision string) Todo {
 		CreatedAt:     createdAt,
 		SortOrder:     sortOrder,
 		DatePrecision: datePrecision,
+		Priority:      priority,
 	}
 }
 
@@ -261,9 +272,10 @@ func (s *SQLiteStore) Find(id int) *Todo {
 	return &t
 }
 
-// Update modifies the text, date, and date precision of the todo with the given ID.
+// Update modifies the text, date, date precision, and priority of the todo with the given ID.
 // Date="" means floating (NULL in DB). datePrecision is "day", "month", "year", or "" (floating).
-func (s *SQLiteStore) Update(id int, text string, date string, datePrecision string) {
+// priority is 0 (none) or 1-4.
+func (s *SQLiteStore) Update(id int, text string, date string, datePrecision string, priority int) {
 	var dateVal any
 	if date != "" {
 		dateVal = date
@@ -272,7 +284,7 @@ func (s *SQLiteStore) Update(id int, text string, date string, datePrecision str
 	if date == "" {
 		datePrecision = ""
 	}
-	s.db.Exec("UPDATE todos SET text = ?, date = ?, date_precision = ? WHERE id = ?", text, dateVal, datePrecision, id)
+	s.db.Exec("UPDATE todos SET text = ?, date = ?, date_precision = ?, priority = ? WHERE id = ?", text, dateVal, datePrecision, priority, id)
 }
 
 // UpdateBody sets the markdown body of the todo with the given ID.
@@ -698,7 +710,7 @@ func (s *SQLiteStore) AddScheduledTodo(text, date, body string, scheduleID int) 
 	}
 
 	result, err := s.db.Exec(
-		"INSERT INTO todos (text, body, date, done, created_at, sort_order, schedule_id, schedule_date, date_precision) VALUES (?, ?, ?, 0, ?, ?, ?, ?, 'day')",
+		"INSERT INTO todos (text, body, date, done, created_at, sort_order, schedule_id, schedule_date, date_precision, priority) VALUES (?, ?, ?, 0, ?, ?, ?, ?, 'day', 0)",
 		text, body, dateVal, createdAt, sortOrder, scheduleID, date,
 	)
 	if err != nil {
@@ -717,5 +729,6 @@ func (s *SQLiteStore) AddScheduledTodo(text, date, body string, scheduleID int) 
 		ScheduleID:    scheduleID,
 		ScheduleDate:  date,
 		DatePrecision: "day",
+		Priority:      0,
 	}
 }
