@@ -57,11 +57,11 @@ Plans:
   3. Completed prioritized todos show the colored badge but greyed-out strikethrough text
   4. Calendar day indicators reflect the highest-priority incomplete todo's color for that day
   5. Search results display priority badges matching the todo list rendering
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 32-01: TBD
-- [ ] 32-02: TBD
+- [ ] 32-01-PLAN.md — Theme priority colors, store query, todolist edit form and badge rendering
+- [ ] 32-02-PLAN.md — Calendar priority indicators and search badge rendering
 
 ## Progress
 
@@ -74,4 +74,4 @@ Plans:
 | 29. Settings & View Filtering | v1.9 | 1/1 | Complete | 2026-02-12 |
 | 30. Save-on-Close Settings | v2.0 | 1/1 | Complete | 2026-02-12 |
 | 31. Priority Data Layer | v2.1 | 1/1 | Complete | 2026-02-13 |
-| 32. Priority UI + Theme | v2.1 | 0/? | Not started | - |
+| 32. Priority UI + Theme | v2.1 | 0/2 | Not started | - |
