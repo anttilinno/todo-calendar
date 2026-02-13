@@ -81,7 +81,10 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 
 ### Active
 
-(None — start next milestone to define requirements)
+- [ ] Read-only Google Calendar event display in TUI via CalDAV
+- [ ] App password authentication for Google Calendar
+- [ ] Events mixed into dated todo section with visual distinction
+- [ ] Background polling refresh (startup + 5-minute interval)
 
 ### v2 Candidates
 
@@ -94,9 +97,9 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 ### Out of Scope
 
 - Individual day selection / day-by-day arrow navigation — month-level navigation is sufficient
-- Syncing / cloud storage — local file only
+- Syncing / cloud storage — local todos remain local-only (read-only Google Calendar pull is scoped exception)
 - Tags / labels — keep it minimal (priorities are sufficient categorization)
-- CalDAV integration — complexity explosion
+- CalDAV write operations — read-only pull is sufficient; 2-way sync is complexity explosion
 - Subtasks / nesting — flat list is sufficient
 - Notifications / reminders — out of scope for TUI
 - Time-blocked appointments — this is a todo app, not a scheduler
@@ -114,7 +117,8 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 ## Constraints
 
 - **Stack**: Go + Bubble Tea — chosen for ergonomic component model and ecosystem
-- **Storage**: Local SQLite only — no network dependencies, no cloud sync
+- **Storage**: Local SQLite for todos — no cloud sync for user data
+- **Network**: Google Calendar pull is optional; app must work fully offline when unconfigured
 - **Holidays**: Must work offline using bundled Go library, not an external API
 
 ## Key Decisions
@@ -187,10 +191,20 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 
 None.
 
+## Current Milestone: v2.2 Google Calendar Events
+
+**Goal:** Display read-only Google Calendar events alongside todos in the TUI via CalDAV with app password authentication.
+
+**Target features:**
+- CalDAV connection with Google app password authentication
+- Read-only calendar event fetching and in-memory caching
+- Events displayed mixed into dated todo section with visual distinction
+- Background polling (startup + 5-minute interval)
+- Graceful offline handling (app works fully without Google config)
+
 ## Current State
 
-Shipped v2.1 with 8,644 LOC Go. Priority system complete across all views (todo list, calendar, search).
-No active milestone — run `/gsd:new-milestone` to start next.
+Building v2.2 with 8,644 LOC Go. Adding read-only Google Calendar integration.
 
 ---
-*Last updated: 2026-02-13 after v2.1 milestone*
+*Last updated: 2026-02-13 after v2.2 milestone started*

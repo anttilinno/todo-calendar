@@ -5,16 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen
-**Current focus:** Planning next milestone
+**Current focus:** v2.2 Google Calendar Events
 
 ## Current Position
 
-Phase: 32 of 32 (all complete)
-Plan: All plans complete
-Status: v2.1 milestone shipped
-Last activity: 2026-02-13 — Milestone v2.1 archived
-
-Progress: [##########] 100%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-13 — Milestone v2.2 started
 
 ## Performance Metrics
 
@@ -46,5 +44,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Milestone v2.1 archived and tagged
+Stopped at: Milestone v2.2 started, defining requirements
 Resume file: None
