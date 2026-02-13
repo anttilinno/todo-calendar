@@ -14,6 +14,10 @@ type Styles struct {
 	SelectedDate   lipgloss.Style
 	Hint           lipgloss.Style
 	Empty          lipgloss.Style
+	PriorityP1     lipgloss.Style
+	PriorityP2     lipgloss.Style
+	PriorityP3     lipgloss.Style
+	PriorityP4     lipgloss.Style
 }
 
 // NewStyles builds search styles from the given theme.
@@ -26,5 +30,25 @@ func NewStyles(t theme.Theme) Styles {
 		SelectedDate:   lipgloss.NewStyle().Foreground(t.AccentFg),
 		Hint:           lipgloss.NewStyle().Foreground(t.MutedFg),
 		Empty:          lipgloss.NewStyle().Foreground(t.MutedFg),
+		PriorityP1:     lipgloss.NewStyle().Bold(true).Foreground(t.PriorityP1Fg),
+		PriorityP2:     lipgloss.NewStyle().Bold(true).Foreground(t.PriorityP2Fg),
+		PriorityP3:     lipgloss.NewStyle().Bold(true).Foreground(t.PriorityP3Fg),
+		PriorityP4:     lipgloss.NewStyle().Bold(true).Foreground(t.PriorityP4Fg),
+	}
+}
+
+// priorityBadgeStyle returns the appropriate priority badge style for the given level (1-4).
+func (s Styles) priorityBadgeStyle(level int) lipgloss.Style {
+	switch level {
+	case 1:
+		return s.PriorityP1
+	case 2:
+		return s.PriorityP2
+	case 3:
+		return s.PriorityP3
+	case 4:
+		return s.PriorityP4
+	default:
+		return s.PriorityP4
 	}
 }
