@@ -524,3 +524,99 @@ func TestDayQueriesExcludeFuzzy(t *testing.T) {
 		t.Errorf("TodosForDateRange: want 'Day task', got %q", rangeTodos[0].Text)
 	}
 }
+
+func TestPriorityRoundtrip(t *testing.T) {
+	s, err := NewSQLiteStore(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("create store: %v", err)
+	}
+	defer s.Close()
+
+	// Add with priority 1
+	todo := s.Add("Urgent task", "2026-03-15", "day", 1)
+	if todo.Priority != 1 {
+		t.Errorf("Add returned Priority=%d, want 1", todo.Priority)
+	}
+
+	// Find verifies DB roundtrip
+	found := s.Find(todo.ID)
+	if found == nil {
+		t.Fatal("Find returned nil")
+	}
+	if found.Priority != 1 {
+		t.Errorf("Find after Add: Priority=%d, want 1", found.Priority)
+	}
+
+	// Update priority to 3
+	s.Update(todo.ID, "Urgent task", "2026-03-15", "day", 3)
+	found = s.Find(todo.ID)
+	if found == nil {
+		t.Fatal("Find after Update returned nil")
+	}
+	if found.Priority != 3 {
+		t.Errorf("Find after Update: Priority=%d, want 3", found.Priority)
+	}
+
+	// Todos() also returns correct priority
+	all := s.Todos()
+	var match *Todo
+	for i := range all {
+		if all[i].ID == todo.ID {
+			match = &all[i]
+			break
+		}
+	}
+	if match == nil {
+		t.Fatal("todo not found in Todos()")
+	}
+	if match.Priority != 3 {
+		t.Errorf("Todos() Priority=%d, want 3", match.Priority)
+	}
+}
+
+func TestPriorityDefaultZero(t *testing.T) {
+	s, err := NewSQLiteStore(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("create store: %v", err)
+	}
+	defer s.Close()
+
+	todo := s.Add("Normal task", "2026-03-15", "day", 0)
+	if todo.Priority != 0 {
+		t.Errorf("Add with priority 0: got Priority=%d", todo.Priority)
+	}
+
+	found := s.Find(todo.ID)
+	if found == nil {
+		t.Fatal("Find returned nil")
+	}
+	if found.Priority != 0 {
+		t.Errorf("Find: Priority=%d, want 0", found.Priority)
+	}
+}
+
+func TestPriorityHelpers(t *testing.T) {
+	tests := []struct {
+		priority      int
+		hasPriority   bool
+		priorityLabel string
+	}{
+		{0, false, ""},
+		{1, true, "P1"},
+		{2, true, "P2"},
+		{3, true, "P3"},
+		{4, true, "P4"},
+		{-1, false, ""},
+		{5, false, ""},
+	}
+
+	for _, tc := range tests {
+		todo := Todo{Priority: tc.priority}
+		if got := todo.HasPriority(); got != tc.hasPriority {
+			t.Errorf("Priority %d: HasPriority()=%v, want %v", tc.priority, got, tc.hasPriority)
+		}
+		if got := todo.PriorityLabel(); got != tc.priorityLabel {
+			t.Errorf("Priority %d: PriorityLabel()=%q, want %q", tc.priority, got, tc.priorityLabel)
+		}
+	}
+}
