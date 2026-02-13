@@ -37,6 +37,15 @@ const (
 	filterMode      // inline filter narrowing visible todos
 )
 
+// editField constants for the multi-field form.
+const (
+	fieldTitle    = 0
+	fieldDate     = 1
+	fieldPriority = 2
+	fieldBody     = 3
+	fieldTemplate = 4 // inputMode only
+)
+
 // itemKind classifies a visible row in the rendered list.
 type itemKind int
 
@@ -84,7 +93,8 @@ type Model struct {
 
 	// Full-pane edit fields
 	bodyTextarea  textarea.Model  // textarea for body editing in edit mode
-	editField     int             // 0 = title, 1 = date, 2 = body, 3 = template
+	editField     int             // 0=title, 1=date, 2=priority, 3=body, 4=template
+	editPriority  int             // 0=none, 1-4=priority level during editing
 	templateInput textinput.Model // placeholder input for template field (Phase 25 adds picker)
 
 	// Segmented date input (replaces dateInput)
@@ -231,12 +241,12 @@ func (m Model) HelpBindings() []key.Binding {
 		if m.promptingPlaceholders {
 			return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 		}
-		if m.editField == 2 || m.editField == 3 {
+		if m.editField == fieldBody || m.editField == fieldTemplate {
 			return []key.Binding{m.keys.SwitchField, m.keys.Save, m.keys.Cancel}
 		}
 		return []key.Binding{m.keys.SwitchField, m.keys.Confirm, m.keys.Cancel}
 	case editMode:
-		if m.editField == 2 {
+		if m.editField == fieldBody {
 			return []key.Binding{m.keys.SwitchField, m.keys.Save, m.keys.Cancel}
 		}
 		return []key.Binding{m.keys.SwitchField, m.keys.Confirm, m.keys.Cancel}
@@ -258,12 +268,12 @@ func (m Model) AllHelpBindings() []key.Binding {
 		if m.promptingPlaceholders {
 			return []key.Binding{m.keys.Confirm, m.keys.Cancel}
 		}
-		if m.editField == 2 || m.editField == 3 {
+		if m.editField == fieldBody || m.editField == fieldTemplate {
 			return []key.Binding{m.keys.SwitchField, m.keys.Save, m.keys.Cancel}
 		}
 		return []key.Binding{m.keys.SwitchField, m.keys.Confirm, m.keys.Cancel}
 	case editMode:
-		if m.editField == 2 {
+		if m.editField == fieldBody {
 			return []key.Binding{m.keys.SwitchField, m.keys.Save, m.keys.Cancel}
 		}
 		return []key.Binding{m.keys.SwitchField, m.keys.Confirm, m.keys.Cancel}
@@ -416,13 +426,15 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					return m, cmd
 				}
 				switch m.editField {
-				case 2:
+				case fieldBody:
 					m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
-				case 3:
+				case fieldTemplate:
 					m.templateInput, cmd = m.templateInput.Update(msg)
-				case 1:
+				case fieldDate:
 					seg := m.dateSegmentByPos(m.dateSegFocus)
 					*seg, cmd = seg.Update(msg)
+				case fieldPriority:
+					// no-op, no widget to forward to
 				default:
 					m.input, cmd = m.input.Update(msg)
 				}
@@ -496,7 +508,8 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Add):
 		m.mode = inputMode
-		m.editField = 0
+		m.editField = fieldTitle
+		m.editPriority = 0
 		m.input.Placeholder = "What needs doing?"
 		m.input.Prompt = "> "
 		m.input.SetValue("")
@@ -536,7 +549,8 @@ func (m Model) updateNormalMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 			}
 			m.editingID = fresh.ID
 			m.mode = editMode
-			m.editField = 0
+			m.editField = fieldTitle
+			m.editPriority = fresh.Priority
 			m.input.Placeholder = "Todo title"
 			m.input.Prompt = "> "
 			m.input.SetValue(fresh.Text)
@@ -627,7 +641,7 @@ func (m Model) updateFilterMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
-// updateInputMode handles key events in the 4-field add form (title, date, body, template).
+// updateInputMode handles key events in the 5-field add form (title, date, priority, body, template).
 func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	// Template picker sub-states intercept all keys
 	if m.pickingTemplate {
@@ -637,6 +651,19 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.updatePlaceholderPrompting(msg)
 	}
 
+	// Handle priority field left/right BEFORE other key matching
+	if m.editField == fieldPriority {
+		k := msg.String()
+		if k == "left" {
+			m.editPriority = max(0, m.editPriority-1)
+			return m, nil
+		}
+		if k == "right" {
+			m.editPriority = min(4, m.editPriority+1)
+			return m, nil
+		}
+	}
+
 	switch {
 	case key.Matches(msg, m.keys.Save):
 		// Ctrl+D saves from any field
@@ -644,13 +671,13 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Confirm):
 		// Body field uses Enter for newlines
-		if m.editField == 2 {
+		if m.editField == fieldBody {
 			var cmd tea.Cmd
 			m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
 			return m, cmd
 		}
 		// Template field: Enter opens template picker
-		if m.editField == 3 {
+		if m.editField == fieldTemplate {
 			templates := m.store.ListTemplates()
 			if len(templates) == 0 {
 				return m, nil // No templates available
@@ -660,40 +687,43 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.pickerCursor = 0
 			return m, nil
 		}
-		// Title/Date: Enter saves
+		// Title/Date/Priority: Enter saves
 		return m.saveAdd()
 
 	case key.Matches(msg, m.keys.SwitchField):
-		// Cycle: title(0) -> date segments(1) -> body(2) -> template(3) -> title(0)
+		// Cycle: title(0) -> date(1) -> priority(2) -> body(3) -> template(4) -> title(0)
 		switch m.editField {
-		case 0:
-			m.editField = 1
+		case fieldTitle:
+			m.editField = fieldDate
 			m.input.Blur()
 			return m, m.focusDateSegment(0)
-		case 1:
+		case fieldDate:
 			if m.dateSegFocus < 2 {
 				// Advance to next date segment
 				return m, m.focusDateSegment(m.dateSegFocus + 1)
 			}
-			// Past last segment -> body
-			m.editField = 2
+			// Past last segment -> priority
+			m.editField = fieldPriority
 			m.blurAllDateSegments()
+			return m, nil
+		case fieldPriority:
+			m.editField = fieldBody
 			return m, m.bodyTextarea.Focus()
-		case 2:
-			m.editField = 3
+		case fieldBody:
+			m.editField = fieldTemplate
 			m.bodyTextarea.Blur()
 			return m, m.templateInput.Focus()
-		case 3:
-			m.editField = 0
+		case fieldTemplate:
+			m.editField = fieldTitle
 			m.templateInput.Blur()
 			return m, m.input.Focus()
 		}
 		return m, nil
 
 	case key.Matches(msg, m.keys.Cancel):
-		if m.editField == 2 || m.editField == 3 {
+		if m.editField == fieldBody || m.editField == fieldTemplate {
 			// Esc in body/template goes back to title field instead of cancelling
-			m.editField = 0
+			m.editField = fieldTitle
 			m.bodyTextarea.Blur()
 			m.templateInput.Blur()
 			m.blurAllDateSegments()
@@ -705,7 +735,7 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.pickerPlaceholderValues = nil
 			return m, m.input.Focus()
 		}
-		// Esc in title/date cancels entirely
+		// Esc in title/date/priority cancels entirely
 		m.mode = normalMode
 		m.input.Blur()
 		m.blurAllDateSegments()
@@ -721,27 +751,43 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.pickerTemplates = nil
 		m.pickerPlaceholderNames = nil
 		m.pickerPlaceholderValues = nil
-		m.editField = 0
+		m.editField = fieldTitle
+		m.editPriority = 0
 		return m, nil
 	}
 
 	// Forward key events to the focused field
 	var cmd tea.Cmd
 	switch m.editField {
-	case 0:
+	case fieldTitle:
 		m.input, cmd = m.input.Update(msg)
-	case 1:
+	case fieldDate:
 		return m.updateDateSegment(msg)
-	case 2:
+	case fieldPriority:
+		// no-op, handled above
+	case fieldBody:
 		m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
-	case 3:
+	case fieldTemplate:
 		m.templateInput, cmd = m.templateInput.Update(msg)
 	}
 	return m, cmd
 }
 
-// updateEditMode handles key events while editing an existing todo (title + date + body).
+// updateEditMode handles key events while editing an existing todo (title + date + priority + body).
 func (m Model) updateEditMode(msg tea.KeyMsg) (Model, tea.Cmd) {
+	// Handle priority field left/right BEFORE other key matching
+	if m.editField == fieldPriority {
+		k := msg.String()
+		if k == "left" {
+			m.editPriority = max(0, m.editPriority-1)
+			return m, nil
+		}
+		if k == "right" {
+			m.editPriority = min(4, m.editPriority+1)
+			return m, nil
+		}
+	}
+
 	switch {
 	case key.Matches(msg, m.keys.Save):
 		// Ctrl+D saves from any field (including body)
@@ -749,40 +795,43 @@ func (m Model) updateEditMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Confirm):
 		// Body field uses Enter for newlines; use Ctrl+D or Tab away to save
-		if m.editField == 2 {
-			// In body textarea, Enter inserts a newline — forward to textarea
+		if m.editField == fieldBody {
+			// In body textarea, Enter inserts a newline -- forward to textarea
 			var cmd tea.Cmd
 			m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
 			return m, cmd
 		}
-		// Save all three fields
+		// Title, Date, Priority: Enter saves
 		return m.saveEdit()
 
 	case key.Matches(msg, m.keys.SwitchField):
-		// Cycle: title(0) → date segments(1) → body(2) → title(0)
+		// Cycle: title(0) -> date(1) -> priority(2) -> body(3) -> title(0)
 		switch m.editField {
-		case 0:
-			m.editField = 1
+		case fieldTitle:
+			m.editField = fieldDate
 			m.input.Blur()
 			return m, m.focusDateSegment(0)
-		case 1:
+		case fieldDate:
 			if m.dateSegFocus < 2 {
 				return m, m.focusDateSegment(m.dateSegFocus + 1)
 			}
-			m.editField = 2
+			m.editField = fieldPriority
 			m.blurAllDateSegments()
+			return m, nil
+		case fieldPriority:
+			m.editField = fieldBody
 			return m, m.bodyTextarea.Focus()
-		case 2:
-			m.editField = 0
+		case fieldBody:
+			m.editField = fieldTitle
 			m.bodyTextarea.Blur()
 			return m, m.input.Focus()
 		}
 		return m, nil
 
 	case key.Matches(msg, m.keys.Cancel):
-		if m.editField == 2 {
+		if m.editField == fieldBody {
 			// Esc in body field goes back to title field instead of cancelling
-			m.editField = 0
+			m.editField = fieldTitle
 			m.bodyTextarea.Blur()
 			return m, m.input.Focus()
 		}
@@ -793,18 +842,21 @@ func (m Model) updateEditMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.input.SetValue("")
 		m.clearAllDateSegments()
 		m.bodyTextarea.SetValue("")
-		m.editField = 0
+		m.editField = fieldTitle
+		m.editPriority = 0
 		return m, nil
 	}
 
 	// Forward key events to the focused field
 	var cmd tea.Cmd
 	switch m.editField {
-	case 0:
+	case fieldTitle:
 		m.input, cmd = m.input.Update(msg)
-	case 1:
+	case fieldDate:
 		return m.updateDateSegment(msg)
-	case 2:
+	case fieldPriority:
+		// no-op, handled above
+	case fieldBody:
 		m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
 	}
 	return m, cmd
@@ -820,7 +872,7 @@ func (m Model) saveEdit() (Model, tea.Cmd) {
 	isoDate, precision, errPos := m.deriveDateFromSegments()
 	if errPos >= 0 {
 		// Invalid/incomplete date -- focus the problematic segment
-		m.editField = 1
+		m.editField = fieldDate
 		m.input.Blur()
 		m.bodyTextarea.Blur()
 		return m, m.focusDateSegment(errPos)
@@ -828,7 +880,7 @@ func (m Model) saveEdit() (Model, tea.Cmd) {
 
 	body := m.bodyTextarea.Value()
 
-	m.store.Update(m.editingID, text, isoDate, precision, 0)
+	m.store.Update(m.editingID, text, isoDate, precision, m.editPriority)
 	m.store.UpdateBody(m.editingID, body)
 
 	m.mode = normalMode
@@ -838,7 +890,8 @@ func (m Model) saveEdit() (Model, tea.Cmd) {
 	m.input.SetValue("")
 	m.clearAllDateSegments()
 	m.bodyTextarea.SetValue("")
-	m.editField = 0
+	m.editField = fieldTitle
+	m.editPriority = 0
 
 	// Clamp cursor — todo may have moved between sections
 	newSelectable := selectableIndices(m.visibleItems())
@@ -858,14 +911,14 @@ func (m Model) saveAdd() (Model, tea.Cmd) {
 	isoDate, precision, errPos := m.deriveDateFromSegments()
 	if errPos >= 0 {
 		// Invalid/incomplete date -- focus the problematic segment
-		m.editField = 1
+		m.editField = fieldDate
 		m.input.Blur()
 		m.bodyTextarea.Blur()
 		m.templateInput.Blur()
 		return m, m.focusDateSegment(errPos)
 	}
 
-	todo := m.store.Add(text, isoDate, precision, 0)
+	todo := m.store.Add(text, isoDate, precision, m.editPriority)
 
 	body := m.bodyTextarea.Value()
 	if strings.TrimSpace(body) != "" {
@@ -887,10 +940,25 @@ func (m Model) saveAdd() (Model, tea.Cmd) {
 	m.pickerTemplates = nil
 	m.pickerPlaceholderNames = nil
 	m.pickerPlaceholderValues = nil
-	m.editField = 0
+	m.editField = fieldTitle
+	m.editPriority = 0
 	return m, nil
 }
 
+
+// renderPrioritySelector renders the inline priority selector for the edit form.
+func (m Model) renderPrioritySelector() string {
+	options := []string{"none", "P1", "P2", "P3", "P4"}
+	var parts []string
+	for i, opt := range options {
+		if i == m.editPriority {
+			parts = append(parts, m.styles.Cursor.Render("["+opt+"]"))
+		} else {
+			parts = append(parts, " "+opt+" ")
+		}
+	}
+	return strings.Join(parts, " ")
+}
 
 // View renders the todo list pane content.
 func (m Model) View() string {
@@ -920,7 +988,7 @@ func (m Model) editView() string {
 	// Field(s)
 	switch m.mode {
 	case editMode:
-		// Three fields: Title, Date (segmented), Body
+		// Four fields: Title, Date (segmented), Priority, Body
 		b.WriteString(m.styles.FieldLabel.Render("Title"))
 		b.WriteString("\n")
 		b.WriteString(m.input.View())
@@ -930,6 +998,10 @@ func (m Model) editView() string {
 		b.WriteString(m.renderDateSegments())
 		b.WriteString("\n")
 		b.WriteString(m.styles.EditHint.Render("(leave day blank for month todo, leave day+month blank for year todo)"))
+		b.WriteString("\n\n")
+		b.WriteString(m.styles.FieldLabel.Render("Priority"))
+		b.WriteString("\n")
+		b.WriteString(m.renderPrioritySelector())
 		b.WriteString("\n\n")
 		b.WriteString(m.styles.FieldLabel.Render("Body"))
 		b.WriteString("\n")
@@ -971,7 +1043,7 @@ func (m Model) editView() string {
 			b.WriteString(m.input.View())
 			b.WriteString("\n")
 		} else {
-			// Normal 4-field form: Title, Date (segmented), Body, Template
+			// Normal 5-field form: Title, Date (segmented), Priority, Body, Template
 			b.WriteString(m.styles.FieldLabel.Render("Title"))
 			b.WriteString("\n")
 			b.WriteString(m.input.View())
@@ -981,6 +1053,10 @@ func (m Model) editView() string {
 			b.WriteString(m.renderDateSegments())
 			b.WriteString("\n")
 			b.WriteString(m.styles.EditHint.Render("(leave day blank for month todo, leave day+month blank for year todo)"))
+			b.WriteString("\n\n")
+			b.WriteString(m.styles.FieldLabel.Render("Priority"))
+			b.WriteString("\n")
+			b.WriteString(m.renderPrioritySelector())
 			b.WriteString("\n\n")
 			b.WriteString(m.styles.FieldLabel.Render("Body"))
 			b.WriteString("\n")
@@ -1057,6 +1133,16 @@ func (m Model) renderTodo(b *strings.Builder, t *store.Todo, selected bool) {
 		b.WriteString(m.styles.Cursor.Render("> "))
 	} else {
 		b.WriteString("  ")
+	}
+
+	// Priority badge -- fixed-width 5-char slot (PRIO-04)
+	if t.HasPriority() {
+		label := fmt.Sprintf("[%s]", t.PriorityLabel())
+		style := m.styles.priorityBadgeStyle(t.Priority)
+		b.WriteString(style.Render(label))
+		b.WriteString(" ")
+	} else {
+		b.WriteString("     ") // 5 spaces to match "[P1] " width
 	}
 
 	// Styled checkbox (VIS-03)
@@ -1151,7 +1237,7 @@ func (m Model) updateTemplatePicker(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.pickingTemplate = false
 		m.pickerTemplates = nil
 		m.pickerCursor = 0
-		// Return to Template field (editField=3)
+		// Return to Template field (editField=fieldTemplate)
 		return m, m.templateInput.Focus()
 	}
 	return m, nil
@@ -1202,7 +1288,7 @@ func (m Model) prefillFromTemplate(t *store.Template, renderedBody string) Model
 	m.input.CursorEnd()
 	m.bodyTextarea.SetValue(renderedBody)
 	m.templateInput.SetValue(t.Name)
-	m.editField = 0
+	m.editField = fieldTitle
 	// Clear picker state
 	m.pickerTemplates = nil
 	m.pickerCursor = 0
