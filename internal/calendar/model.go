@@ -43,6 +43,7 @@ type Model struct {
 	holidays    map[int]bool
 	indicators  map[int]int
 	totals      map[int]int
+	priorities  map[int]int
 	provider    *holidays.Provider
 	store       store.TodoStore
 	keys        KeyMap
@@ -68,6 +69,7 @@ func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t the
 		holidays:       provider.HolidaysInMonth(y, m),
 		indicators:     s.IncompleteTodosPerDay(y, m),
 		totals:         s.TotalTodosPerDay(y, m),
+		priorities:     s.HighestPriorityPerDay(y, m),
 		provider:       provider,
 		store:          s,
 		keys:           DefaultKeyMap(),
@@ -101,6 +103,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.holidays = m.provider.HolidaysInMonth(m.year, m.month)
 			m.indicators = m.store.IncompleteTodosPerDay(m.year, m.month)
 			m.totals = m.store.TotalTodosPerDay(m.year, m.month)
+			m.priorities = m.store.HighestPriorityPerDay(m.year, m.month)
 
 		case key.Matches(msg, m.keys.PrevMonth):
 			if m.viewMode == WeekView {
@@ -117,6 +120,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.holidays = m.provider.HolidaysInMonth(m.year, m.month)
 			m.indicators = m.store.IncompleteTodosPerDay(m.year, m.month)
 			m.totals = m.store.TotalTodosPerDay(m.year, m.month)
+			m.priorities = m.store.HighestPriorityPerDay(m.year, m.month)
 
 		case key.Matches(msg, m.keys.NextMonth):
 			if m.viewMode == WeekView {
@@ -133,6 +137,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.holidays = m.provider.HolidaysInMonth(m.year, m.month)
 			m.indicators = m.store.IncompleteTodosPerDay(m.year, m.month)
 			m.totals = m.store.TotalTodosPerDay(m.year, m.month)
+			m.priorities = m.store.HighestPriorityPerDay(m.year, m.month)
 		}
 
 	}
@@ -153,7 +158,7 @@ func (m Model) View() string {
 			todayDay = now.Day()
 		}
 
-		grid := RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.totals, m.store, m.showMonthTodos, m.showYearTodos, m.contentWidth, m.styles)
+		grid := RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.totals, m.priorities, m.store, m.showMonthTodos, m.showYearTodos, m.contentWidth, m.styles)
 		content = grid + m.renderOverview()
 	}
 
@@ -209,6 +214,7 @@ func (m Model) renderOverview() string {
 func (m *Model) RefreshIndicators() {
 	m.indicators = m.store.IncompleteTodosPerDay(m.year, m.month)
 	m.totals = m.store.TotalTodosPerDay(m.year, m.month)
+	m.priorities = m.store.HighestPriorityPerDay(m.year, m.month)
 }
 
 // SetFocused sets whether this pane is focused.
@@ -277,4 +283,5 @@ func (m *Model) SetYearMonth(year int, month time.Month) {
 	m.holidays = m.provider.HolidaysInMonth(year, month)
 	m.indicators = m.store.IncompleteTodosPerDay(year, month)
 	m.totals = m.store.TotalTodosPerDay(year, month)
+	m.priorities = m.store.HighestPriorityPerDay(year, month)
 }

@@ -37,7 +37,7 @@ func fuzzyStatus(todos []store.Todo) string {
 //   - mondayStart: if true, weeks start on Monday; otherwise Sunday
 //   - indicators: map of day numbers to count of incomplete todos (nil safe)
 //   - st: store for querying month/year fuzzy todos (nil safe)
-func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mondayStart bool, indicators map[int]int, totals map[int]int, st store.TodoStore, showMonthTodos bool, showYearTodos bool, contentWidth int, s Styles) string {
+func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mondayStart bool, indicators map[int]int, totals map[int]int, priorities map[int]int, st store.TodoStore, showMonthTodos bool, showYearTodos bool, contentWidth int, s Styles) string {
 	var b strings.Builder
 
 	// Title line: month and year, centered in grid width.
@@ -156,7 +156,18 @@ func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mo
 		// Apply style based on priority: today+indicator > today+done > today > holiday > indicator > done > normal.
 		switch {
 		case day == today && hasPending:
-			cell = s.TodayIndicator.Render(cell)
+			switch priorities[day] {
+			case 1:
+				cell = s.TodayIndicatorP1.Render(cell)
+			case 2:
+				cell = s.TodayIndicatorP2.Render(cell)
+			case 3:
+				cell = s.TodayIndicatorP3.Render(cell)
+			case 4:
+				cell = s.TodayIndicatorP4.Render(cell)
+			default:
+				cell = s.TodayIndicator.Render(cell)
+			}
 		case day == today && hasAllDone:
 			cell = s.TodayDone.Render(cell)
 		case day == today:
@@ -164,7 +175,18 @@ func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mo
 		case holidays[day]:
 			cell = s.Holiday.Render(cell)
 		case hasPending:
-			cell = s.Indicator.Render(cell)
+			switch priorities[day] {
+			case 1:
+				cell = s.IndicatorP1.Render(cell)
+			case 2:
+				cell = s.IndicatorP2.Render(cell)
+			case 3:
+				cell = s.IndicatorP3.Render(cell)
+			case 4:
+				cell = s.IndicatorP4.Render(cell)
+			default:
+				cell = s.Indicator.Render(cell)
+			}
 		case hasAllDone:
 			cell = s.IndicatorDone.Render(cell)
 		default:
@@ -249,6 +271,7 @@ func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider,
 	holidayCache := make(map[monthKey]map[int]bool)
 	indicatorCache := make(map[monthKey]map[int]int)
 	totalsCache := make(map[monthKey]map[int]int)
+	priorityCache := make(map[monthKey]map[int]int)
 
 	getHolidays := func(y int, m time.Month) map[int]bool {
 		k := monthKey{y, m}
@@ -280,6 +303,16 @@ func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider,
 		return v
 	}
 
+	getPriorities := func(y int, m time.Month) map[int]int {
+		k := monthKey{y, m}
+		if v, ok := priorityCache[k]; ok {
+			return v
+		}
+		v := st.HighestPriorityPerDay(y, m)
+		priorityCache[k] = v
+		return v
+	}
+
 	// Day cells (single row of 7 days).
 	for i := 0; i < 7; i++ {
 		d := weekStart.AddDate(0, 0, i)
@@ -302,9 +335,21 @@ func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider,
 		}
 
 		// Apply style based on priority: today+indicator > today+done > today > holiday > indicator > done > normal.
+		prios := getPriorities(dy, dm)
 		switch {
 		case isToday && hasPending:
-			cell = s.TodayIndicator.Render(cell)
+			switch prios[dd] {
+			case 1:
+				cell = s.TodayIndicatorP1.Render(cell)
+			case 2:
+				cell = s.TodayIndicatorP2.Render(cell)
+			case 3:
+				cell = s.TodayIndicatorP3.Render(cell)
+			case 4:
+				cell = s.TodayIndicatorP4.Render(cell)
+			default:
+				cell = s.TodayIndicator.Render(cell)
+			}
 		case isToday && hasAllDone:
 			cell = s.TodayDone.Render(cell)
 		case isToday:
@@ -312,7 +357,18 @@ func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider,
 		case hols[dd]:
 			cell = s.Holiday.Render(cell)
 		case hasPending:
-			cell = s.Indicator.Render(cell)
+			switch prios[dd] {
+			case 1:
+				cell = s.IndicatorP1.Render(cell)
+			case 2:
+				cell = s.IndicatorP2.Render(cell)
+			case 3:
+				cell = s.IndicatorP3.Render(cell)
+			case 4:
+				cell = s.IndicatorP4.Render(cell)
+			default:
+				cell = s.Indicator.Render(cell)
+			}
 		case hasAllDone:
 			cell = s.IndicatorDone.Render(cell)
 		default:
