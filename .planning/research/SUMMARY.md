@@ -1,243 +1,256 @@
 # Project Research Summary
 
-**Project:** todo-calendar v2.1 - Priority Levels & Natural Language Date Input
-**Domain:** TUI enhancement for existing Go/Bubble Tea todo application
-**Researched:** 2026-02-12
+**Project:** Google Calendar Integration for Todo-Calendar TUI
+**Domain:** Read-only calendar event display via REST API/CalDAV in Go/Bubble Tea TUI
+**Researched:** 2026-02-13
 **Confidence:** HIGH
 
 ## Executive Summary
 
-This research covers adding two features to an existing 8,177 LOC Go/Bubble Tea TUI todo-calendar app: P1-P4 priority levels and natural language date input ("tomorrow", "next friday"). Both features integrate into an established codebase with well-defined patterns for schema migrations, edit form handling, theme management, and date precision (day/month/year).
+This research investigated adding read-only Google Calendar event display to an existing Go/Bubble Tea TUI todo-calendar application. The initial assumption of using CalDAV with app passwords is **fundamentally broken** — Google disabled basic authentication for CalDAV on September 30, 2024. OAuth 2.0 is now mandatory.
 
-The recommended approach is to treat priority as a visual indicator (colored badge + label) without affecting manual sort order, and to replace the existing 3-segment date input (dd/mm/yyyy) with a single textinput that accepts both natural language and formatted dates. Priority requires a schema migration (v7), theme color additions, and edit form integration. Natural language parsing requires a precision-aware wrapper around `tj/go-naturaldate` to preserve the existing date precision system.
+Two viable technical paths emerged: (1) Google Calendar REST API with native syncToken support and official Go client, or (2) CalDAV via emersion/go-webdav with OAuth2, which works with Google but also supports self-hosted servers (Nextcloud, Radicale, Fastmail). The recommended approach is a **dual-path architecture**: use REST API for Google accounts (better API, simpler OAuth, native sync) and CalDAV for future non-Google providers. This provides the best user experience for Google while maintaining extensibility.
 
-Key risks include priority auto-sort conflicting with manual J/K reordering (mitigation: visual-only priority), NL parsers discarding precision information (mitigation: detect precision from input text before parsing), and ambiguous date interpretations (mitigation: show parsed date confirmation). Both features are additive and can be built incrementally without breaking existing functionality.
+The primary risks are architectural: this is the app's first network feature, requiring fundamental changes to the synchronous event loop (async commands via tea.Cmd), token management (OAuth refresh, secure storage), and data model (ephemeral events vs persistent todos). Critical pitfalls include blocking network calls that freeze the TUI, timezone handling for all-day events (off-by-one day bugs), and OAuth token security. These are all preventable with established Bubble Tea patterns and timezone-aware parsing.
 
 ## Key Findings
 
 ### Recommended Stack
 
-**Core technologies already in use:**
-- Go 1.24 with Bubble Tea TUI framework
-- SQLite with WAL mode, schema at PRAGMA user_version=6
-- Lipgloss for styling with 4 themes (Dark/Light/Nord/Solarized)
-- TOML config (6 settings currently)
+**Authentication changed everything.** Google's deprecation of basic auth forces OAuth 2.0, which adds complexity but is well-supported in Go. The REST API path provides a better developer experience than CalDAV for Google-specific integration, while CalDAV remains valuable for future multi-provider support.
 
-**New dependency for NL date:**
-- `github.com/tj/go-naturaldate` (313 stars, MIT, zero transitive deps) — lightweight parser with Future/Past direction support, handles "tomorrow", "next friday", "in 2 weeks", "jan 15"
+**Core technologies:**
+- **google.golang.org/api/calendar/v3** (v0.266.0): Official Google Calendar client — native syncToken support, typed event model, simpler than parsing iCalendar
+- **golang.org/x/oauth2**: Token management with automatic refresh — required for Google auth, handles access token expiry transparently
+- **emersion/go-webdav** (v0.7.0): CalDAV client for non-Google providers — enables future Nextcloud/Fastmail support, protocol-level access
+- **emersion/go-ical**: iCalendar parsing companion to go-webdav — required for CalDAV response parsing
+- **Bubble Tea tea.Cmd pattern**: Async network operations — prevents TUI freezes, already used for editor launches
 
-**Why this parser:** Pure Go, minimal API (single Parse function), no locale data bloat. Alternatives rejected: `olebedev/when` (too heavy, complex rule system), `markusmobius/go-dateparser` (200+ locale files, inappropriate for personal TUI), `araddon/dateparse` (format parsing only, not natural language).
+**Critical stack decision:** For Google-only v1, the REST API alone is sufficient. For multi-provider future, build the abstraction layer now with both REST and CalDAV clients behind a common interface.
 
 ### Expected Features
 
-**Priority levels (P1-P4):**
-- Visual indicator (colored badge + text label) on each todo
-- Set during add/edit via dedicated form field
-- Display in todo list, search results, and optionally calendar indicators
-- Theme-aware colors (4 priority colors × 4 themes = 16 color values)
-- Integer storage (0=none, 1=P1, 2=P2, 3=P3, 4=P4) for sortability
+Research identified 11 table-stakes features and 9 differentiators based on patterns from Todoist, Things 3, gcal-tui, and calcure.
 
-**Natural language date input:**
-- Single textinput replacing 3-segment (dd/mm/yyyy) date fields
-- Accepts NL expressions: "tomorrow", "next friday", "jan 15", "in 2 weeks"
-- Accepts formatted dates: "2026-02-15" (ISO), "15.02.2026" (EU), "02/15/2026" (US)
-- Preserves date precision system (day/month/year) via input pattern detection
-- Shows parsed date confirmation before saving
+**Must have (table stakes):**
+- Timed events with HH:MM time prefix (core visual distinction)
+- All-day events without time prefix (separate handling from timed)
+- Visual distinction from todos (no checkbox, distinct color, event-specific styling)
+- Events appear in dated section above todos (fixed commitments first)
+- Multi-day event expansion (show on each day of span)
+- Recurring event expansion via API (singleEvents=true parameter)
+- 5-minute background polling refresh (non-blocking fetch)
+- Events not selectable/actionable (cursor skips over)
+- Calendar grid day indicators include events (visual presence signal)
+- Timezone-aware display (events in user's local time)
+- Week/month view filtering (events respect view range)
 
-**Defer (future milestones):**
-- Priority-based auto-sort (conflicts with manual reordering, needs separate view mode)
-- Inline priority toggling in normal mode (accidental changes risk, edit form is safer)
-- Calendar grid priority colors (nice-to-have, complex integration)
+**Should have (competitive):**
+- Event color from Google Calendar (visual consistency)
+- Event location display (context for "where")
+- Events in search results (unified search across todos and events)
+- Multiple calendar support (work/personal separation)
+- Open in browser action (escape hatch for full details)
+- Stale data indicator (show when last sync was)
+
+**Defer (v2+):**
+- Event creation/editing (requires write scope, massive complexity)
+- RSVP/attendee responses (out of scope for read-only)
+- Event reminders/notifications (requires background daemon)
+- CalDAV protocol support (defer to separate milestone)
 
 ### Architecture Approach
 
-The existing architecture has a root `app.Model` orchestrating 6 overlays (calendar, todolist, settings, search, preview, template manager) with a SQLite store implementing the `TodoStore` interface. Priority and NL date integrate as follows:
+The existing app is 100% offline with synchronous SQLite operations. CalDAV integration introduces the first async network feature. The architecture must preserve the offline-first model for todos while adding ephemeral network-sourced events.
 
 **Major components:**
+1. **internal/gcal/** (new package) — Google Calendar client wrapper, OAuth token management, CalendarEvent domain type, in-memory cache, Bubble Tea message types for sync results
+2. **app.Model extensions** — Starts sync commands via tea.Cmd, receives sync result messages, distributes events to child models (calendar, todolist)
+3. **calendar.Model modifications** — Adds eventCounts map, SetCalendarEvents() method, renders event indicators on grid days
+4. **todolist.Model modifications** — Adds new Events section with eventItem kind (non-selectable), renders events with time prefix and distinct styling
 
-1. **Store layer** — Add `priority INTEGER NOT NULL DEFAULT 0` column via migration v7, extend `todoColumns` constant, update `scanTodo()` to read priority, expand `Add()` and `Update()` signatures to accept priority parameter
+**Key patterns to follow:**
+- Constructor DI (pass dependencies, not globals) — matches existing store/provider/config pattern
+- tea.Cmd for all network I/O — already used for editor launches
+- Pure rendering functions (RenderGrid takes data as parameters) — existing pattern
+- SetX methods for cross-component data flow — existing pattern in RefreshIndicators, SetViewMonth
 
-2. **Theme layer** — Add 4 priority color fields to `Theme` struct (PriorityP1/P2/P3/P4), map to existing semantic colors where possible (P1→PendingFg red, P2→IndicatorFg orange, P3→AccentFg blue, P4→MutedFg grey) to minimize palette expansion
-
-3. **Todolist model** — Add `editPriority int` field, insert priority as field 2 in edit form (Title→Date→Priority→Body→Template), render priority badge in `renderTodo()` before todo text, pass priority to store on save
-
-4. **NL date package** (new: `internal/nldate/`) — Pure function `Parse(input, ref, userLayout) (isoDate, precision, error)` that detects precision from input patterns BEFORE calling `go-naturaldate`, handles year-only ("2026"), month-year ("feb 2026"), ISO dates, and NL expressions, returns day precision for all NL dates
-
-5. **Edit form refactor** — Replace 3 date segment textinputs (day/month/year) with single `dateInput` textinput, remove ~200 lines of segment cycling/auto-advance logic, replace `deriveDateFromSegments()` with `nldate.Parse()`
-
-**Data flow:** User types "tomorrow" in date field → Tab triggers parse → `nldate.Parse()` returns ("2026-02-13", "day", nil) → User types "2" in priority field → Enter saves → `store.Add(text, date, precision, priority)` → INSERT with priority=2 → Display shows `[P2]` badge in theme's P2 color
+**Anti-patterns to avoid:**
+- Storing events in SQLite (events are ephemeral, rebuilt on each sync)
+- Blocking network calls in Update() (freezes TUI)
+- Making events selectable/editable (scope creep to full calendar client)
+- OAuth flow inside running TUI (handle in main.go before Bubble Tea starts)
 
 ### Critical Pitfalls
 
-1. **Priority auto-sort destroys manual reorder state** — The existing system uses `sort_order` with manual J/K reordering. Adding `ORDER BY priority` means users cannot move P3 above P1. **Avoidance:** Priority is visual-only (badge + color), does NOT affect SQL ORDER BY or manual J/K reordering. Auto-sort can be a separate view mode in future.
+Research identified 15 pitfalls across authentication, async patterns, parsing, and UX. The top 5 critical issues:
 
-2. **NL parser discards date precision** — All Go NL parsers return `time.Time` (always day-precise). Parsing "March" or "2027" loses month/year precision, breaking section assignment. **Avoidance:** Build a wrapper that detects precision from input text BEFORE parsing (regex for year-only, month-only patterns), then delegates to `go-naturaldate`.
+1. **App passwords do NOT work** — Google disabled basic auth for CalDAV. OAuth 2.0 is mandatory. Assumption of app-password authentication fails immediately with HTTP 401. Prevention: OAuth from day one via golang.org/x/oauth2 with device flow or localhost redirect.
 
-3. **Ambiguous NL dates parsed wrong** — "Friday" could mean last Friday or next Friday depending on parser direction. Users have no confirmation. **Avoidance:** Configure parser with Future direction for todo app, show parsed date confirmation ("Parsed: Friday, February 14, 2026") before saving.
+2. **Blocking network calls freeze TUI** — Synchronous CalDAV fetch in Update() blocks entire event loop for 1-5 seconds. Prevention: ALL network operations via tea.Cmd (goroutine-based), with context.WithTimeout(30s) on every call.
 
-4. **Schema migration default value breaks semantics** — Adding `priority INTEGER NOT NULL DEFAULT 0` works, but 0 must mean "no priority" not "P1". **Avoidance:** 0=none, 1=P1, 2=P2, 3=P3, 4=P4. Existing todos get 0 (unset), which sorts after P4 if priority sorting is ever added.
+3. **All-day event timezone off-by-one** — Parsing VALUE=DATE with timezone conversion shifts events to wrong calendar day. Prevention: Parse all-day dates as pure strings ("20260215" → "2026-02-15") without time.Time conversion.
 
-5. **Theme color palette exhaustion** — Adding 4 new priority colors per theme (16 total) may conflict with existing reds (HolidayFg, PendingFg), yellows (IndicatorFg), greys (MutedFg, CompletedFg). **Avoidance:** Map priorities to existing semantic colors where possible (reuse PendingFg for P1, IndicatorFg for P2, AccentFg for P3, MutedFg for P4). Add text labels `[P1]` so color is not the only indicator (accessibility).
+4. **OAuth token storage in plaintext config** — Refresh tokens grant indefinite access. Prevention: Separate file with 0600 permissions at ~/.config/todo-calendar/oauth-token.json, NOT in config.toml.
+
+5. **Missing HTTP timeout causes goroutine leaks** — Default http.Client has no timeout. Failed connections block for 2+ minutes. Prevention: Explicit 30s timeout on http.Client.Timeout and http.Transport.DialContext.
+
+**Additional moderate pitfalls:**
+- Stale data displayed as current after network outage (show sync status indicator)
+- Token refresh failure silently breaks all fetches (custom TokenSource with error detection)
+- Google CalDAV URL construction differs from standard discovery (hardcode endpoint URLs)
+- Timed events from different timezones display at wrong local time (convert to time.Local before date extraction)
+- Recurring events require RRULE expansion (use EXPAND in CalendarQuery, verify Google support)
 
 ## Implications for Roadmap
 
-Based on research, suggested 3-phase structure with clear dependency ordering:
+Based on combined research, the integration naturally decomposes into 5 phases with clear dependencies.
 
-### Phase 1: Priority Data Layer
+### Phase 1: OAuth 2.0 Authentication Foundation
+**Rationale:** Authentication must work before any API interaction. OAuth is the most complex new dependency and blocks all subsequent phases. Handling this first validates the core assumption and enables iterative development.
 
-**Rationale:** Schema migration must exist before any UI can read/write priority. This phase is backend-only (store + schema), easily testable in isolation, and establishes the data contract for all downstream phases.
+**Delivers:** OAuth token acquisition, refresh, and persistence. Google API Console setup documentation.
 
-**Delivers:**
-- Migration v7: `ALTER TABLE todos ADD COLUMN priority INTEGER NOT NULL DEFAULT 0`
-- Extended `Todo` struct with `Priority int` field and helper methods (`PriorityLabel()`, `HasPriority()`)
-- Updated `todoColumns` constant and `scanTodo()` function
-- Expanded `Add()` and `Update()` interface signatures with priority parameter
-- All store tests passing with priority roundtrip
+**Stack:** golang.org/x/oauth2, device authorization flow (TUI-friendly), token file storage (0600 permissions)
 
-**Addresses features:**
-- Priority storage and retrieval (prerequisite for UI)
+**Addresses:** Pitfall 1 (app passwords don't work), Pitfall 3 (token storage security), Pitfall 7 (token refresh failure)
 
-**Avoids pitfalls:**
-- Pitfall 4 (migration default semantics) — 0=none established early
-- Pitfall 8 (store interface changes) — all signatures updated atomically
+**Avoids:** Building CalDAV integration on broken authentication
 
-**Research flag:** Standard pattern (follows v6 migration for date_precision), no additional research needed.
+**Research flag:** LOW — OAuth patterns are well-documented, Go library is mature, Google docs are official
 
----
+### Phase 2: Google Calendar API Client & Event Model
+**Rationale:** With auth working, establish the data fetching layer. REST API is simpler than CalDAV for Google and provides better sync primitives. Creating the domain model (CalendarEvent) early enables parallel UI development.
 
-### Phase 2: Priority UI + Theme
+**Delivers:** Event fetching via google.golang.org/api/calendar/v3, CalendarEvent domain type, in-memory cache, syncToken-based delta sync
 
-**Rationale:** Depends on Phase 1 (store must read/write priority). Self-contained UI feature that does not affect date input. Can be tested independently with manual priority entry.
+**Uses:** google.golang.org/api/calendar/v3 (official client), Events.List with timeMin/timeMax/singleEvents, syncToken for incremental updates
 
-**Delivers:**
-- 4 priority color fields in `Theme` struct, values for all 4 themes
-- 4 priority styles in `todolist.Styles`
-- Priority field in edit form (position 2, between date and body)
-- Priority badge in `renderTodo()` before todo text
-- Priority display in search results
-- Priority input handling (keypress 1-4 to set, 0/backspace to clear)
+**Implements:** internal/gcal package (client wrapper, event model, cache)
 
-**Addresses features:**
-- Priority visual indicator (colored badge + label)
-- Priority setting during add/edit
+**Addresses:** Pitfall 5 (timezone handling), Pitfall 10 (recurring expansion via singleEvents=true)
 
-**Avoids pitfalls:**
-- Pitfall 1 (auto-sort conflicts) — priority is visual-only, no ORDER BY changes
-- Pitfall 5 (color palette) — map to existing semantic colors where feasible
-- Pitfall 9 (completed priority confusion) — badge retains color, text gets CompletedFg
-- Pitfall 11 (alignment) — fixed-width priority slot (5 chars: `[P1] ` or `     `)
+**Research flag:** LOW — Official Google API with documented sync patterns
 
-**Research flag:** Standard form integration pattern, no additional research needed. Theme colors need manual tuning but follow existing 4-theme structure.
+### Phase 3: Bubble Tea Async Integration
+**Rationale:** Network operations require async commands to prevent TUI freezes. This phase establishes the pattern for all future network features, including background polling.
 
----
+**Delivers:** tea.Cmd wrappers for API calls, CalDAVSyncDoneMsg handling, 5-minute tea.Tick polling, graceful error handling
 
-### Phase 3: Natural Language Date Input
+**Uses:** tea.Cmd (goroutine-based async), tea.Tick (periodic polling), context.WithTimeout (request timeouts)
 
-**Rationale:** Independent of priority (could be parallel), but placing it last means priority form changes are stable before refactoring date input. The date input replacement is the largest refactor, touching edit form rendering, Tab cycling, and removing ~200 lines of segment logic.
+**Implements:** Sync commands in app.Model, message routing, poll scheduling
 
-**Delivers:**
-- New package `internal/nldate/` with `Parse()` function
-- Precision-aware wrapper around `tj/go-naturaldate`
-- Single `dateInput` textinput replacing 3 date segments
-- Multi-strategy date parsing (year-only, month-year, ISO, NL)
-- Removal of `dateSegDay/Month/Year`, `dateSegFocus`, `renderDateSegments()`, `deriveDateFromSegments()`, and all segment helpers
-- Comprehensive tests for NL parsing edge cases
+**Addresses:** Pitfall 2 (blocking calls freeze TUI), Pitfall 4 (HTTP timeouts)
 
-**Addresses features:**
-- Natural language date input ("tomorrow", "next friday")
-- Simplified date entry (1 field instead of 3)
-- Format-aware parsing (respects ISO/EU/US config)
+**Avoids:** TUI responsiveness degradation, goroutine leaks
 
-**Avoids pitfalls:**
-- Pitfall 2 (precision loss) — wrapper detects precision from input text before parsing
-- Pitfall 3 (ambiguous dates) — Future direction configured, parsed date shown before save
-- Pitfall 7 (field cycling conflicts) — single textinput, no segment focus state
-- Pitfall 10 (heavy dependencies) — `tj/go-naturaldate` is lightweight (zero transitive deps)
-- Pitfall 13 (locale format) — numeric fragments disambiguated via user's dateFormat setting
+**Research flag:** LOW — Bubble Tea async patterns are well-documented, matches existing editor.Open pattern
 
-**Research flag:** Needs thorough testing of NL parser edge cases (month-only, year-only, relative expressions). The precision detection wrapper is novel for this codebase and requires validation with diverse inputs.
+### Phase 4: Calendar Grid Event Indicators
+**Rationale:** Visual feedback on the calendar grid shows which days have events. This is table-stakes UX (all competitors do this) and provides value before the full event list rendering.
 
----
+**Delivers:** Day-level event indicators on calendar grid, event count tracking, visual distinction from todo indicators
+
+**Uses:** Pure rendering pattern (eventCounts passed to RenderGrid), existing indicator system
+
+**Implements:** calendar.Model.SetCalendarEvents(), eventCounts map, grid cell styling for events
+
+**Addresses:** Feature: calendar grid indicators (table stakes)
+
+**Research flag:** NONE — Extension of existing indicator pattern
+
+### Phase 5: Todo List Event Section Rendering
+**Rationale:** The primary event display surface. Shows event details (time, title, location) alongside dated todos with clear visual distinction.
+
+**Delivers:** Events section in todo list, time-prefixed rendering, non-selectable event items, all-day vs timed styling
+
+**Uses:** New eventItem kind, visibleItems() extension, event-specific styles
+
+**Implements:** todolist.Model.SetCalendarEvents(), renderEvent(), event section in visibleItems()
+
+**Addresses:** Features: timed events, all-day events, visual distinction, events above todos (all table stakes)
+
+**Avoids:** Pitfall 12 (confusing sort order by keeping events in separate section)
+
+**Research flag:** LOW — Extends existing section pattern (dated/month/year/floating)
 
 ### Phase Ordering Rationale
 
-- **Phase 1 first:** Schema changes must precede UI. Migration v7 establishes priority storage contract.
-- **Phase 2 before Phase 3:** Priority adds one field to edit form (simple). NL date replaces an entire subsystem (complex). Staging complexity reduces merge conflicts.
-- **Phases 2 and 3 could be parallel:** No shared code beyond the edit form field count. But sequential is safer given that both touch edit form Tab cycling.
-- **No calendar indicator phase:** Calendar priority colors (Pitfall 6) are deferred. Requires new store method `HighestPriorityPerDay()` and `RenderGrid()` parameter expansion. Not essential for v2.1.
+- **Phase 1 (OAuth) is foundational** — Nothing works without auth, validating this assumption early prevents wasted effort
+- **Phase 2 (API client) before UI** — Domain model stabilizes before rendering logic depends on it
+- **Phase 3 (async) before display** — Background polling must exist before event data is available to display
+- **Phases 4 and 5 can be parallel** — Calendar and todolist are independent consumers of event data after Phase 3
+- **Deferred: CalDAV abstraction** — Wait for user demand for non-Google providers before adding protocol complexity
+
+**Dependency chain:** 1 → 2 → 3 → (4 | 5)
 
 ### Research Flags
 
-**Needs testing validation:**
-- **Phase 3:** NL date precision detection wrapper (novel design, needs edge case validation: "March", "2027", "next month", "in 2 weeks")
+Phases needing deeper research during planning:
+- **None** — All critical patterns are well-documented (OAuth, Google API, Bubble Tea async, timezone handling)
 
-**Standard patterns (no additional research):**
-- **Phase 1:** Schema migration follows established v1-v6 pattern
-- **Phase 2:** Edit form field addition and theme color extension follow existing patterns
+Phases with standard patterns (skip research-phase):
+- **Phase 1-5** — Official libraries (google.golang.org/api, golang.org/x/oauth2), established Bubble Tea patterns, timezone parsing in Go stdlib
 
-**Deferred for future research:**
-- Calendar indicator priority coloring (moderate complexity, unclear UX value)
-- Priority-based auto-sort as separate view mode (requires sort strategy research)
-- Inline priority toggling (needs keybinding conflict analysis)
+**Implementation notes for planning:**
+- Monitor Google Calendar API quotas (1M requests/day default, non-issue for single user)
+- Test OAuth flow on headless/SSH environments (device flow is essential)
+- Validate EXPAND parameter behavior with Google CalDAV if CalDAV path is chosen
+- Test timezone edge cases (all-day events, DST transitions, events crossing midnight)
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Codebase patterns well-established (8,177 LOC reviewed), migration pattern verified across v1-v6, `tj/go-naturaldate` API confirmed via pkg.go.dev |
-| Features | HIGH | Priority visual indicator and NL date input are well-scoped, implementation paths clear from existing edit form and theme systems |
-| Architecture | HIGH | Component boundaries identified via deep codebase analysis, integration points mapped (store interface, theme struct, edit form fields, render methods) |
-| Pitfalls | HIGH | All 14 pitfalls derived from codebase analysis (specific line numbers cited), validated against existing patterns (sort_order, date_precision, migration v6) |
+| Stack | HIGH | Official Google libraries verified via pkg.go.dev, OAuth requirement confirmed via Google docs, Bubble Tea patterns documented |
+| Features | HIGH | Table stakes derived from 4 competitor products (Todoist, Things 3, gcal-tui, calcure), Google API capabilities verified |
+| Architecture | HIGH | Matches existing Bubble Tea patterns in codebase, async command pattern already used for editor launches |
+| Pitfalls | HIGH | Critical issues (auth, timezone, async) verified via official docs and community reports, solutions tested in similar projects |
 
 **Overall confidence:** HIGH
 
-This is not a new project but an enhancement to an existing, stable codebase with well-established patterns. The risk profile is low because:
-1. Both features are additive (no removal of existing functionality)
-2. Schema migration follows proven pattern (v6 added date_precision identically)
-3. NL parser is isolated in a pure function (easily testable)
-4. Priority is visual-only (does not break sort logic)
-
 ### Gaps to Address
 
-**NL date precision detection edge cases:**
-- How to handle "march" vs "march 15" (month-precision vs day-precision)?
-- Does "next month" mean month-precision or day-precision (same day next month)?
-- Can year-only ("2027") be reliably distinguished from numeric ID or typo?
+Areas requiring validation during implementation (not blocking, but monitor):
 
-**Mitigation:** Comprehensive unit tests in `nldate_test.go` covering all input patterns (relative, named months, year-only, ISO dates). Add integration test: type each pattern in TUI, verify section assignment (Dated/This Month/This Year).
+- **Google API Console user setup friction** — Creating OAuth credentials is non-trivial for non-technical users. Document thoroughly or consider shipping a shared client_id for open-source use (Google allows <100 users unverified).
 
-**Theme color tuning:**
-- Do mapped priority colors (P1→PendingFg, P2→IndicatorFg) create confusion with existing indicators?
-- Are P3/P4 distinguishable enough from MutedFg and AccentFg in all 4 themes?
+- **CTag/syncToken behavior with Google** — Incremental sync is documented but edge cases (token expiry, server-side changes) need real-world testing. Fallback to full fetch must be robust.
 
-**Mitigation:** Manual testing in all 4 themes. Create todos at all 4 priority levels, view alongside holidays, completed todos, and section headers. Adjust colors if collisions occur.
+- **Multi-calendar selection UX** — Research assumed primary calendar only. If users request multiple calendars (Work, Personal), the Settings overlay needs calendar list/toggle UI. Defer to post-MVP.
 
-**Edit form field count:**
-- Does adding priority (5th field) make Tab cycling too long?
-- Should Body textarea remain the second-to-last field for quick access?
+- **CalDAV EXPAND parameter reliability** — If CalDAV path is chosen, verify that Google's CalDAV actually expands recurring events. Fallback plan if it doesn't: skip recurring events initially.
 
-**Mitigation:** Use priority during dogfooding. If Tab cycling feels tedious, consider reordering fields or adding Shift+Tab backward cycling.
+- **OAuth device flow vs localhost redirect** — Device flow is better for SSH/headless but requires more user interaction (visit URL, enter code). Localhost redirect is instant but fails in SSH. May need to support both flows.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- Codebase analysis: `internal/store/sqlite.go` — 27 TodoStore methods, migration v1-v6 pattern, sort_order queries, todoColumns/scanTodo (lines 54-189)
-- Codebase analysis: `internal/store/todo.go` — Todo struct (10 fields), precision methods (IsMonthPrecision/IsYearPrecision), InMonth/InDateRange logic
-- Codebase analysis: `internal/todolist/model.go` — Edit form (4 fields, Tab cycling lines 666-780), 3-segment date input (~200 lines), renderTodo (lines 1054-1093), save methods (saveAdd line 852, saveEdit line 814)
-- Codebase analysis: `internal/theme/theme.go` — 16 semantic color roles, 4 theme constructors (Dark/Light/Nord/Solarized), palette analysis
-- Codebase analysis: `internal/calendar/grid.go` — 4-char cell rendering, indicator style priority chain (lines 144-183), RenderGrid 12-parameter signature
-- [tj/go-naturaldate pkg.go.dev](https://pkg.go.dev/github.com/tj/go-naturaldate) — Parse() API, WithDirection option, zero dependencies
+- Official Google CalDAV API Developer's Guide — endpoint URLs, OAuth requirement, feature support
+- google.golang.org/api/calendar/v3 pkg.go.dev — Events.List API, syncToken, timeMin/timeMax, singleEvents parameter
+- golang.org/x/oauth2 pkg.go.dev — TokenSource, Config, auto-refresh mechanics
+- emersion/go-webdav pkg.go.dev — CalDAV client methods, CalendarQuery structure
+- Bubble Tea official documentation — tea.Cmd pattern, tea.Tick polling, async examples
+- Google Calendar API Sync Guide — syncToken flow, 410 gone handling
+- RFC 5545 (iCalendar) — VALUE=DATE vs VALUE=DATE-TIME, RRULE syntax
+- Codebase analysis (8,695 LOC across 35 Go files) — existing patterns, message routing, store interface
 
 ### Secondary (MEDIUM confidence)
-- [tj/go-naturaldate GitHub](https://github.com/tj/go-naturaldate) — 313 stars, MIT license, 15 commits, stable
-- [olebedev/when](https://github.com/olebedev/when) — evaluated for comparison (1.5k stars, rule-based, heavier)
-- [markusmobius/go-dateparser](https://github.com/markusmobius/go-dateparser) — evaluated and rejected (200+ locale files, heavy dependencies)
-- [araddon/dateparse](https://github.com/araddon/dateparse) — evaluated and rejected (format parsing only, not NL)
+- Todoist Calendar Integration docs — events-above-tasks pattern, color coding
+- Things 3 feature documentation — events at top of Today view
+- gcal-tui DeepWiki documentation — event rendering patterns, status markers
+- calcure GitHub repository — dual-pane event/task layout
+- WTF dashboard Google Calendar module — event display format
+- DAVx5 Google Calendar compatibility notes — OAuth requirement confirmation
+- Home Assistant CalDAV issues (#126448, #25814) — all-day event timezone bugs
+- Cal.com blog post on CalDAV implementation — RRULE complexity, timezone challenges
 
-### Tertiary (LOW confidence, informational)
-- [Todoist sort documentation](https://www.todoist.com/help/articles/sort-or-group-tasks-in-todoist-WFWD0hrb) — auto-sort vs manual reorder pattern (informational, not prescriptive)
-- [Colorblind-safe design guide](https://www.smashingmagazine.com/2024/02/designing-for-colorblindness/) — never rely on color alone (general UX principle)
+### Tertiary (LOW confidence, needs validation)
+- CalDAV read-only scope caveat (community report) — calendar.readonly may cause 400 errors with CalDAV protocol, needs testing
+- Google CalDAV cookie behavior — reported in some CalDAV clients, needs verification
+- Rate limit specifics for Google Calendar API — documented default is 1M req/day, but burst limits undocumented
 
 ---
-*Research completed: 2026-02-12*
+*Research completed: 2026-02-13*
 *Ready for roadmap: yes*
