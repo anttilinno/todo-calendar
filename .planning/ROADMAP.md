@@ -29,7 +29,7 @@
 **Milestone Goal:** Add P1-P4 priority levels with color-coded badges and calendar indicators.
 
 - [x] **Phase 31: Priority Data Layer** - Schema migration v7, Todo struct extension, store interface updates — completed 2026-02-13
-- [ ] **Phase 32: Priority UI + Theme** - Edit form field, badge rendering, theme colors, calendar indicators, search
+- [x] **Phase 32: Priority UI + Theme** - Edit form field, badge rendering, theme colors, calendar indicators, search — completed 2026-02-13
 
 ## Phase Details
 
@@ -60,8 +60,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 32-01-PLAN.md — Theme priority colors, store query, todolist edit form and badge rendering
-- [ ] 32-02-PLAN.md — Calendar priority indicators and search badge rendering
+- [x] 32-01-PLAN.md — Theme priority colors, store query, todolist edit form and badge rendering
+- [x] 32-02-PLAN.md — Calendar priority indicators and search badge rendering
 
 ## Progress
 
@@ -74,4 +74,4 @@ Plans:
 | 29. Settings & View Filtering | v1.9 | 1/1 | Complete | 2026-02-12 |
 | 30. Save-on-Close Settings | v2.0 | 1/1 | Complete | 2026-02-12 |
 | 31. Priority Data Layer | v2.1 | 1/1 | Complete | 2026-02-13 |
-| 32. Priority UI + Theme | v2.1 | 0/2 | Not started | - |
+| 32. Priority UI + Theme | v2.1 | 2/2 | Complete | 2026-02-13 |
