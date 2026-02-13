@@ -28,7 +28,7 @@
 
 **Milestone Goal:** Add P1-P4 priority levels with color-coded badges and calendar indicators, plus natural language date input replacing the segmented 3-field date entry.
 
-- [ ] **Phase 31: Priority Data Layer** - Schema migration v7, Todo struct extension, store interface updates
+- [x] **Phase 31: Priority Data Layer** - Schema migration v7, Todo struct extension, store interface updates — completed 2026-02-13
 - [ ] **Phase 32: Priority UI + Theme** - Edit form field, badge rendering, theme colors, calendar indicators, search
 - [ ] **Phase 33: Natural Language Date Input** - NL parser package, single text field replacing segmented input, precision detection
 
@@ -46,7 +46,7 @@
 **Plans**: 1 plan
 
 Plans:
-- [ ] 31-01-PLAN.md — Schema migration v7, struct extension, store interface updates, and priority roundtrip tests
+- [x] 31-01-PLAN.md — Schema migration v7, struct extension, store interface updates, and priority roundtrip tests
 
 ### Phase 32: Priority UI + Theme
 **Goal**: Users can set, see, and distinguish priority levels across the entire interface
@@ -90,6 +90,6 @@ Plans:
 | 28. Display & Indicators | v1.9 | 2/2 | Complete | 2026-02-12 |
 | 29. Settings & View Filtering | v1.9 | 1/1 | Complete | 2026-02-12 |
 | 30. Save-on-Close Settings | v2.0 | 1/1 | Complete | 2026-02-12 |
-| 31. Priority Data Layer | v2.1 | 0/1 | Not started | - |
+| 31. Priority Data Layer | v2.1 | 1/1 | Complete | 2026-02-13 |
 | 32. Priority UI + Theme | v2.1 | 0/? | Not started | - |
 | 33. Natural Language Date Input | v2.1 | 0/? | Not started | - |
