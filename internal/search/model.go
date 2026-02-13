@@ -164,6 +164,15 @@ func (m Model) View() string {
 				check = "[x]"
 			}
 
+			// Priority badge (PRIO-07) -- fixed-width 5-char slot
+			var badge string
+			if r.HasPriority() {
+				label := fmt.Sprintf("[%s]", r.PriorityLabel())
+				badge = m.styles.priorityBadgeStyle(r.Priority).Render(label) + " "
+			} else {
+				badge = "     " // 5 spaces for alignment
+			}
+
 			// Date display
 			dateStr := "No date"
 			if r.HasDate() {
@@ -171,13 +180,15 @@ func (m Model) View() string {
 			}
 
 			if i == m.cursor {
-				line := fmt.Sprintf("> %s %s", check, r.Text)
-				b.WriteString(m.styles.SelectedResult.Render(line))
+				b.WriteString(m.styles.SelectedResult.Render("> "))
+				b.WriteString(badge)
+				b.WriteString(m.styles.SelectedResult.Render(check + " " + r.Text))
 				b.WriteString("  ")
 				b.WriteString(m.styles.SelectedDate.Render(dateStr))
 			} else {
-				line := fmt.Sprintf("  %s %s", check, r.Text)
-				b.WriteString(m.styles.ResultText.Render(line))
+				b.WriteString("  ")
+				b.WriteString(badge)
+				b.WriteString(m.styles.ResultText.Render(check + " " + r.Text))
 				b.WriteString("  ")
 				b.WriteString(m.styles.ResultDate.Render(dateStr))
 			}
