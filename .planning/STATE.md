@@ -5,27 +5,28 @@
 See: .planning/PROJECT.md (updated 2026-02-12)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen
-**Current focus:** v2.1 Phase 31 - Priority Data Layer
+**Current focus:** v2.1 Phase 32 - Priority UI + Theme
 
 ## Current Position
 
-Phase: 31 of 32 (Priority Data Layer)
-Plan: 1 of 1 in current phase
-Status: Phase complete
-Last activity: 2026-02-13 — Completed 31-01 Priority Data Layer
+Phase: 32 of 32 (Priority UI + Theme)
+Plan: 1 of 2 in current phase
+Status: Plan 01 complete
+Last activity: 2026-02-13 — Completed 32-01 Priority UI + Theme
 
-Progress: [##########] 100%
+Progress: [#########-] 90%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 50 (v1.0 through v1.9) + 1 direct (v2.0) + 1 (v2.1)
+- Total plans completed: 50 (v1.0 through v1.9) + 1 direct (v2.0) + 2 (v2.1)
 - Average duration: 2 min
 - Total execution time: ~1.5 hours
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 31    | 01   | 3min     | 2     | 6     |
+| 32    | 01   | 6min     | 2     | 7     |
 
 ## Accumulated Context
 
@@ -42,6 +43,13 @@ Phase 31 decisions:
 - Priority 0 = no priority, 1-4 = valid priority levels
 - Callers pass priority 0 as placeholder until Phase 32 wires actual priority from edit form
 
+Phase 32-01 decisions:
+- Priority field uses inline selector (left/right arrows) not textinput
+- Named field constants (fieldTitle=0..fieldTemplate=4) replace editField magic numbers
+- Fixed 5-char badge slot for priority column alignment
+- Completed todos keep colored badge with grey strikethrough text
+- HighestPriorityPerDay uses MIN(priority) GROUP BY for efficient lookup
+
 ### Pending Todos
 
 None.
@@ -53,5 +61,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 31-01-PLAN.md
+Stopped at: Completed 32-01-PLAN.md
 Resume file: None
