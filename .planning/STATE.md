@@ -2,17 +2,17 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-12)
+See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen
-**Current focus:** v2.1 Phase 32 - Priority UI + Theme
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 32 of 32 (Priority UI + Theme)
-Plan: 2 of 2 in current phase
-Status: Phase 32 complete -- v2.1 milestone done
-Last activity: 2026-02-13 — Completed 32-02 Priority Calendar + Search
+Phase: 32 of 32 (all complete)
+Plan: All plans complete
+Status: v2.1 milestone shipped
+Last activity: 2026-02-13 — Milestone v2.1 archived
 
 Progress: [##########] 100%
 
@@ -35,26 +35,6 @@ Progress: [##########] 100%
 
 See PROJECT.md Key Decisions table for complete log.
 
-Recent decisions from research:
-- Priority is visual-only (no auto-sort) to preserve manual J/K reordering
-- Map priority colors to existing theme palette where possible (P1=red, P2=orange, P3=blue, P4=grey)
-- Natural language dates dropped from v2.1 — deferred to future
-
-Phase 31 decisions:
-- Priority 0 = no priority, 1-4 = valid priority levels
-- Callers pass priority 0 as placeholder until Phase 32 wires actual priority from edit form
-
-Phase 32-01 decisions:
-- Priority field uses inline selector (left/right arrows) not textinput
-- Named field constants (fieldTitle=0..fieldTemplate=4) replace editField magic numbers
-- Fixed 5-char badge slot for priority column alignment
-- Completed todos keep colored badge with grey strikethrough text
-- HighestPriorityPerDay uses MIN(priority) GROUP BY for efficient lookup
-
-Phase 32-02 decisions:
-- RenderWeekGrid uses priority cache (like indicator cache) rather than parameter for cross-month spans
-- Search badge follows same cursor > badge > checkbox > text rendering order as todolist
-
 ### Pending Todos
 
 None.
@@ -66,5 +46,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 32-02-PLAN.md -- Phase 32 and v2.1 milestone complete
+Stopped at: Milestone v2.1 archived and tagged
 Resume file: None

@@ -273,12 +273,29 @@
 ---
 
 
-## v2.0 Settings UX (Shipped: 2026-02-12)
+## v2.1 Priorities (Shipped: 2026-02-13)
 
-**Phases completed:** 29 phases, 50 plans, 23 tasks
+**Delivered:** P1-P4 priority levels with color-coded badges across todo list, calendar, and search — inline selector in edit form, theme-aware colors for all 4 themes
+
+**Phases completed:** 31-32 (2 phases, 3 plans, 6 tasks)
 
 **Key accomplishments:**
-- (none recorded)
+- SQLite schema v7 with priority INTEGER column and zero-migration defaults for existing todos
+- Priority theme colors (P1=red, P2=orange, P3=blue, P4=grey) for all 4 themes (Dark, Light, Nord, Solarized)
+- Inline priority selector in add/edit forms with left/right arrow cycling (none/P1-P4)
+- Colored [P1]-[P4] badge rendering in todo list with fixed 5-char slot for column alignment
+- Priority-colored calendar day indicators in both monthly and weekly grids
+- Priority badge rendering in search results matching todolist pattern
+
+**Stats:**
+- 22 files changed, 2,075 insertions(+), 161 deletions(-)
+- 8,644 lines of Go across 35 source files
+- 2 phases, 3 plans, 6 tasks
+- Same day (2026-02-13)
+
+**Git range:** `9dc7855` → `a730bd7`
+
+**What's next:** New feature milestones
 
 ---
 
