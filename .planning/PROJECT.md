@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A terminal-based (TUI) application that combines a monthly/weekly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, date indicators for pending work, color-coded overview counts, blended today+status highlighting, circle indicators for month/year todo status, and weekly view toggle. The right panel displays todos in 4 sections (dated, This Month, This Year, Floating) with inline filter support and configurable section visibility. Includes full-screen cross-month search, editing and reordering todos, configurable date format and first day of week, 4 color themes, and an in-app settings overlay with live preview. Todos support day, month, or year date precision via a segmented date input. Stored in SQLite with support for rich markdown bodies, reusable templates with placeholder prompting, and external editor integration ($EDITOR). Templates can be managed in a dedicated overlay and have recurring schedules (daily, weekdays, weekly, monthly) that auto-create todos on app launch. A unified add form (`a` key) with title, date, body, and template picker fields replaces the previous multi-key entry points. Built with Go and Bubble Tea for personal use.
+A terminal-based (TUI) application that combines a monthly/weekly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, priority-colored date indicators for pending work, color-coded overview counts, blended today+status highlighting, circle indicators for month/year todo status, and weekly view toggle. The right panel displays todos in 4 sections (dated, This Month, This Year, Floating) with inline filter support, configurable section visibility, and color-coded P1-P4 priority badges. Includes full-screen cross-month search with priority badges, editing and reordering todos, configurable date format and first day of week, 4 color themes, and an in-app settings overlay with live preview. Todos support day, month, or year date precision via a segmented date input, and optional P1-P4 priority levels set via an inline selector. Stored in SQLite with support for rich markdown bodies, reusable templates with placeholder prompting, and external editor integration ($EDITOR). Templates can be managed in a dedicated overlay and have recurring schedules (daily, weekdays, weekly, monthly) that auto-create todos on app launch. A unified add form (`a` key) with title, date, priority, body, and template picker fields replaces the previous multi-key entry points. Built with Go and Bubble Tea for personal use.
 
 ## Core Value
 
@@ -73,20 +73,23 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - ✓ Segmented date input (dd/mm/yyyy) with format-aware ordering and precision derivation — v1.9
 - ✓ Fuzzy todos visible in monthly view only, excluded from weekly view — v1.9
 - ✓ Settings overlay: Esc saves and closes (no save button, no cancel flow) — v2.0
+- ✓ Priority levels (P1-P4) with color-coded badge prefix in todo list, calendar, and search — v2.1
+- ✓ Priority theme colors for all 4 themes (Dark, Light, Nord, Solarized) — v2.1
+- ✓ Calendar day indicators reflect highest-priority incomplete todo's color — v2.1
+- ✓ Inline priority selector in add/edit forms with left/right arrow cycling — v2.1
+- ✓ Priority stored as INTEGER in SQLite with migration v7, existing todos default to 0 — v2.1
 
 ### Active
 
-- [ ] Priority levels (P1-P4) with color-coded icon prefix and text — v2.1
-- [ ] Auto-sort within sections by priority (P1 at top) — v2.1
-- [ ] Calendar day indicators reflect highest priority color — v2.1
-- [ ] Natural language date input ("tomorrow", "next fri", "jan 15", "in 3 days") — v2.1
-- [ ] NL date field with segmented input fallback (Tab to switch) — v2.1
-- [ ] Inline date parsing with resolved date preview — v2.1
+(None — start next milestone to define requirements)
 
 ### v2 Candidates
 
 - Complex recurring cadences ("every 2nd Tuesday", "last Friday of month")
 - Completed tasks archive (browse/review past completions)
+- Natural language date input ("tomorrow", "next fri", "jan 15", "in 3 days")
+- Inline priority cycling in normal mode (press 1-4 on selected todo)
+- Default priority configurable in settings
 
 ### Out of Scope
 
@@ -97,6 +100,7 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - Subtasks / nesting — flat list is sufficient
 - Notifications / reminders — out of scope for TUI
 - Time-blocked appointments — this is a todo app, not a scheduler
+- Auto-sort by priority — conflicts with manual J/K reordering; priority is visual only
 
 ## Context
 
@@ -104,7 +108,7 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - **Holidays:** rickar/cal/v2 with 11-country registry (de, dk, ee, es, fi, fr, gb, it, no, se, us)
 - **Config:** TOML at ~/.config/todo-calendar/config.toml (BurntSushi/toml v1.6.0)
 - **Storage:** SQLite at ~/.config/todo-calendar/todos.db (modernc.org/sqlite, pure Go, WAL mode)
-- **Codebase:** 8,177 lines of Go across 35 source files
+- **Codebase:** 8,644 lines of Go across 35 source files
 - **Architecture:** Elm Architecture (Bubble Tea), pure rendering functions, constructor DI, TodoStore interface
 
 ## Constraints
@@ -172,22 +176,21 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 | Reuse PendingFg/CompletedCountFg for circle indicators | No new theme roles needed | ✓ Good — consistent palette |
 | boolIndex() helper for settings toggle mapping | Clean bool-to-option-index conversion | ✓ Good — reusable pattern |
 | Settings save-on-close (no Enter/cancel) | Immediate feedback, fewer keystrokes, simpler mental model | ✓ Good — SettingChangedMsg on every cycle |
+| Priority is visual-only, no auto-sort | Conflicts with manual J/K reordering — priority is visual indicator only | ✓ Good — preserves user-defined order |
+| Inline selector (left/right arrows) for priority | Faster UX for 5 fixed options, prevents invalid input | ✓ Good — natural TUI interaction |
+| Fixed 5-char badge slot for priority | "[P1] " or 5 spaces ensures column alignment regardless of priority | ✓ Good — clean visual alignment |
+| HighestPriorityPerDay MIN/GROUP BY query | Single-pass efficient lookup for calendar indicators | ✓ Good — no N+1 queries |
+| Named field constants replacing magic numbers | fieldTitle=0..fieldTemplate=4 for editField safety | ✓ Good — maintainable, prevents off-by-one |
+| Priority cache in RenderWeekGrid | Cross-month week spans need independent store queries, like indicator cache | ✓ Good — consistent with existing patterns |
 
 ## Known Tech Debt
 
 None.
 
-## Current Milestone: v2.1 Priorities & Smart Dates
+## Current State
 
-**Goal:** Add priority levels (P1-P4) with visual indicators and auto-sort, plus natural language date input with inline parsing.
-
-**Target features:**
-- Priority levels (P1-P4) with color-coded flags and text
-- Auto-sort by priority within todo sections
-- Priority-colored calendar day indicators
-- Natural language date input ("tomorrow", "next fri", "in 3 days")
-- NL date field with segmented input fallback
-- Inline date parsing with resolved date preview
+Shipped v2.1 with 8,644 LOC Go. Priority system complete across all views (todo list, calendar, search).
+No active milestone — run `/gsd:new-milestone` to start next.
 
 ---
-*Last updated: 2026-02-12 after v2.1 milestone started*
+*Last updated: 2026-02-13 after v2.1 milestone*
