@@ -88,34 +88,34 @@ Deferred to subsequent milestones. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | — | Pending |
-| AUTH-02 | — | Pending |
-| AUTH-03 | — | Pending |
-| AUTH-04 | — | Pending |
-| FETCH-01 | — | Pending |
-| FETCH-02 | — | Pending |
-| FETCH-03 | — | Pending |
-| FETCH-04 | — | Pending |
-| FETCH-05 | — | Pending |
-| FETCH-06 | — | Pending |
-| FETCH-07 | — | Pending |
-| DISP-01 | — | Pending |
-| DISP-02 | — | Pending |
-| DISP-03 | — | Pending |
-| DISP-04 | — | Pending |
-| DISP-05 | — | Pending |
-| DISP-06 | — | Pending |
-| DISP-07 | — | Pending |
-| DISP-08 | — | Pending |
-| GRID-01 | — | Pending |
-| CONF-01 | — | Pending |
-| CONF-02 | — | Pending |
+| AUTH-01 | Phase 33 | Pending |
+| AUTH-02 | Phase 33 | Pending |
+| AUTH-03 | Phase 33 | Pending |
+| AUTH-04 | Phase 33 | Pending |
+| CONF-02 | Phase 33 | Pending |
+| FETCH-01 | Phase 34 | Pending |
+| FETCH-02 | Phase 34 | Pending |
+| FETCH-03 | Phase 34 | Pending |
+| FETCH-04 | Phase 34 | Pending |
+| FETCH-05 | Phase 34 | Pending |
+| FETCH-06 | Phase 34 | Pending |
+| FETCH-07 | Phase 34 | Pending |
+| DISP-01 | Phase 35 | Pending |
+| DISP-02 | Phase 35 | Pending |
+| DISP-03 | Phase 35 | Pending |
+| DISP-04 | Phase 35 | Pending |
+| DISP-05 | Phase 35 | Pending |
+| DISP-06 | Phase 35 | Pending |
+| DISP-07 | Phase 35 | Pending |
+| DISP-08 | Phase 35 | Pending |
+| GRID-01 | Phase 35 | Pending |
+| CONF-01 | Phase 35 | Pending |
 
 **Coverage:**
 - v2.2 requirements: 22 total
-- Mapped to phases: 0
-- Unmapped: 22 (pending roadmap creation)
+- Mapped to phases: 22
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-13*
-*Last updated: 2026-02-13 after initial definition*
+*Last updated: 2026-02-13 after roadmap creation*
