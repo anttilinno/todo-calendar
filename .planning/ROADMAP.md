@@ -24,13 +24,12 @@
 
 </details>
 
-### v2.1 Priorities & Smart Dates (In Progress)
+### v2.1 Priorities (In Progress)
 
-**Milestone Goal:** Add P1-P4 priority levels with color-coded badges and calendar indicators, plus natural language date input replacing the segmented 3-field date entry.
+**Milestone Goal:** Add P1-P4 priority levels with color-coded badges and calendar indicators.
 
 - [x] **Phase 31: Priority Data Layer** - Schema migration v7, Todo struct extension, store interface updates — completed 2026-02-13
 - [ ] **Phase 32: Priority UI + Theme** - Edit form field, badge rendering, theme colors, calendar indicators, search
-- [ ] **Phase 33: Natural Language Date Input** - NL parser package, single text field replacing segmented input, precision detection
 
 ## Phase Details
 
@@ -64,25 +63,9 @@ Plans:
 - [ ] 32-01: TBD
 - [ ] 32-02: TBD
 
-### Phase 33: Natural Language Date Input
-**Goal**: Users type dates naturally in a single text field with automatic precision detection
-**Depends on**: Phase 32
-**Requirements**: NLDT-01, NLDT-02, NLDT-03, NLDT-04, NLDT-05, NLDT-06, NLDT-07, NLDT-08, NLDT-09, NLDT-10
-**Success Criteria** (what must be TRUE):
-  1. User can type "tomorrow", "next friday", "jan 15", "in 3 days" and get the correct resolved date
-  2. Date field shows a parsed date preview so the user can confirm the interpretation before saving
-  3. Year-only input produces a This Year todo and month-year input produces a This Month todo
-  4. Formatted dates (ISO/EU/US per user setting) still work in the same field
-  5. Empty date input creates a floating (undated) todo, same as before
-**Plans**: TBD
-
-Plans:
-- [ ] 33-01: TBD
-- [ ] 33-02: TBD
-
 ## Progress
 
-**Execution Order:** 31 -> 32 -> 33
+**Execution Order:** 31 -> 32
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -92,4 +75,3 @@ Plans:
 | 30. Save-on-Close Settings | v2.0 | 1/1 | Complete | 2026-02-12 |
 | 31. Priority Data Layer | v2.1 | 1/1 | Complete | 2026-02-13 |
 | 32. Priority UI + Theme | v2.1 | 0/? | Not started | - |
-| 33. Natural Language Date Input | v2.1 | 0/? | Not started | - |
