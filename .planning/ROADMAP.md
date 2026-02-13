@@ -43,10 +43,10 @@
   2. Existing todos have priority 0 (no priority) after migration -- no data loss
   3. Store Add() and Update() accept priority and persist it correctly
   4. Store queries return todos with their priority value populated in the Todo struct
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 31-01: TBD
+- [ ] 31-01-PLAN.md — Schema migration v7, struct extension, store interface updates, and priority roundtrip tests
 
 ### Phase 32: Priority UI + Theme
 **Goal**: Users can set, see, and distinguish priority levels across the entire interface
@@ -90,6 +90,6 @@ Plans:
 | 28. Display & Indicators | v1.9 | 2/2 | Complete | 2026-02-12 |
 | 29. Settings & View Filtering | v1.9 | 1/1 | Complete | 2026-02-12 |
 | 30. Save-on-Close Settings | v2.0 | 1/1 | Complete | 2026-02-12 |
-| 31. Priority Data Layer | v2.1 | 0/? | Not started | - |
+| 31. Priority Data Layer | v2.1 | 0/1 | Not started | - |
 | 32. Priority UI + Theme | v2.1 | 0/? | Not started | - |
 | 33. Natural Language Date Input | v2.1 | 0/? | Not started | - |
