@@ -5,11 +5,11 @@ import "time"
 // TodoStore defines the contract for todo persistence.
 // Consumers depend on this interface, not the concrete backend.
 type TodoStore interface {
-	Add(text string, date string, datePrecision string) Todo
+	Add(text string, date string, datePrecision string, priority int) Todo
 	Toggle(id int)
 	Delete(id int)
 	Find(id int) *Todo
-	Update(id int, text string, date string, datePrecision string)
+	Update(id int, text string, date string, datePrecision string, priority int)
 	Todos() []Todo
 	TodosForMonth(year int, month time.Month) []Todo
 	TodosForDateRange(startDate, endDate string) []Todo

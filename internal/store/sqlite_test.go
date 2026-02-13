@@ -375,13 +375,13 @@ func TestDatePrecision(t *testing.T) {
 	defer s.Close()
 
 	// Day-level todo
-	day := s.Add("Day task", "2026-03-15", "day")
+	day := s.Add("Day task", "2026-03-15", "day", 0)
 	if day.DatePrecision != "day" {
 		t.Errorf("day todo: want precision 'day', got %q", day.DatePrecision)
 	}
 
 	// Month-level todo
-	month := s.Add("Month task", "2026-03-01", "month")
+	month := s.Add("Month task", "2026-03-01", "month", 0)
 	if month.DatePrecision != "month" {
 		t.Errorf("month todo: want precision 'month', got %q", month.DatePrecision)
 	}
@@ -390,7 +390,7 @@ func TestDatePrecision(t *testing.T) {
 	}
 
 	// Year-level todo
-	year := s.Add("Year task", "2026-01-01", "year")
+	year := s.Add("Year task", "2026-01-01", "year", 0)
 	if year.DatePrecision != "year" {
 		t.Errorf("year todo: want precision 'year', got %q", year.DatePrecision)
 	}
@@ -399,7 +399,7 @@ func TestDatePrecision(t *testing.T) {
 	}
 
 	// Floating todo
-	floating := s.Add("Float", "", "")
+	floating := s.Add("Float", "", "", 0)
 	if floating.DatePrecision != "" {
 		t.Errorf("floating todo: want precision '', got %q", floating.DatePrecision)
 	}
@@ -425,9 +425,9 @@ func TestMonthTodosQuery(t *testing.T) {
 	defer s.Close()
 
 	// Add month-precision todo for March 2026
-	s.Add("Month task", "2026-03-01", "month")
+	s.Add("Month task", "2026-03-01", "month", 0)
 	// Add day-precision todo for March 15 2026
-	s.Add("Day task", "2026-03-15", "day")
+	s.Add("Day task", "2026-03-15", "day", 0)
 
 	// MonthTodos should return only the month-precision todo
 	monthTodos := s.MonthTodos(2026, time.March)
@@ -453,9 +453,9 @@ func TestYearTodosQuery(t *testing.T) {
 	defer s.Close()
 
 	// Add year-precision todo for 2026
-	s.Add("Year task", "2026-01-01", "year")
+	s.Add("Year task", "2026-01-01", "year", 0)
 	// Add day-precision todo for 2026-03-15
-	s.Add("Day task", "2026-03-15", "day")
+	s.Add("Day task", "2026-03-15", "day", 0)
 
 	// YearTodos should return only the year-precision todo
 	yearTodos := s.YearTodos(2026)
@@ -481,11 +481,11 @@ func TestDayQueriesExcludeFuzzy(t *testing.T) {
 	defer s.Close()
 
 	// Add day-level todo in March 2026
-	s.Add("Day task", "2026-03-15", "day")
+	s.Add("Day task", "2026-03-15", "day", 0)
 	// Add month-level todo in March 2026
-	s.Add("Month task", "2026-03-01", "month")
+	s.Add("Month task", "2026-03-01", "month", 0)
 	// Add year-level todo in 2026
-	s.Add("Year task", "2026-01-01", "year")
+	s.Add("Year task", "2026-01-01", "year", 0)
 
 	// TodosForMonth should return only day-level todo
 	monthTodos := s.TodosForMonth(2026, time.March)

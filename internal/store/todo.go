@@ -1,6 +1,9 @@
 package store
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // dateFormat is the canonical date layout for todo dates (YYYY-MM-DD).
 const dateFormat = "2006-01-02"
@@ -19,6 +22,20 @@ type Todo struct {
 	ScheduleID    int    `json:"schedule_id,omitempty"`
 	ScheduleDate  string `json:"schedule_date,omitempty"`
 	DatePrecision string `json:"date_precision"`
+	Priority      int    `json:"priority"`
+}
+
+// HasPriority reports whether the todo has a valid priority level (1-4).
+func (t Todo) HasPriority() bool {
+	return t.Priority >= 1 && t.Priority <= 4
+}
+
+// PriorityLabel returns a short label like "P1" for priority 1-4, or "" otherwise.
+func (t Todo) PriorityLabel() string {
+	if t.Priority >= 1 && t.Priority <= 4 {
+		return fmt.Sprintf("P%d", t.Priority)
+	}
+	return ""
 }
 
 // HasBody reports whether the todo has a non-empty markdown body.
