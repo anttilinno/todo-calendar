@@ -34,6 +34,7 @@ type TodoStore interface {
 	UpdateSchedule(id int, cadenceType, cadenceValue, placeholderDefaults string) error
 	TodoExistsForSchedule(scheduleID int, date string) bool
 	AddScheduledTodo(text, date, body string, scheduleID int) Todo
+	HighestPriorityPerDay(year int, month time.Month) map[int]int
 	SwapOrder(id1, id2 int)
 	SearchTodos(query string) []Todo
 	EnsureSortOrder()

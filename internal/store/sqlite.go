@@ -478,6 +478,38 @@ func (s *SQLiteStore) FloatingTodoCounts() FloatingCount {
 	return fc
 }
 
+// HighestPriorityPerDay returns a map from day-of-month to the highest (lowest number)
+// priority among incomplete, prioritized (1-4), day-precision todos for the given month.
+func (s *SQLiteStore) HighestPriorityPerDay(year int, month time.Month) map[int]int {
+	start := fmt.Sprintf("%04d-%02d-01", year, month)
+	end := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Format(dateFormat)
+
+	rows, err := s.db.Query(
+		`SELECT CAST(substr(date, 9, 2) AS INTEGER) AS day,
+		        MIN(priority) AS highest
+		 FROM todos
+		 WHERE done = 0
+		   AND date >= ? AND date <= ?
+		   AND date_precision = 'day'
+		   AND priority BETWEEN 1 AND 4
+		 GROUP BY day`,
+		start, end,
+	)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	priorities := make(map[int]int)
+	for rows.Next() {
+		var day, prio int
+		if err := rows.Scan(&day, &prio); err == nil {
+			priorities[day] = prio
+		}
+	}
+	return priorities
+}
+
 // SwapOrder swaps the sort_order values of two todos in a transaction.
 func (s *SQLiteStore) SwapOrder(id1, id2 int) {
 	tx, err := s.db.Begin()
