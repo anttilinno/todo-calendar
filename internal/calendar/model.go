@@ -2,12 +2,14 @@ package calendar
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/antti/todo-calendar/internal/google"
 	"github.com/antti/todo-calendar/internal/holidays"
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
@@ -54,6 +56,7 @@ type Model struct {
 	showMonthTodos bool
 	showYearTodos  bool
 	contentWidth   int // pane text content width (pane width minus padding)
+	calendarEvents []google.CalendarEvent
 }
 
 // New creates a new calendar model with the given holiday provider,
@@ -147,9 +150,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 // View renders the calendar pane content including the overview section.
 func (m Model) View() string {
+	hasEvents := m.hasEventsPerDay(m.year, m.month)
 	var content string
 	if m.viewMode == WeekView {
-		grid := RenderWeekGrid(m.weekStart, time.Now(), m.provider, m.mondayStart, m.store, m.styles)
+		grid := RenderWeekGrid(m.weekStart, time.Now(), m.provider, m.mondayStart, m.store, hasEvents, m.styles)
 		content = grid + m.renderOverview()
 	} else {
 		todayDay := 0
@@ -158,7 +162,7 @@ func (m Model) View() string {
 			todayDay = now.Day()
 		}
 
-		grid := RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.totals, m.priorities, m.store, m.showMonthTodos, m.showYearTodos, m.contentWidth, m.styles)
+		grid := RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.totals, m.priorities, m.store, m.showMonthTodos, m.showYearTodos, m.contentWidth, hasEvents, m.styles)
 		content = grid + m.renderOverview()
 	}
 
@@ -254,6 +258,28 @@ func (m *Model) SetMondayStart(v bool) {
 func (m *Model) SetShowFuzzySections(showMonth, showYear bool) {
 	m.showMonthTodos = showMonth
 	m.showYearTodos = showYear
+}
+
+// SetCalendarEvents stores the Google Calendar events for grid indicator display.
+func (m *Model) SetCalendarEvents(events []google.CalendarEvent) {
+	m.calendarEvents = events
+}
+
+// hasEventsPerDay computes a map of day numbers that have calendar events
+// in the given year/month.
+func (m Model) hasEventsPerDay(year int, month time.Month) map[int]bool {
+	result := make(map[int]bool)
+	expanded := google.ExpandMultiDay(m.calendarEvents)
+	prefix := fmt.Sprintf("%04d-%02d-", year, int(month))
+	for _, e := range expanded {
+		if strings.HasPrefix(e.Date, prefix) {
+			day, err := strconv.Atoi(e.Date[8:10])
+			if err == nil {
+				result[day] = true
+			}
+		}
+	}
+	return result
 }
 
 // Keys returns the calendar key bindings (for help bar aggregation).
