@@ -6,6 +6,7 @@ import (
 
 	"github.com/antti/todo-calendar/internal/app"
 	"github.com/antti/todo-calendar/internal/config"
+	"github.com/antti/todo-calendar/internal/google"
 	"github.com/antti/todo-calendar/internal/holidays"
 	"github.com/antti/todo-calendar/internal/recurring"
 	"github.com/antti/todo-calendar/internal/store"
@@ -41,8 +42,10 @@ func main() {
 
 	recurring.AutoCreate(s)
 
+	authState := google.CheckAuthState()
+
 	t := theme.ForName(cfg.Theme)
-	model := app.New(provider, cfg.MondayStart(), s, t, cfg)
+	model := app.New(provider, cfg.MondayStart(), s, t, cfg, authState)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/antti/todo-calendar/internal/config"
+	"github.com/antti/todo-calendar/internal/google"
 	"github.com/antti/todo-calendar/internal/holidays"
 	"github.com/antti/todo-calendar/internal/theme"
 )
@@ -30,18 +31,45 @@ type SettingChangedMsg struct {
 // CloseMsg is emitted when the user presses Escape to close settings.
 type CloseMsg struct{}
 
+// StartGoogleAuthMsg is emitted when the user presses Enter on the Google
+// Calendar row and status is "Sign in" or "Reconnect".
+type StartGoogleAuthMsg struct{}
+
+// GoogleAuthDoneMsg is emitted after the auth flow completes, so settings
+// can update its display.
+type GoogleAuthDoneMsg struct{ State google.AuthState }
+
+// googleCalendarRow is the index of the Google Calendar action row.
+const googleCalendarRow = 6
+
 // Model represents the settings overlay.
 type Model struct {
-	options []option
-	cursor  int // which option row is selected (0-5)
-	width   int
-	height  int
-	keys    KeyMap
-	styles  Styles
+	options         []option
+	cursor          int // which option row is selected (0-6)
+	width           int
+	height          int
+	keys            KeyMap
+	styles          Styles
+	googleAuthState google.AuthState
+	authFlowActive  bool
+}
+
+// googleStatusDisplay returns the display text for a Google auth state.
+func googleStatusDisplay(state google.AuthState) string {
+	switch state {
+	case google.AuthNeedsLogin:
+		return "Sign in"
+	case google.AuthReady:
+		return "Connected"
+	case google.AuthRevoked:
+		return "Reconnect"
+	default:
+		return "Not configured"
+	}
 }
 
 // New creates a new settings model from the current configuration.
-func New(cfg config.Config, t theme.Theme) Model {
+func New(cfg config.Config, t theme.Theme, authState google.AuthState) Model {
 	themeNames := theme.Names()
 	themeDisplay := make([]string, len(themeNames))
 	for i, name := range themeNames {
@@ -65,6 +93,8 @@ func New(cfg config.Config, t theme.Theme) Model {
 	boolValues := []string{"true", "false"}
 	boolDisplay := []string{"Show", "Hide"}
 
+	statusText := googleStatusDisplay(authState)
+
 	return Model{
 		options: []option{
 			{label: "Theme", values: themeNames, display: themeDisplay, index: indexOf(themeNames, cfg.Theme)},
@@ -73,9 +103,11 @@ func New(cfg config.Config, t theme.Theme) Model {
 			{label: "Date Format", values: formatValues, display: formatDisplay, index: indexOf(formatValues, cfg.DateFormat)},
 			{label: "Show Month Todos", values: boolValues, display: boolDisplay, index: boolIndex(cfg.ShowMonthTodos)},
 			{label: "Show Year Todos", values: boolValues, display: boolDisplay, index: boolIndex(cfg.ShowYearTodos)},
+			{label: "Google Calendar", values: []string{statusText}, display: []string{statusText}, index: 0},
 		},
-		keys:   DefaultKeyMap(),
-		styles: NewStyles(t),
+		keys:            DefaultKeyMap(),
+		styles:          NewStyles(t),
+		googleAuthState: authState,
 	}
 }
 
@@ -89,6 +121,17 @@ func (m Model) Config() config.Config {
 		ShowMonthTodos: m.options[4].values[m.options[4].index] == "true",
 		ShowYearTodos:  m.options[5].values[m.options[5].index] == "true",
 	}
+}
+
+// SetGoogleAuthState updates the stored auth state and display text,
+// and clears the authFlowActive flag.
+func (m *Model) SetGoogleAuthState(state google.AuthState) {
+	m.googleAuthState = state
+	m.authFlowActive = false
+	statusText := googleStatusDisplay(state)
+	m.options[googleCalendarRow].values = []string{statusText}
+	m.options[googleCalendarRow].display = []string{statusText}
+	m.options[googleCalendarRow].index = 0
 }
 
 // SetTheme replaces the styles with ones built from the given theme.
@@ -118,6 +161,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keys.Left):
+			if m.cursor == googleCalendarRow {
+				return m, nil
+			}
 			opt := &m.options[m.cursor]
 			opt.index--
 			if opt.index < 0 {
@@ -129,6 +175,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keys.Right):
+			if m.cursor == googleCalendarRow {
+				return m, nil
+			}
 			opt := &m.options[m.cursor]
 			opt.index++
 			if opt.index >= len(opt.values) {
@@ -137,6 +186,15 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			cfg := m.Config()
 			return m, func() tea.Msg {
 				return SettingChangedMsg{Cfg: cfg}
+			}
+
+		case msg.String() == "enter":
+			if m.cursor == googleCalendarRow && !m.authFlowActive &&
+				(m.googleAuthState == google.AuthNeedsLogin || m.googleAuthState == google.AuthRevoked) {
+				m.authFlowActive = true
+				return m, func() tea.Msg {
+					return StartGoogleAuthMsg{}
+				}
 			}
 
 		case key.Matches(msg, m.keys.Close):
@@ -163,6 +221,27 @@ func (m Model) View() string {
 
 	for i, opt := range m.options {
 		isSelected := i == m.cursor
+
+		// Google Calendar row: no arrows, special display
+		if i == googleCalendarRow {
+			var displayText string
+			if m.authFlowActive {
+				displayText = "Waiting for browser..."
+			} else {
+				displayText = opt.display[opt.index]
+			}
+
+			if isSelected {
+				label := m.styles.SelectedLabel.Render(fmt.Sprintf("> %-20s", opt.label))
+				value := m.styles.SelectedValue.Render(fmt.Sprintf("   %s", displayText))
+				b.WriteString(label + value + "\n")
+			} else {
+				label := m.styles.Label.Render(fmt.Sprintf("  %-20s", opt.label))
+				value := m.styles.Hint.Render(fmt.Sprintf("   %s", displayText))
+				b.WriteString(label + value + "\n")
+			}
+			continue
+		}
 
 		value := fmt.Sprintf("<  %s  >", opt.display[opt.index])
 
