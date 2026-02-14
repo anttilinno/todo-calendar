@@ -12,6 +12,7 @@ import (
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
 	tea "github.com/charmbracelet/bubbletea"
+	"google.golang.org/api/calendar/v3"
 )
 
 func main() {
@@ -44,8 +45,13 @@ func main() {
 
 	authState := google.CheckAuthState()
 
+	var calSvc *calendar.Service
+	if authState == google.AuthReady {
+		calSvc, _ = google.NewCalendarService()
+	}
+
 	t := theme.ForName(cfg.Theme)
-	model := app.New(provider, cfg.MondayStart(), s, t, cfg, authState)
+	model := app.New(provider, cfg.MondayStart(), s, t, cfg, authState, calSvc)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
