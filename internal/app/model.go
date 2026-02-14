@@ -158,10 +158,43 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.showSettings = false
 		return m, nil
 
+	case google.EventsFetchedMsg:
+		if msg.Err != nil {
+			m.eventsFetchErr = msg.Err
+			// Keep last known calendarEvents intact, schedule retry
+			return m, google.ScheduleEventTick()
+		}
+		m.eventsFetchErr = nil
+		if m.eventsSyncToken == "" {
+			// Full sync: replace all events
+			m.calendarEvents = msg.Events
+		} else {
+			// Incremental sync: merge changes
+			m.calendarEvents = google.MergeEvents(m.calendarEvents, msg.Events)
+		}
+		m.eventsSyncToken = msg.SyncToken
+		return m, google.ScheduleEventTick()
+
+	case google.EventTickMsg:
+		if m.calendarSvc == nil || m.googleAuthState != google.AuthReady {
+			return m, google.ScheduleEventTick()
+		}
+		return m, google.FetchEventsCmd(m.calendarSvc, m.eventsSyncToken)
+
 	case google.AuthResultMsg:
 		if msg.Success {
 			m.googleAuthState = google.AuthReady
 			m.settings.SetGoogleAuthState(google.AuthReady)
+			// Create calendar service and trigger first fetch
+			if m.calendarSvc == nil {
+				if svc, err := google.NewCalendarService(); err == nil {
+					m.calendarSvc = svc
+					return m, tea.Batch(
+						google.FetchEventsCmd(svc, ""),
+						google.ScheduleEventTick(),
+					)
+				}
+			}
 		} else {
 			m.googleAuthState = google.AuthNeedsLogin
 			m.settings.SetGoogleAuthState(google.AuthNeedsLogin)
@@ -478,6 +511,11 @@ func editorOpenTemplateContent(content string) tea.Cmd {
 			Err:          err,
 		}
 	})
+}
+
+// CalendarEvents returns the current Google Calendar events for use by other components.
+func (m Model) CalendarEvents() []google.CalendarEvent {
+	return m.calendarEvents
 }
 
 // syncTodoView sets the todolist view month and conditionally applies/clears
