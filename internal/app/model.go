@@ -151,6 +151,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.todoList.SetDateFormat(m.cfg.DateFormat, m.cfg.DateLayout(), m.cfg.DatePlaceholder())
 		m.todoList.SetShowFuzzySections(msg.Cfg.ShowMonthTodos, msg.Cfg.ShowYearTodos)
 		m.calendar.SetShowFuzzySections(msg.Cfg.ShowMonthTodos, msg.Cfg.ShowYearTodos)
+		if m.cfg.GoogleCalendarEnabled {
+			m.todoList.SetCalendarEvents(m.calendarEvents)
+			m.calendar.SetCalendarEvents(m.calendarEvents)
+		} else {
+			m.todoList.SetCalendarEvents(nil)
+			m.calendar.SetCalendarEvents(nil)
+		}
 		m.calendar.RefreshIndicators()
 		return m, nil
 
@@ -173,7 +180,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.calendarEvents = google.MergeEvents(m.calendarEvents, msg.Events)
 		}
 		m.eventsSyncToken = msg.SyncToken
-		m.todoList.SetCalendarEvents(m.calendarEvents)
+		if m.cfg.GoogleCalendarEnabled {
+			m.todoList.SetCalendarEvents(m.calendarEvents)
+			m.calendar.SetCalendarEvents(m.calendarEvents)
+		} else {
+			m.todoList.SetCalendarEvents(nil)
+			m.calendar.SetCalendarEvents(nil)
+		}
 		return m, google.ScheduleEventTick()
 
 	case google.EventTickMsg:
@@ -523,7 +536,13 @@ func (m Model) CalendarEvents() []google.CalendarEvent {
 // the week filter based on the calendar's current view mode.
 func (m *Model) syncTodoView() {
 	m.todoList.SetViewMonth(m.calendar.Year(), m.calendar.Month())
-	m.todoList.SetCalendarEvents(m.calendarEvents)
+	if m.cfg.GoogleCalendarEnabled {
+		m.todoList.SetCalendarEvents(m.calendarEvents)
+		m.calendar.SetCalendarEvents(m.calendarEvents)
+	} else {
+		m.todoList.SetCalendarEvents(nil)
+		m.calendar.SetCalendarEvents(nil)
+	}
 	if m.calendar.GetViewMode() == calendar.WeekView {
 		ws := m.calendar.WeekStart()
 		we := ws.AddDate(0, 0, 6)

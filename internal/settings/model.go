@@ -93,7 +93,23 @@ func New(cfg config.Config, t theme.Theme, authState google.AuthState) Model {
 	boolValues := []string{"true", "false"}
 	boolDisplay := []string{"Show", "Hide"}
 
-	statusText := googleStatusDisplay(authState)
+	var gcalOption option
+	if authState == google.AuthReady {
+		enabledValues := []string{"true", "false"}
+		enabledDisplay := []string{"Enabled", "Disabled"}
+		idx := 0
+		if !cfg.GoogleCalendarEnabled {
+			idx = 1
+		}
+		gcalOption = option{
+			label: "Google Calendar", values: enabledValues, display: enabledDisplay, index: idx,
+		}
+	} else {
+		statusText := googleStatusDisplay(authState)
+		gcalOption = option{
+			label: "Google Calendar", values: []string{statusText}, display: []string{statusText}, index: 0,
+		}
+	}
 
 	return Model{
 		options: []option{
@@ -103,7 +119,7 @@ func New(cfg config.Config, t theme.Theme, authState google.AuthState) Model {
 			{label: "Date Format", values: formatValues, display: formatDisplay, index: indexOf(formatValues, cfg.DateFormat)},
 			{label: "Show Month Todos", values: boolValues, display: boolDisplay, index: boolIndex(cfg.ShowMonthTodos)},
 			{label: "Show Year Todos", values: boolValues, display: boolDisplay, index: boolIndex(cfg.ShowYearTodos)},
-			{label: "Google Calendar", values: []string{statusText}, display: []string{statusText}, index: 0},
+			gcalOption,
 		},
 		keys:            DefaultKeyMap(),
 		styles:          NewStyles(t),
@@ -113,13 +129,18 @@ func New(cfg config.Config, t theme.Theme, authState google.AuthState) Model {
 
 // Config returns a config.Config reflecting the current option selections.
 func (m Model) Config() config.Config {
+	gcalEnabled := true // default when not AuthReady
+	if m.googleAuthState == google.AuthReady {
+		gcalEnabled = m.options[googleCalendarRow].values[m.options[googleCalendarRow].index] == "true"
+	}
 	return config.Config{
-		Theme:          m.options[0].values[m.options[0].index],
-		Country:        m.options[1].values[m.options[1].index],
-		FirstDayOfWeek: m.options[2].values[m.options[2].index],
-		DateFormat:     m.options[3].values[m.options[3].index],
-		ShowMonthTodos: m.options[4].values[m.options[4].index] == "true",
-		ShowYearTodos:  m.options[5].values[m.options[5].index] == "true",
+		Theme:                 m.options[0].values[m.options[0].index],
+		Country:               m.options[1].values[m.options[1].index],
+		FirstDayOfWeek:        m.options[2].values[m.options[2].index],
+		DateFormat:             m.options[3].values[m.options[3].index],
+		ShowMonthTodos:         m.options[4].values[m.options[4].index] == "true",
+		ShowYearTodos:          m.options[5].values[m.options[5].index] == "true",
+		GoogleCalendarEnabled: gcalEnabled,
 	}
 }
 
@@ -128,10 +149,16 @@ func (m Model) Config() config.Config {
 func (m *Model) SetGoogleAuthState(state google.AuthState) {
 	m.googleAuthState = state
 	m.authFlowActive = false
-	statusText := googleStatusDisplay(state)
-	m.options[googleCalendarRow].values = []string{statusText}
-	m.options[googleCalendarRow].display = []string{statusText}
-	m.options[googleCalendarRow].index = 0
+	if state == google.AuthReady {
+		m.options[googleCalendarRow].values = []string{"true", "false"}
+		m.options[googleCalendarRow].display = []string{"Enabled", "Disabled"}
+		m.options[googleCalendarRow].index = 0
+	} else {
+		statusText := googleStatusDisplay(state)
+		m.options[googleCalendarRow].values = []string{statusText}
+		m.options[googleCalendarRow].display = []string{statusText}
+		m.options[googleCalendarRow].index = 0
+	}
 }
 
 // SetTheme replaces the styles with ones built from the given theme.
@@ -161,7 +188,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keys.Left):
-			if m.cursor == googleCalendarRow {
+			if m.cursor == googleCalendarRow && m.googleAuthState != google.AuthReady {
 				return m, nil
 			}
 			opt := &m.options[m.cursor]
@@ -175,7 +202,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keys.Right):
-			if m.cursor == googleCalendarRow {
+			if m.cursor == googleCalendarRow && m.googleAuthState != google.AuthReady {
 				return m, nil
 			}
 			opt := &m.options[m.cursor]
@@ -222,25 +249,31 @@ func (m Model) View() string {
 	for i, opt := range m.options {
 		isSelected := i == m.cursor
 
-		// Google Calendar row: no arrows, special display
+		// Google Calendar row: cycling toggle when AuthReady, action row otherwise
 		if i == googleCalendarRow {
-			var displayText string
-			if m.authFlowActive {
-				displayText = "Waiting for browser..."
+			if m.googleAuthState == google.AuthReady {
+				// Cycling toggle: show arrows like other settings
+				// Fall through to normal rendering below
 			} else {
-				displayText = opt.display[opt.index]
-			}
+				// Action row: no arrows, special display
+				var displayText string
+				if m.authFlowActive {
+					displayText = "Waiting for browser..."
+				} else {
+					displayText = opt.display[opt.index]
+				}
 
-			if isSelected {
-				label := m.styles.SelectedLabel.Render(fmt.Sprintf("> %-20s", opt.label))
-				value := m.styles.SelectedValue.Render(fmt.Sprintf("   %s", displayText))
-				b.WriteString(label + value + "\n")
-			} else {
-				label := m.styles.Label.Render(fmt.Sprintf("  %-20s", opt.label))
-				value := m.styles.Hint.Render(fmt.Sprintf("   %s", displayText))
-				b.WriteString(label + value + "\n")
+				if isSelected {
+					label := m.styles.SelectedLabel.Render(fmt.Sprintf("> %-20s", opt.label))
+					value := m.styles.SelectedValue.Render(fmt.Sprintf("   %s", displayText))
+					b.WriteString(label + value + "\n")
+				} else {
+					label := m.styles.Label.Render(fmt.Sprintf("  %-20s", opt.label))
+					value := m.styles.Hint.Render(fmt.Sprintf("   %s", displayText))
+					b.WriteString(label + value + "\n")
+				}
+				continue
 			}
-			continue
 		}
 
 		value := fmt.Sprintf("<  %s  >", opt.display[opt.index])
