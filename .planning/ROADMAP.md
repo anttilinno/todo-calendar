@@ -83,7 +83,11 @@ Plans:
   3. Calendar grid days with events show indicators even when no todos exist for that day
   4. Events respect the current view — monthly view shows month's events, weekly view shows week's events
   5. Google Calendar can be toggled on/off in settings without removing credentials
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 35-01-PLAN.md — Data layer foundations (EndDate, ExpandMultiDay, EventFg theme color, event styles, config toggle)
+- [ ] 35-02-PLAN.md — Todo list event display (eventItem kind, rendering, view filtering, app wiring)
+- [ ] 35-03-PLAN.md — Calendar grid indicators and settings toggle (hasEvents, bracket logic, enable/disable)
 
 ## Progress
 
@@ -99,4 +103,4 @@ Plans:
 | 32. Priority UI + Theme | v2.1 | 2/2 | Complete | 2026-02-13 |
 | 33. OAuth & Offline Guard | v2.2 | 2/2 | Complete | 2026-02-14 |
 | 34. Event Fetching & Async | v2.2 | 2/2 | Complete | 2026-02-14 |
-| 35. Event Display & Grid | v2.2 | 0/TBD | Not started | - |
+| 35. Event Display & Grid | v2.2 | 0/3 | Not started | - |
