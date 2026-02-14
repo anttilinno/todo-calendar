@@ -12,6 +12,7 @@ import (
 
 	"github.com/antti/todo-calendar/internal/config"
 	"github.com/antti/todo-calendar/internal/fuzzy"
+	"github.com/antti/todo-calendar/internal/google"
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
 	"github.com/antti/todo-calendar/internal/tmpl"
@@ -53,6 +54,7 @@ const (
 	headerItem itemKind = iota
 	todoItem
 	emptyItem
+	eventItem // Google Calendar event (non-selectable)
 )
 
 // sectionID identifies which section a visible item belongs to.
@@ -68,9 +70,10 @@ const (
 // visibleItem is a single row in the combined todo list display.
 type visibleItem struct {
 	kind    itemKind
-	label   string      // display text for headers/empty
-	todo    *store.Todo // non-nil only for todoItem
-	section sectionID   // which section this item belongs to
+	label   string                 // display text for headers/empty
+	todo    *store.Todo            // non-nil only for todoItem
+	event   *google.CalendarEvent  // non-nil only for eventItem
+	section sectionID              // which section this item belongs to
 }
 
 // Model represents the todo list pane.
@@ -104,6 +107,9 @@ type Model struct {
 	dateSegFocus int    // 0, 1, 2 = which segment is focused (left to right)
 	dateSegOrder [3]int // maps visual position to semantic: 0=day, 1=month, 2=year
 	dateFormat   string // "iso", "eu", or "us"
+
+	// Google Calendar events (passed in from app model)
+	calendarEvents []google.CalendarEvent
 
 	// Week filter state (empty = no filter, set by app model when calendar is in weekly view)
 	weekFilterStart string
@@ -293,6 +299,9 @@ func (m Model) AllHelpBindings() []key.Binding {
 func (m Model) visibleItems() []visibleItem {
 	var items []visibleItem
 
+	// Expand multi-day events once for use in both branches
+	expandedEvents := google.ExpandMultiDay(m.calendarEvents)
+
 	// Section header and dated todos: week-filtered or full month
 	if m.weekFilterStart != "" {
 		// Week filter active: show "Week of {date}" header and date-range query
@@ -303,8 +312,18 @@ func (m Model) visibleItems() []visibleItem {
 		}
 		items = append(items, visibleItem{kind: headerItem, label: headerLabel, section: sectionDated})
 
+		// Insert events that fall within the week range (before todos)
+		hasWeekEvents := false
+		for i := range expandedEvents {
+			e := &expandedEvents[i]
+			if e.Date >= m.weekFilterStart && e.Date <= m.weekFilterEnd {
+				items = append(items, visibleItem{kind: eventItem, event: e, section: sectionDated})
+				hasWeekEvents = true
+			}
+		}
+
 		dated := m.store.TodosForDateRange(m.weekFilterStart, m.weekFilterEnd)
-		if len(dated) == 0 {
+		if !hasWeekEvents && len(dated) == 0 {
 			items = append(items, visibleItem{kind: emptyItem, label: "(no todos this week)", section: sectionDated})
 		} else {
 			for i := range dated {
@@ -316,9 +335,29 @@ func (m Model) visibleItems() []visibleItem {
 		monthLabel := fmt.Sprintf("%s %d", m.viewMonth.String(), m.viewYear)
 		items = append(items, visibleItem{kind: headerItem, label: monthLabel, section: sectionDated})
 
+		// Insert events that fall within the viewed month (before todos)
+		for i := range expandedEvents {
+			e := &expandedEvents[i]
+			if ed, err := time.Parse("2006-01-02", e.Date); err == nil {
+				if ed.Year() == m.viewYear && ed.Month() == m.viewMonth {
+					items = append(items, visibleItem{kind: eventItem, event: e, section: sectionDated})
+				}
+			}
+		}
+
 		// Dated todos for the viewed month
 		dated := m.store.TodosForMonth(m.viewYear, m.viewMonth)
-		if len(dated) == 0 {
+		// Check if any events matched the month
+		hasMonthEvents := false
+		for _, e := range expandedEvents {
+			if ed, err := time.Parse("2006-01-02", e.Date); err == nil {
+				if ed.Year() == m.viewYear && ed.Month() == m.viewMonth {
+					hasMonthEvents = true
+					break
+				}
+			}
+		}
+		if !hasMonthEvents && len(dated) == 0 {
 			items = append(items, visibleItem{kind: emptyItem, label: "(no todos this month)", section: sectionDated})
 		} else {
 			for i := range dated {
@@ -380,7 +419,7 @@ func (m Model) visibleItems() []visibleItem {
 				if matched, _ := fuzzy.Match(m.filterQuery, item.todo.Text); matched {
 					filtered = append(filtered, item)
 				}
-			// Skip emptyItem entries -- they are misleading when filtered
+			// Skip emptyItem and eventItem entries during filtering
 			}
 		}
 		// Post-process: add "(no matches)" after headers with no following todos
@@ -1106,6 +1145,9 @@ func (m Model) normalView() string {
 			b.WriteString("  " + m.styles.Empty.Render(item.label))
 			b.WriteString("\n")
 
+		case eventItem:
+			m.renderEvent(&b, item.event)
+
 		case todoItem:
 			isSelected := selectableIdx < len(selectable) && selectableIdx == m.cursor && m.focused
 			m.renderTodo(&b, item.todo, isSelected)
@@ -1188,6 +1230,24 @@ func (m *Model) SetTheme(t theme.Theme) {
 func (m *Model) SetShowFuzzySections(showMonth, showYear bool) {
 	m.showMonthTodos = showMonth
 	m.showYearTodos = showYear
+}
+
+// SetCalendarEvents sets the Google Calendar events to display alongside todos.
+func (m *Model) SetCalendarEvents(events []google.CalendarEvent) {
+	m.calendarEvents = events
+}
+
+// renderEvent writes a single calendar event line to the builder.
+func (m Model) renderEvent(b *strings.Builder, e *google.CalendarEvent) {
+	b.WriteString("       ") // 2 spaces (no cursor) + 5 spaces (no priority badge)
+	if e.AllDay {
+		b.WriteString(m.styles.EventTime.Render("all day"))
+	} else {
+		b.WriteString(m.styles.EventTime.Render(e.Start.Format("15:04")))
+	}
+	b.WriteString("  ")
+	b.WriteString(m.styles.EventText.Render(e.Summary))
+	b.WriteString("\n")
 }
 
 // SetDateFormat updates the date display layout, input placeholder, and segment ordering.
