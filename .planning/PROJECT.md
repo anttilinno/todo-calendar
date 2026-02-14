@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A terminal-based (TUI) application that combines a monthly/weekly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, priority-colored date indicators for pending work, color-coded overview counts, blended today+status highlighting, circle indicators for month/year todo status, and weekly view toggle. The right panel displays todos in 4 sections (dated, This Month, This Year, Floating) with inline filter support, configurable section visibility, and color-coded P1-P4 priority badges. Includes full-screen cross-month search with priority badges, editing and reordering todos, configurable date format and first day of week, 4 color themes, and an in-app settings overlay with live preview. Todos support day, month, or year date precision via a segmented date input, and optional P1-P4 priority levels set via an inline selector. Stored in SQLite with support for rich markdown bodies, reusable templates with placeholder prompting, and external editor integration ($EDITOR). Templates can be managed in a dedicated overlay and have recurring schedules (daily, weekdays, weekly, monthly) that auto-create todos on app launch. A unified add form (`a` key) with title, date, priority, body, and template picker fields replaces the previous multi-key entry points. Built with Go and Bubble Tea for personal use.
+A terminal-based (TUI) application that combines a monthly/weekly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, priority-colored date indicators for pending work, Google Calendar event indicators, color-coded overview counts, blended today+status highlighting, circle indicators for month/year todo status, and weekly view toggle. The right panel displays todos in 4 sections (dated, This Month, This Year, Floating) with inline filter support, configurable section visibility, color-coded P1-P4 priority badges, and read-only Google Calendar events mixed into dated sections. Includes full-screen cross-month search with priority badges, editing and reordering todos, configurable date format and first day of week, 4 color themes, and an in-app settings overlay with live preview. Todos support day, month, or year date precision via a segmented date input, and optional P1-P4 priority levels set via an inline selector. Google Calendar events are fetched via OAuth 2.0 with background polling and displayed with visual distinction (teal color, time prefix, non-selectable). Stored in SQLite with support for rich markdown bodies, reusable templates with placeholder prompting, and external editor integration ($EDITOR). Templates can be managed in a dedicated overlay and have recurring schedules (daily, weekdays, weekly, monthly) that auto-create todos on app launch. A unified add form (`a` key) with title, date, priority, body, and template picker fields replaces the previous multi-key entry points. Built with Go and Bubble Tea for personal use.
 
 ## Core Value
 
@@ -78,13 +78,19 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - ✓ Calendar day indicators reflect highest-priority incomplete todo's color — v2.1
 - ✓ Inline priority selector in add/edit forms with left/right arrow cycling — v2.1
 - ✓ Priority stored as INTEGER in SQLite with migration v7, existing todos default to 0 — v2.1
+- ✓ OAuth 2.0 authentication with PKCE loopback redirect for Google Calendar — v2.2
+- ✓ Token persistence with atomic writes (0600 permissions) and transparent auto-refresh — v2.2
+- ✓ App works fully offline when Google account is not configured — v2.2
+- ✓ Google Calendar events fetched via REST API with syncToken delta sync — v2.2
+- ✓ Background polling re-fetches events every 5 minutes without TUI freeze — v2.2
+- ✓ Events displayed in todo panel with HH:MM time prefix or "all day" label, teal color, non-selectable — v2.2
+- ✓ Multi-day events expanded to show on each day they span — v2.2
+- ✓ Calendar grid bracket indicators for days with Google Calendar events — v2.2
+- ✓ Google Calendar enable/disable toggle in settings without removing credentials — v2.2
 
 ### Active
 
-- [ ] Read-only Google Calendar event display in TUI via CalDAV
-- [ ] App password authentication for Google Calendar
-- [ ] Events mixed into dated todo section with visual distinction
-- [ ] Background polling refresh (startup + 5-minute interval)
+(No active requirements — define with next milestone)
 
 ### v2 Candidates
 
@@ -111,13 +117,14 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - **Holidays:** rickar/cal/v2 with 11-country registry (de, dk, ee, es, fi, fr, gb, it, no, se, us)
 - **Config:** TOML at ~/.config/todo-calendar/config.toml (BurntSushi/toml v1.6.0)
 - **Storage:** SQLite at ~/.config/todo-calendar/todos.db (modernc.org/sqlite, pure Go, WAL mode)
-- **Codebase:** 8,644 lines of Go across 35 source files
+- **Google Calendar:** OAuth 2.0 via golang.org/x/oauth2, REST API via google.golang.org/api/calendar/v3, token at ~/.config/todo-calendar/token.json
+- **Codebase:** 9,823 lines of Go across 37 source files
 - **Architecture:** Elm Architecture (Bubble Tea), pure rendering functions, constructor DI, TodoStore interface
 
 ## Constraints
 
 - **Stack**: Go + Bubble Tea — chosen for ergonomic component model and ecosystem
-- **Storage**: Local SQLite for todos — no cloud sync for user data
+- **Storage**: Local SQLite for todos — no cloud sync for user data; Google Calendar events cached in-memory only
 - **Network**: Google Calendar pull is optional; app must work fully offline when unconfigured
 - **Holidays**: Must work offline using bundled Go library, not an external API
 
@@ -186,25 +193,25 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 | HighestPriorityPerDay MIN/GROUP BY query | Single-pass efficient lookup for calendar indicators | ✓ Good — no N+1 queries |
 | Named field constants replacing magic numbers | fieldTitle=0..fieldTemplate=4 for editField safety | ✓ Good — maintainable, prevents off-by-one |
 | Priority cache in RenderWeekGrid | Cross-month week spans need independent store queries, like indicator cache | ✓ Good — consistent with existing patterns |
+| OAuth 2.0 with PKCE over app passwords | Google disabled app passwords for Calendar in Sept 2024 | ✓ Good — secure desktop OAuth flow |
+| Google REST API over CalDAV | Google-specific integration, simpler API, better docs | ✓ Good — clean JSON API, syncToken support |
+| Events cached in-memory only | Events are ephemeral, rebuilt on each sync; no SQLite schema complexity | ✓ Good — simple, no cache invalidation |
+| PKCE with S256 + ephemeral loopback port | Desktop OAuth security best practices | ✓ Good — no fixed port conflicts |
+| persistingTokenSource wrapper | Auto-save token on refresh transparently | ✓ Good — zero user interaction for token refresh |
+| All-day event dates as raw YYYY-MM-DD string | Prevents timezone conversion off-by-one errors | ✓ Good — consistent with existing date handling |
+| SyncToken delta sync with 410 GONE retry | Efficient incremental updates, automatic full-sync fallback | ✓ Good — minimal API calls |
+| Teal/cyan EventFg color family | Visually distinct from accent (indigo) and muted (grey) | ✓ Good — clear event/todo separation |
+| Events inserted before todos in dated section | Calendar-driven items get visual priority over user-driven todos | ✓ Good — natural reading order |
+| Non-selectable eventItem kind | Events are read-only; cursor skips automatically via selectableIndices | ✓ Good — no code changes to selection logic |
+| Settings toggle Enabled/Disabled when AuthReady | Clean UX: action row for auth, cycling toggle for display control | ✓ Good — context-appropriate UI |
 
 ## Known Tech Debt
 
 None.
 
-## Current Milestone: v2.2 Google Calendar Events
-
-**Goal:** Display read-only Google Calendar events alongside todos in the TUI via CalDAV with app password authentication.
-
-**Target features:**
-- CalDAV connection with Google app password authentication
-- Read-only calendar event fetching and in-memory caching
-- Events displayed mixed into dated todo section with visual distinction
-- Background polling (startup + 5-minute interval)
-- Graceful offline handling (app works fully without Google config)
-
 ## Current State
 
-Building v2.2 with 8,644 LOC Go. Adding read-only Google Calendar integration.
+Shipped v2.2 with 9,823 LOC Go. Google Calendar integration complete with OAuth 2.0, background polling, and event display in both todo panel and calendar grid.
 
 ---
-*Last updated: 2026-02-13 after v2.2 milestone started*
+*Last updated: 2026-02-14 after v2.2 milestone*

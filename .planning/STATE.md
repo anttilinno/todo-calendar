@@ -2,63 +2,32 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-13)
+See: .planning/PROJECT.md (updated 2026-02-14)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen
-**Current focus:** Phase 35 — Event Display & Grid (v2.2)
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 35 of 35 (Event Display & Grid)
-Plan: 3 of 3 in current phase
-Status: Phase Complete
-Last activity: 2026-02-14 — Completed 35-03-PLAN.md
+Phase: 35 of 35 (all complete)
+Plan: N/A
+Status: Milestone v2.2 Complete
+Last activity: 2026-02-14 — Completed v2.2 Google Calendar Events milestone
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 61 (v1.0 through v2.1 + Phase 33 + 34 + 35-01 + 35-02 + 35-03)
+- Total plans completed: 61 (v1.0 through v2.2)
 - Average duration: 2 min
 - Total execution time: ~1.5 hours
-
-| Phase | Plan | Duration | Tasks | Files |
-|-------|------|----------|-------|-------|
-| 31    | 01   | 3min     | 2     | 6     |
-| 32    | 01   | 6min     | 2     | 7     |
-| 32    | 02   | 3min     | 2     | 5     |
-| 33    | 01   | 2min     | 2     | 4     |
-| 33    | 02   | 4min     | 2     | 3     |
-| 34    | 01   | 2min     | 2     | 4     |
-| 34    | 02   | 2min     | 2     | 2     |
-| 35    | 01   | 1min     | 2     | 4     |
-| 35    | 02   | 2min     | 2     | 2     |
-| 35    | 03   | 3min     | 2     | 4     |
 
 ## Accumulated Context
 
 ### Decisions
 
 See PROJECT.md Key Decisions table for complete log.
-
-Recent decisions affecting current work:
-- v2.2: OAuth 2.0 loopback redirect (not app passwords — Google disabled basic auth Sept 2024)
-- v2.2: Google REST API (not CalDAV) for Google-specific integration
-- v2.2: Events cached in-memory only (not persisted to SQLite)
-- [Phase 33]: PKCE with S256 for desktop OAuth; ephemeral port loopback redirect; persistingTokenSource for auto-refresh
-- [Phase 33]: Google Calendar settings row uses action-row pattern (Enter trigger, not cycling)
-- [Phase 33]: Auth state checked at startup via file existence only (no network)
-- [Phase 34]: All-day event dates stored as raw YYYY-MM-DD string (no timezone conversion)
-- [Phase 34]: MergeEvents sorts all-day before timed events on same date
-- [Phase 34]: Init() only starts polling if Google auth is configured (not AuthNotConfigured)
-- [Phase 34]: EventTickMsg keeps tick loop alive even when skipping fetch for auth-completion scenarios
-- [Phase 35]: Teal/cyan color family for EventFg across all themes (distinct from accent/muted)
-- [Phase 35]: ExpandMultiDay uses Google exclusive end-date convention
-- [Phase 35]: Events inserted before todos in dated section for visual priority
-- [Phase 35]: Events hidden during filter mode (non-interactive noise)
-- [Phase 35]: Event-only grid days use default Indicator style (no priority coloring)
-- [Phase 35]: Settings toggle only appears when AuthReady; action row preserved otherwise
 
 ### Pending Todos
 
@@ -71,5 +40,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 35-03-PLAN.md (Phase 35 complete)
+Stopped at: v2.2 milestone archived
 Resume file: None

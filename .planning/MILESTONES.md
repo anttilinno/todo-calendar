@@ -299,3 +299,30 @@
 
 ---
 
+
+## v2.2 Google Calendar Events (Shipped: 2026-02-14)
+
+**Delivered:** Read-only Google Calendar events displayed alongside todos in the TUI via Google REST API with OAuth 2.0 authentication, background polling, and settings toggle
+
+**Phases completed:** 33-35 (3 phases, 7 plans, 14 tasks)
+
+**Key accomplishments:**
+- OAuth 2.0 authentication with PKCE for Google Calendar (loopback redirect, atomic token persistence with 0600 permissions, transparent auto-refresh)
+- Google Calendar REST API client with syncToken-based delta sync, 5-minute background polling, and error-resilient fetch
+- Events displayed in todo panel with 24h time prefix or "all day" label, teal color, and non-selectable cursor behavior
+- Multi-day event expansion using Google's exclusive end-date convention with monthly/weekly view filtering
+- Calendar grid bracket indicators on days with Google Calendar events (even without todos)
+- Settings toggle to enable/disable event display without removing credentials; action row for auth when not connected
+
+**Stats:**
+- 33 files changed, 4,079 insertions(+), 113 deletions(-)
+- 9,823 lines of Go across 37 source files
+- 3 phases, 7 plans, 14 tasks
+- Same day (2026-02-14, ~2 hours)
+
+**Git range:** `cdfe03b` → `33e5d92`
+
+**What's next:** New feature milestones
+
+---
+
