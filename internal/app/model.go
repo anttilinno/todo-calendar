@@ -720,5 +720,13 @@ func (m Model) View() string {
 		errLine := m.styles.Error.Render(m.editorErr)
 		return lipgloss.JoinVertical(lipgloss.Left, top, errLine, helpBar)
 	}
+	if m.eventsFetchErr != nil && m.cfg.GoogleCalendarEnabled {
+		errMsg := m.eventsFetchErr.Error()
+		if len(errMsg) > 80 {
+			errMsg = errMsg[:80] + "..."
+		}
+		errLine := m.styles.Error.Render("Calendar: " + errMsg)
+		return lipgloss.JoinVertical(lipgloss.Left, top, errLine, helpBar)
+	}
 	return lipgloss.JoinVertical(lipgloss.Left, top, helpBar)
 }

@@ -20,8 +20,9 @@ type CalendarEvent struct {
 	EndDate string    // "2006-01-02" end date for all-day events (exclusive, Google convention)
 	Start   time.Time // parsed RFC3339 for timed events; zero for all-day
 	End     time.Time // parsed RFC3339 for timed events; zero for all-day
-	AllDay  bool
-	Status  string // "confirmed", "tentative", "cancelled"
+	AllDay    bool
+	Recurring bool
+	Status    string // "confirmed", "tentative", "cancelled"
 }
 
 // NewCalendarService creates a Google Calendar API service using the
@@ -93,9 +94,10 @@ func FetchEvents(srv *calendar.Service, syncToken string) ([]CalendarEvent, stri
 // convertEvent converts a Google Calendar API event to our CalendarEvent type.
 func convertEvent(e *calendar.Event) CalendarEvent {
 	ce := CalendarEvent{
-		ID:      e.Id,
-		Summary: e.Summary,
-		Status:  e.Status,
+		ID:        e.Id,
+		Summary:   e.Summary,
+		Status:    e.Status,
+		Recurring: e.RecurringEventId != "",
 	}
 
 	if e.Start == nil {
