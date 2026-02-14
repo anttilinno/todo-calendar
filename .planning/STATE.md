@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 34 of 35 (Event Fetching & Async Integration)
-Plan: 1 of 2 in current phase
-Status: Executing
-Last activity: 2026-02-14 — Completed 34-01-PLAN.md
+Plan: 2 of 2 in current phase (PHASE COMPLETE)
+Status: Phase 34 complete
+Last activity: 2026-02-14 — Completed 34-02-PLAN.md
 
-Progress: [███░░░░░░░] 33%
+Progress: [██████░░░░] 67%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 57 (v1.0 through v2.1 + Phase 33 + 34-01)
+- Total plans completed: 58 (v1.0 through v2.1 + Phase 33 + 34)
 - Average duration: 2 min
 - Total execution time: ~1.5 hours
 
@@ -31,6 +31,7 @@ Progress: [███░░░░░░░] 33%
 | 33    | 01   | 2min     | 2     | 4     |
 | 33    | 02   | 4min     | 2     | 3     |
 | 34    | 01   | 2min     | 2     | 4     |
+| 34    | 02   | 2min     | 2     | 2     |
 
 ## Accumulated Context
 
@@ -47,6 +48,8 @@ Recent decisions affecting current work:
 - [Phase 33]: Auth state checked at startup via file existence only (no network)
 - [Phase 34]: All-day event dates stored as raw YYYY-MM-DD string (no timezone conversion)
 - [Phase 34]: MergeEvents sorts all-day before timed events on same date
+- [Phase 34]: Init() only starts polling if Google auth is configured (not AuthNotConfigured)
+- [Phase 34]: EventTickMsg keeps tick loop alive even when skipping fetch for auth-completion scenarios
 
 ### Pending Todos
 
@@ -59,5 +62,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 34-01-PLAN.md
+Stopped at: Completed 34-02-PLAN.md (Phase 34 complete)
 Resume file: None
