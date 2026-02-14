@@ -22,6 +22,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	gcal "google.golang.org/api/calendar/v3"
 )
 
 // pane identifies which pane is active.
@@ -78,10 +79,14 @@ type Model struct {
 	store           store.TodoStore
 	cfg             config.Config
 	googleAuthState google.AuthState
+	calendarSvc     *gcal.Service
+	calendarEvents  []google.CalendarEvent
+	eventsSyncToken string
+	eventsFetchErr  error
 }
 
 // New creates a new root application model with the given dependencies.
-func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t theme.Theme, cfg config.Config, authState google.AuthState) Model {
+func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t theme.Theme, cfg config.Config, authState google.AuthState, calSvc *gcal.Service) Model {
 	cal := calendar.New(provider, mondayStart, s, t)
 	cal.SetFocused(true)
 	cal.SetShowFuzzySections(cfg.ShowMonthTodos, cfg.ShowYearTodos)
@@ -109,12 +114,21 @@ func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t the
 		store:           s,
 		cfg:             cfg,
 		googleAuthState: authState,
+		calendarSvc:     calSvc,
 	}
 }
 
 // Init returns the initial command for the root model.
 func (m Model) Init() tea.Cmd {
-	return nil
+	if m.googleAuthState == google.AuthNotConfigured {
+		return nil
+	}
+	var cmds []tea.Cmd
+	if m.calendarSvc != nil {
+		cmds = append(cmds, google.FetchEventsCmd(m.calendarSvc, ""))
+	}
+	cmds = append(cmds, google.ScheduleEventTick())
+	return tea.Batch(cmds...)
 }
 
 // Update handles messages for the root model.
