@@ -17,6 +17,7 @@ type CalendarEvent struct {
 	ID      string
 	Summary string
 	Date    string    // "2006-01-02" for ALL events (used as lookup key)
+	EndDate string    // "2006-01-02" end date for all-day events (exclusive, Google convention)
 	Start   time.Time // parsed RFC3339 for timed events; zero for all-day
 	End     time.Time // parsed RFC3339 for timed events; zero for all-day
 	AllDay  bool
@@ -105,6 +106,9 @@ func convertEvent(e *calendar.Event) CalendarEvent {
 		// All-day event: store date as raw string, no timezone conversion
 		ce.AllDay = true
 		ce.Date = e.Start.Date
+		if e.End != nil && e.End.Date != "" {
+			ce.EndDate = e.End.Date
+		}
 	} else if e.Start.DateTime != "" {
 		// Timed event: parse RFC3339 and derive date
 		t, err := time.Parse(time.RFC3339, e.Start.DateTime)
@@ -121,6 +125,47 @@ func convertEvent(e *calendar.Event) CalendarEvent {
 	}
 
 	return ce
+}
+
+// ExpandMultiDay expands multi-day all-day events into per-day entries.
+// Each expanded entry gets its Date set to the corresponding day.
+// EndDate in Google is exclusive (a 2-day event on Jan 1 has EndDate Jan 3).
+func ExpandMultiDay(events []CalendarEvent) []CalendarEvent {
+	const layout = "2006-01-02"
+	var result []CalendarEvent
+
+	for _, ev := range events {
+		if !ev.AllDay || ev.EndDate == "" {
+			result = append(result, ev)
+			continue
+		}
+
+		start, err := time.Parse(layout, ev.Date)
+		if err != nil {
+			result = append(result, ev)
+			continue
+		}
+		end, err := time.Parse(layout, ev.EndDate)
+		if err != nil {
+			result = append(result, ev)
+			continue
+		}
+
+		// Single-day all-day event: EndDate is the day after Date
+		if end.Equal(start.AddDate(0, 0, 1)) {
+			result = append(result, ev)
+			continue
+		}
+
+		// Multi-day: create a copy for each day (end is exclusive)
+		for d := start; d.Before(end); d = d.AddDate(0, 0, 1) {
+			expanded := ev
+			expanded.Date = d.Format(layout)
+			result = append(result, expanded)
+		}
+	}
+
+	return result
 }
 
 // --- Bubble Tea message types and commands ---
