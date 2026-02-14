@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 34 of 35 (Event Fetching & Async Integration)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-14 — Phase 33 verified and complete
+Plan: 1 of 2 in current phase
+Status: Executing
+Last activity: 2026-02-14 — Completed 34-01-PLAN.md
 
 Progress: [███░░░░░░░] 33%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 56 (v1.0 through v2.1 + Phase 33)
+- Total plans completed: 57 (v1.0 through v2.1 + Phase 33 + 34-01)
 - Average duration: 2 min
 - Total execution time: ~1.5 hours
 
@@ -30,6 +30,7 @@ Progress: [███░░░░░░░] 33%
 | 32    | 02   | 3min     | 2     | 5     |
 | 33    | 01   | 2min     | 2     | 4     |
 | 33    | 02   | 4min     | 2     | 3     |
+| 34    | 01   | 2min     | 2     | 4     |
 
 ## Accumulated Context
 
@@ -44,6 +45,8 @@ Recent decisions affecting current work:
 - [Phase 33]: PKCE with S256 for desktop OAuth; ephemeral port loopback redirect; persistingTokenSource for auto-refresh
 - [Phase 33]: Google Calendar settings row uses action-row pattern (Enter trigger, not cycling)
 - [Phase 33]: Auth state checked at startup via file existence only (no network)
+- [Phase 34]: All-day event dates stored as raw YYYY-MM-DD string (no timezone conversion)
+- [Phase 34]: MergeEvents sorts all-day before timed events on same date
 
 ### Pending Todos
 
@@ -56,5 +59,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Phase 33 complete, ready to plan Phase 34
+Stopped at: Completed 34-01-PLAN.md
 Resume file: None
