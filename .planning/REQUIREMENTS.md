@@ -9,10 +9,10 @@ Requirements for Google Calendar Events milestone. Each maps to roadmap phases.
 
 ### Authentication
 
-- [ ] **AUTH-01**: User can authenticate with Google via OAuth 2.0 loopback redirect flow (browser opens, user signs in, token returned)
-- [ ] **AUTH-02**: OAuth refresh token persisted to disk (separate file, 0600 permissions) for re-use across app launches
-- [ ] **AUTH-03**: Token auto-refreshes transparently — user does not re-authenticate unless token is revoked
-- [ ] **AUTH-04**: App works fully offline when Google account is not configured (graceful no-op)
+- [x] **AUTH-01**: User can authenticate with Google via OAuth 2.0 loopback redirect flow (browser opens, user signs in, token returned)
+- [x] **AUTH-02**: OAuth refresh token persisted to disk (separate file, 0600 permissions) for re-use across app launches
+- [x] **AUTH-03**: Token auto-refreshes transparently — user does not re-authenticate unless token is revoked
+- [x] **AUTH-04**: App works fully offline when Google account is not configured (graceful no-op)
 
 ### Event Fetching
 
@@ -42,7 +42,7 @@ Requirements for Google Calendar Events milestone. Each maps to roadmap phases.
 ### Configuration
 
 - [ ] **CONF-01**: Google Calendar toggle in settings overlay (enable/disable without removing credentials)
-- [ ] **CONF-02**: OAuth setup flow triggered from settings or first-run detection
+- [x] **CONF-02**: OAuth setup flow triggered from settings or first-run detection
 
 ## Future Requirements
 
@@ -88,11 +88,11 @@ Deferred to subsequent milestones. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase 33 | Pending |
-| AUTH-02 | Phase 33 | Pending |
-| AUTH-03 | Phase 33 | Pending |
-| AUTH-04 | Phase 33 | Pending |
-| CONF-02 | Phase 33 | Pending |
+| AUTH-01 | Phase 33 | Done |
+| AUTH-02 | Phase 33 | Done |
+| AUTH-03 | Phase 33 | Done |
+| AUTH-04 | Phase 33 | Done |
+| CONF-02 | Phase 33 | Done |
 | FETCH-01 | Phase 34 | Pending |
 | FETCH-02 | Phase 34 | Pending |
 | FETCH-03 | Phase 34 | Pending |
