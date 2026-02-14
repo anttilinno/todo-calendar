@@ -9,6 +9,7 @@ import (
 	"github.com/antti/todo-calendar/internal/calendar"
 	"github.com/antti/todo-calendar/internal/config"
 	"github.com/antti/todo-calendar/internal/editor"
+	"github.com/antti/todo-calendar/internal/google"
 	"github.com/antti/todo-calendar/internal/holidays"
 	"github.com/antti/todo-calendar/internal/preview"
 	"github.com/antti/todo-calendar/internal/search"
@@ -71,15 +72,16 @@ type Model struct {
 	preview       preview.Model
 	showTmplMgr   bool
 	tmplMgr       tmplmgr.Model
-	editing       bool
-	editingTmplID int
-	editorErr     string
-	store         store.TodoStore
-	cfg           config.Config
+	editing         bool
+	editingTmplID   int
+	editorErr       string
+	store           store.TodoStore
+	cfg             config.Config
+	googleAuthState google.AuthState
 }
 
 // New creates a new root application model with the given dependencies.
-func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t theme.Theme, cfg config.Config) Model {
+func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t theme.Theme, cfg config.Config, authState google.AuthState) Model {
 	cal := calendar.New(provider, mondayStart, s, t)
 	cal.SetFocused(true)
 	cal.SetShowFuzzySections(cfg.ShowMonthTodos, cfg.ShowYearTodos)
@@ -98,14 +100,15 @@ func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t the
 	h.Styles.FullSeparator = lipgloss.NewStyle().Foreground(t.MutedFg)
 
 	return Model{
-		calendar:   cal,
-		todoList:   tl,
-		activePane: calendarPane,
-		keys:       DefaultKeyMap(),
-		help:       h,
-		styles:     NewStyles(t),
-		store:      s,
-		cfg:        cfg,
+		calendar:        cal,
+		todoList:        tl,
+		activePane:      calendarPane,
+		keys:            DefaultKeyMap(),
+		help:            h,
+		styles:          NewStyles(t),
+		store:           s,
+		cfg:             cfg,
+		googleAuthState: authState,
 	}
 }
 
@@ -140,6 +143,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case settings.CloseMsg:
 		m.showSettings = false
 		return m, nil
+
+	case google.AuthResultMsg:
+		if msg.Success {
+			m.googleAuthState = google.AuthReady
+			m.settings.SetGoogleAuthState(google.AuthReady)
+		} else {
+			m.googleAuthState = google.AuthNeedsLogin
+			m.settings.SetGoogleAuthState(google.AuthNeedsLogin)
+		}
+		return m, nil
+
+	case settings.StartGoogleAuthMsg:
+		return m, google.StartAuthFlow()
 
 	case search.JumpMsg:
 		m.showSearch = false
@@ -269,7 +285,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.help.ShowAll = false
 			return m, nil
 		case key.Matches(msg, m.keys.Settings) && !isInputting:
-			m.settings = settings.New(m.cfg, theme.ForName(m.cfg.Theme))
+			m.settings = settings.New(m.cfg, theme.ForName(m.cfg.Theme), m.googleAuthState)
 			m.settings.SetSize(m.width, m.height)
 			m.showSettings = true
 			return m, nil
