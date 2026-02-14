@@ -53,7 +53,10 @@
   3. Token refreshes transparently — user never sees "re-authenticate" unless token is revoked
   4. App launches and works fully when Google account is not configured (no errors, no prompts)
   5. OAuth setup can be triggered from settings overlay or detected on first run
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 33-01-PLAN.md — OAuth core package (config, token persistence, auth flow, PKCE)
+- [ ] 33-02-PLAN.md — Settings integration and app wiring (Google Calendar row, auth trigger, offline guard)
 
 ### Phase 34: Event Fetching & Async Integration
 **Goal**: Events are fetched from Google Calendar without freezing the TUI, with efficient incremental updates
@@ -91,6 +94,6 @@
 | 30. Save-on-Close Settings | v2.0 | 1/1 | Complete | 2026-02-12 |
 | 31. Priority Data Layer | v2.1 | 1/1 | Complete | 2026-02-13 |
 | 32. Priority UI + Theme | v2.1 | 2/2 | Complete | 2026-02-13 |
-| 33. OAuth & Offline Guard | v2.2 | 0/TBD | Not started | - |
+| 33. OAuth & Offline Guard | v2.2 | 0/2 | Not started | - |
 | 34. Event Fetching & Async | v2.2 | 0/TBD | Not started | - |
 | 35. Event Display & Grid | v2.2 | 0/TBD | Not started | - |
