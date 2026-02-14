@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 35 of 35 (Event Display & Grid)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-14 — Phase 34 verified and complete
+Plan: 1 of 3 in current phase
+Status: Executing
+Last activity: 2026-02-14 — Completed 35-01-PLAN.md
 
 Progress: [██████░░░░] 67%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 58 (v1.0 through v2.1 + Phase 33 + 34)
+- Total plans completed: 59 (v1.0 through v2.1 + Phase 33 + 34 + 35-01)
 - Average duration: 2 min
 - Total execution time: ~1.5 hours
 
@@ -32,6 +32,7 @@ Progress: [██████░░░░] 67%
 | 33    | 02   | 4min     | 2     | 3     |
 | 34    | 01   | 2min     | 2     | 4     |
 | 34    | 02   | 2min     | 2     | 2     |
+| 35    | 01   | 1min     | 2     | 4     |
 
 ## Accumulated Context
 
@@ -50,6 +51,8 @@ Recent decisions affecting current work:
 - [Phase 34]: MergeEvents sorts all-day before timed events on same date
 - [Phase 34]: Init() only starts polling if Google auth is configured (not AuthNotConfigured)
 - [Phase 34]: EventTickMsg keeps tick loop alive even when skipping fetch for auth-completion scenarios
+- [Phase 35]: Teal/cyan color family for EventFg across all themes (distinct from accent/muted)
+- [Phase 35]: ExpandMultiDay uses Google exclusive end-date convention
 
 ### Pending Todos
 
@@ -62,5 +65,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Phase 34 complete, ready to plan Phase 35
+Stopped at: Completed 35-01-PLAN.md
 Resume file: None
