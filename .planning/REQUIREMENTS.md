@@ -16,13 +16,13 @@ Requirements for Google Calendar Events milestone. Each maps to roadmap phases.
 
 ### Event Fetching
 
-- [ ] **FETCH-01**: Events fetched from user's primary Google Calendar via REST API on app startup
-- [ ] **FETCH-02**: Background polling re-fetches events every 5 minutes using tea.Tick
-- [ ] **FETCH-03**: SyncToken-based delta sync for efficient incremental updates
-- [ ] **FETCH-04**: Events cached in-memory (not persisted to SQLite)
-- [ ] **FETCH-05**: Network errors handled gracefully — show last known data, no TUI freeze
-- [ ] **FETCH-06**: Recurring events expanded server-side via singleEvents=true parameter
-- [ ] **FETCH-07**: All-day events parsed as date strings without timezone conversion (prevents off-by-one)
+- [x] **FETCH-01**: Events fetched from user's primary Google Calendar via REST API on app startup
+- [x] **FETCH-02**: Background polling re-fetches events every 5 minutes using tea.Tick
+- [x] **FETCH-03**: SyncToken-based delta sync for efficient incremental updates
+- [x] **FETCH-04**: Events cached in-memory (not persisted to SQLite)
+- [x] **FETCH-05**: Network errors handled gracefully — show last known data, no TUI freeze
+- [x] **FETCH-06**: Recurring events expanded server-side via singleEvents=true parameter
+- [x] **FETCH-07**: All-day events parsed as date strings without timezone conversion (prevents off-by-one)
 
 ### Event Display
 
@@ -93,13 +93,13 @@ Deferred to subsequent milestones. Tracked but not in current roadmap.
 | AUTH-03 | Phase 33 | Done |
 | AUTH-04 | Phase 33 | Done |
 | CONF-02 | Phase 33 | Done |
-| FETCH-01 | Phase 34 | Pending |
-| FETCH-02 | Phase 34 | Pending |
-| FETCH-03 | Phase 34 | Pending |
-| FETCH-04 | Phase 34 | Pending |
-| FETCH-05 | Phase 34 | Pending |
-| FETCH-06 | Phase 34 | Pending |
-| FETCH-07 | Phase 34 | Pending |
+| FETCH-01 | Phase 34 | Done |
+| FETCH-02 | Phase 34 | Done |
+| FETCH-03 | Phase 34 | Done |
+| FETCH-04 | Phase 34 | Done |
+| FETCH-05 | Phase 34 | Done |
+| FETCH-06 | Phase 34 | Done |
+| FETCH-07 | Phase 34 | Done |
 | DISP-01 | Phase 35 | Pending |
 | DISP-02 | Phase 35 | Pending |
 | DISP-03 | Phase 35 | Pending |
