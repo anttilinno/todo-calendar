@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 35 of 35 (Event Display & Grid)
-Plan: 2 of 3 in current phase
-Status: Executing
-Last activity: 2026-02-14 — Completed 35-02-PLAN.md
+Plan: 3 of 3 in current phase
+Status: Phase Complete
+Last activity: 2026-02-14 — Completed 35-03-PLAN.md
 
-Progress: [████████░░] 78%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 60 (v1.0 through v2.1 + Phase 33 + 34 + 35-01 + 35-02)
+- Total plans completed: 61 (v1.0 through v2.1 + Phase 33 + 34 + 35-01 + 35-02 + 35-03)
 - Average duration: 2 min
 - Total execution time: ~1.5 hours
 
@@ -34,6 +34,7 @@ Progress: [████████░░] 78%
 | 34    | 02   | 2min     | 2     | 2     |
 | 35    | 01   | 1min     | 2     | 4     |
 | 35    | 02   | 2min     | 2     | 2     |
+| 35    | 03   | 3min     | 2     | 4     |
 
 ## Accumulated Context
 
@@ -56,6 +57,8 @@ Recent decisions affecting current work:
 - [Phase 35]: ExpandMultiDay uses Google exclusive end-date convention
 - [Phase 35]: Events inserted before todos in dated section for visual priority
 - [Phase 35]: Events hidden during filter mode (non-interactive noise)
+- [Phase 35]: Event-only grid days use default Indicator style (no priority coloring)
+- [Phase 35]: Settings toggle only appears when AuthReady; action row preserved otherwise
 
 ### Pending Todos
 
@@ -68,5 +71,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 35-02-PLAN.md
+Stopped at: Completed 35-03-PLAN.md (Phase 35 complete)
 Resume file: None
