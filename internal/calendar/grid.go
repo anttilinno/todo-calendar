@@ -37,7 +37,7 @@ func fuzzyStatus(todos []store.Todo) string {
 //   - mondayStart: if true, weeks start on Monday; otherwise Sunday
 //   - indicators: map of day numbers to count of incomplete todos (nil safe)
 //   - st: store for querying month/year fuzzy todos (nil safe)
-func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mondayStart bool, indicators map[int]int, totals map[int]int, priorities map[int]int, st store.TodoStore, showMonthTodos bool, showYearTodos bool, contentWidth int, s Styles) string {
+func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mondayStart bool, indicators map[int]int, totals map[int]int, priorities map[int]int, st store.TodoStore, showMonthTodos bool, showYearTodos bool, contentWidth int, hasEvents map[int]bool, s Styles) string {
 	var b strings.Builder
 
 	// Title line: month and year, centered in grid width.
@@ -146,14 +146,15 @@ func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mo
 		// Format cell to 4 visible characters BEFORE styling.
 		hasPending := indicators[day] > 0
 		hasAllDone := !hasPending && totals[day] > 0
+		hasEvt := hasEvents[day]
 		var cell string
-		if hasPending || hasAllDone {
+		if hasPending || hasAllDone || hasEvt {
 			cell = fmt.Sprintf("[%2d]", day)
 		} else {
 			cell = fmt.Sprintf(" %2d ", day)
 		}
 
-		// Apply style based on priority: today+indicator > today+done > today > holiday > indicator > done > normal.
+		// Apply style based on priority: today+indicator > today+done > today+event > today > holiday > indicator > done > event > normal.
 		switch {
 		case day == today && hasPending:
 			switch priorities[day] {
@@ -170,6 +171,8 @@ func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mo
 			}
 		case day == today && hasAllDone:
 			cell = s.TodayDone.Render(cell)
+		case day == today && hasEvt:
+			cell = s.TodayIndicator.Render(cell)
 		case day == today:
 			cell = s.Today.Render(cell)
 		case holidays[day]:
@@ -189,6 +192,8 @@ func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mo
 			}
 		case hasAllDone:
 			cell = s.IndicatorDone.Render(cell)
+		case hasEvt:
+			cell = s.Indicator.Render(cell)
 		default:
 			cell = s.Normal.Render(cell)
 		}
@@ -222,7 +227,7 @@ func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mo
 //   - mondayStart: if true, weeks start on Monday; otherwise Sunday
 //   - st: store for incomplete todo indicator lookup
 //   - s: calendar styles
-func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider, mondayStart bool, st store.TodoStore, s Styles) string {
+func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider, mondayStart bool, st store.TodoStore, hasEvents map[int]bool, s Styles) string {
 	var b strings.Builder
 
 	weekEnd := weekStart.AddDate(0, 0, 6)
@@ -327,14 +332,15 @@ func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider,
 		// Format cell to 4 visible characters.
 		hasPending := inds[dd] > 0
 		hasAllDone := !hasPending && tots[dd] > 0
+		hasEvt := hasEvents[dd]
 		var cell string
-		if hasPending || hasAllDone {
+		if hasPending || hasAllDone || hasEvt {
 			cell = fmt.Sprintf("[%2d]", dd)
 		} else {
 			cell = fmt.Sprintf(" %2d ", dd)
 		}
 
-		// Apply style based on priority: today+indicator > today+done > today > holiday > indicator > done > normal.
+		// Apply style based on priority: today+indicator > today+done > today+event > today > holiday > indicator > done > event > normal.
 		prios := getPriorities(dy, dm)
 		switch {
 		case isToday && hasPending:
@@ -352,6 +358,8 @@ func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider,
 			}
 		case isToday && hasAllDone:
 			cell = s.TodayDone.Render(cell)
+		case isToday && hasEvt:
+			cell = s.TodayIndicator.Render(cell)
 		case isToday:
 			cell = s.Today.Render(cell)
 		case hols[dd]:
@@ -371,6 +379,8 @@ func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider,
 			}
 		case hasAllDone:
 			cell = s.IndicatorDone.Render(cell)
+		case hasEvt:
+			cell = s.Indicator.Render(cell)
 		default:
 			cell = s.Normal.Render(cell)
 		}
