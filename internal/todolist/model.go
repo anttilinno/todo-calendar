@@ -2,6 +2,7 @@ package todolist
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -312,57 +313,48 @@ func (m Model) visibleItems() []visibleItem {
 		}
 		items = append(items, visibleItem{kind: headerItem, label: headerLabel, section: sectionDated})
 
-		// Insert events that fall within the week range (before todos)
-		hasWeekEvents := false
+		// Collect events and todos, then interleave sorted by date
+		var mixed []visibleItem
 		for i := range expandedEvents {
 			e := &expandedEvents[i]
 			if e.Date >= m.weekFilterStart && e.Date <= m.weekFilterEnd {
-				items = append(items, visibleItem{kind: eventItem, event: e, section: sectionDated})
-				hasWeekEvents = true
+				mixed = append(mixed, visibleItem{kind: eventItem, event: e, section: sectionDated})
 			}
 		}
-
 		dated := m.store.TodosForDateRange(m.weekFilterStart, m.weekFilterEnd)
-		if !hasWeekEvents && len(dated) == 0 {
+		for i := range dated {
+			mixed = append(mixed, visibleItem{kind: todoItem, todo: &dated[i], section: sectionDated})
+		}
+		sortVisibleByDate(mixed)
+		if len(mixed) == 0 {
 			items = append(items, visibleItem{kind: emptyItem, label: "(no todos this week)", section: sectionDated})
 		} else {
-			for i := range dated {
-				items = append(items, visibleItem{kind: todoItem, todo: &dated[i], section: sectionDated})
-			}
+			items = append(items, mixed...)
 		}
 	} else {
 		// Month section header
 		monthLabel := fmt.Sprintf("%s %d", m.viewMonth.String(), m.viewYear)
 		items = append(items, visibleItem{kind: headerItem, label: monthLabel, section: sectionDated})
 
-		// Insert events that fall within the viewed month (before todos)
+		// Collect events and todos, then interleave sorted by date
+		var mixed []visibleItem
 		for i := range expandedEvents {
 			e := &expandedEvents[i]
 			if ed, err := time.Parse("2006-01-02", e.Date); err == nil {
 				if ed.Year() == m.viewYear && ed.Month() == m.viewMonth {
-					items = append(items, visibleItem{kind: eventItem, event: e, section: sectionDated})
+					mixed = append(mixed, visibleItem{kind: eventItem, event: e, section: sectionDated})
 				}
 			}
 		}
-
-		// Dated todos for the viewed month
 		dated := m.store.TodosForMonth(m.viewYear, m.viewMonth)
-		// Check if any events matched the month
-		hasMonthEvents := false
-		for _, e := range expandedEvents {
-			if ed, err := time.Parse("2006-01-02", e.Date); err == nil {
-				if ed.Year() == m.viewYear && ed.Month() == m.viewMonth {
-					hasMonthEvents = true
-					break
-				}
-			}
+		for i := range dated {
+			mixed = append(mixed, visibleItem{kind: todoItem, todo: &dated[i], section: sectionDated})
 		}
-		if !hasMonthEvents && len(dated) == 0 {
+		sortVisibleByDate(mixed)
+		if len(mixed) == 0 {
 			items = append(items, visibleItem{kind: emptyItem, label: "(no todos this month)", section: sectionDated})
 		} else {
-			for i := range dated {
-				items = append(items, visibleItem{kind: todoItem, todo: &dated[i], section: sectionDated})
-			}
+			items = append(items, mixed...)
 		}
 	}
 
@@ -438,6 +430,42 @@ func (m Model) visibleItems() []visibleItem {
 	}
 
 	return items
+}
+
+// sortVisibleByDate sorts a mixed slice of event and todo visible items by date.
+// Events on the same date as a todo sort before the todo; events sort by start time.
+func sortVisibleByDate(items []visibleItem) {
+	sort.SliceStable(items, func(i, j int) bool {
+		di := itemDate(items[i])
+		dj := itemDate(items[j])
+		if di != dj {
+			return di < dj
+		}
+		// Same date: events before todos
+		if items[i].kind != items[j].kind {
+			return items[i].kind == eventItem
+		}
+		// Both events on same date: sort by start time
+		if items[i].kind == eventItem && items[j].kind == eventItem {
+			ei, ej := items[i].event, items[j].event
+			if ei.AllDay != ej.AllDay {
+				return ei.AllDay
+			}
+			return ei.Start.Before(ej.Start)
+		}
+		return false
+	})
+}
+
+// itemDate returns the date string for a visible item (event or todo).
+func itemDate(item visibleItem) string {
+	switch item.kind {
+	case eventItem:
+		return item.event.Date
+	case todoItem:
+		return item.todo.Date
+	}
+	return ""
 }
 
 // selectableIndices returns the indices of visible items that are selectable (todo items).
@@ -703,6 +731,26 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		}
 	}
 
+	// Up/down arrows navigate between fields; in body textarea, only at boundaries
+	{
+		k := msg.String()
+		if m.editField == fieldBody {
+			if k == "up" && m.bodyTextarea.Line() == 0 {
+				return m.inputPrevField()
+			}
+			if k == "down" && m.bodyTextarea.Line() >= m.bodyTextarea.LineCount()-1 {
+				return m.inputNextField()
+			}
+		} else {
+			if k == "down" {
+				return m.inputNextField()
+			}
+			if k == "up" {
+				return m.inputPrevField()
+			}
+		}
+	}
+
 	switch {
 	case key.Matches(msg, m.keys.Save):
 		// Ctrl+D saves from any field
@@ -827,6 +875,26 @@ func (m Model) updateEditMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		}
 	}
 
+	// Up/down arrows navigate between fields; in body textarea, only at boundaries
+	{
+		k := msg.String()
+		if m.editField == fieldBody {
+			if k == "up" && m.bodyTextarea.Line() == 0 {
+				return m.editPrevField()
+			}
+			if k == "down" && m.bodyTextarea.Line() >= m.bodyTextarea.LineCount()-1 {
+				return m.editNextField()
+			}
+		} else {
+			if k == "down" {
+				return m.editNextField()
+			}
+			if k == "up" {
+				return m.editPrevField()
+			}
+		}
+	}
+
 	switch {
 	case key.Matches(msg, m.keys.Save):
 		// Ctrl+D saves from any field (including body)
@@ -899,6 +967,103 @@ func (m Model) updateEditMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
 	}
 	return m, cmd
+}
+
+// editNextField moves focus to the next edit field (title→date→priority→body→title).
+func (m Model) editNextField() (Model, tea.Cmd) {
+	switch m.editField {
+	case fieldTitle:
+		m.editField = fieldDate
+		m.input.Blur()
+		return m, m.focusDateSegment(0)
+	case fieldDate:
+		m.editField = fieldPriority
+		m.blurAllDateSegments()
+		return m, nil
+	case fieldPriority:
+		m.editField = fieldBody
+		return m, m.bodyTextarea.Focus()
+	case fieldBody:
+		m.editField = fieldTitle
+		m.bodyTextarea.Blur()
+		return m, m.input.Focus()
+	}
+	return m, nil
+}
+
+// editPrevField moves focus to the previous edit field (title←date←priority←body).
+func (m Model) editPrevField() (Model, tea.Cmd) {
+	switch m.editField {
+	case fieldTitle:
+		m.editField = fieldBody
+		m.input.Blur()
+		return m, m.bodyTextarea.Focus()
+	case fieldDate:
+		m.editField = fieldTitle
+		m.blurAllDateSegments()
+		return m, m.input.Focus()
+	case fieldPriority:
+		m.editField = fieldDate
+		return m, m.focusDateSegment(0)
+	case fieldBody:
+		m.editField = fieldPriority
+		m.bodyTextarea.Blur()
+		return m, nil
+	}
+	return m, nil
+}
+
+// inputNextField moves focus to the next field in input (add) mode.
+// Cycle: title→date→priority→body→template→title
+func (m Model) inputNextField() (Model, tea.Cmd) {
+	switch m.editField {
+	case fieldTitle:
+		m.editField = fieldDate
+		m.input.Blur()
+		return m, m.focusDateSegment(0)
+	case fieldDate:
+		m.editField = fieldPriority
+		m.blurAllDateSegments()
+		return m, nil
+	case fieldPriority:
+		m.editField = fieldBody
+		return m, m.bodyTextarea.Focus()
+	case fieldBody:
+		m.editField = fieldTemplate
+		m.bodyTextarea.Blur()
+		return m, m.templateInput.Focus()
+	case fieldTemplate:
+		m.editField = fieldTitle
+		m.templateInput.Blur()
+		return m, m.input.Focus()
+	}
+	return m, nil
+}
+
+// inputPrevField moves focus to the previous field in input (add) mode.
+func (m Model) inputPrevField() (Model, tea.Cmd) {
+	switch m.editField {
+	case fieldTitle:
+		m.editField = fieldTemplate
+		m.input.Blur()
+		return m, m.templateInput.Focus()
+	case fieldDate:
+		m.editField = fieldTitle
+		m.blurAllDateSegments()
+		return m, m.input.Focus()
+	case fieldPriority:
+		m.editField = fieldDate
+		return m, m.focusDateSegment(0)
+	case fieldBody:
+		m.editField = fieldPriority
+		m.bodyTextarea.Blur()
+		return m, nil
+	case fieldTemplate:
+		m.editField = fieldBody
+		m.templateInput.Blur()
+		return m, m.bodyTextarea.Focus()
+	}
+	return m, nil
 }
 
 // saveEdit persists all three fields and returns to normal mode.
@@ -987,6 +1152,7 @@ func (m Model) saveAdd() (Model, tea.Cmd) {
 
 // renderPrioritySelector renders the inline priority selector for the edit form.
 func (m Model) renderPrioritySelector() string {
+	active := m.editField == fieldPriority
 	options := []string{"none", "P1", "P2", "P3", "P4"}
 	var parts []string
 	for i, opt := range options {
@@ -996,7 +1162,11 @@ func (m Model) renderPrioritySelector() string {
 			parts = append(parts, " "+opt+" ")
 		}
 	}
-	return strings.Join(parts, " ")
+	prefix := "  "
+	if active {
+		prefix = m.styles.Cursor.Render("> ")
+	}
+	return prefix + strings.Join(parts, " ")
 }
 
 // View renders the todo list pane content.
@@ -1177,17 +1347,13 @@ func (m Model) renderTodo(b *strings.Builder, t *store.Todo, selected bool) {
 		b.WriteString("  ")
 	}
 
-	// Priority badge -- fixed-width 5-char slot (PRIO-04)
+	// Priority dot + checkbox
 	if t.HasPriority() {
-		label := fmt.Sprintf("[%s]", t.PriorityLabel())
 		style := m.styles.priorityBadgeStyle(t.Priority)
-		b.WriteString(style.Render(label))
-		b.WriteString(" ")
+		b.WriteString(style.Render("●"))
 	} else {
-		b.WriteString("     ") // 5 spaces to match "[P1] " width
+		b.WriteString(" ")
 	}
-
-	// Styled checkbox (VIS-03)
 	if t.Done {
 		b.WriteString(m.styles.CheckboxDone.Render("[x]"))
 	} else {
@@ -1239,14 +1405,29 @@ func (m *Model) SetCalendarEvents(events []google.CalendarEvent) {
 
 // renderEvent writes a single calendar event line to the builder.
 func (m Model) renderEvent(b *strings.Builder, e *google.CalendarEvent) {
-	b.WriteString("       ") // 2 spaces (no cursor) + 5 spaces (no priority badge)
-	if e.AllDay {
-		b.WriteString(m.styles.EventTime.Render("all day"))
+	b.WriteString("   ") // 2 spaces (no cursor) + 1 space (no priority dot)
+	// Prefix: [-] for ordinary, [*] for recurring
+	if e.Recurring {
+		b.WriteString(m.styles.EventTime.Render("[*]"))
 	} else {
-		b.WriteString(m.styles.EventTime.Render(e.Start.Format("15:04")))
+		b.WriteString(m.styles.EventTime.Render("[-]"))
 	}
-	b.WriteString("  ")
+	b.WriteString(" ")
+	// Summary
 	b.WriteString(m.styles.EventText.Render(e.Summary))
+	// Date and time at the end, separated by [+] like todos
+	b.WriteString(" ")
+	b.WriteString(m.styles.EventTime.Render("[+]"))
+	b.WriteString(" ")
+	if e.AllDay {
+		if ed, err := time.Parse("2006-01-02", e.Date); err == nil {
+			b.WriteString(m.styles.EventTime.Render(fmt.Sprintf("%02d.%02d all day", ed.Day(), ed.Month())))
+		}
+	} else {
+		if ed, err := time.Parse("2006-01-02", e.Date); err == nil {
+			b.WriteString(m.styles.EventTime.Render(fmt.Sprintf("%02d.%02d %s", ed.Day(), ed.Month(), e.Start.Format("15:04"))))
+		}
+	}
 	b.WriteString("\n")
 }
 
