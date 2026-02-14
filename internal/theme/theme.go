@@ -40,6 +40,9 @@ type Theme struct {
 	PriorityP2Fg lipgloss.Color // P2 (high) -- orange family
 	PriorityP3Fg lipgloss.Color // P3 (medium) -- blue family
 	PriorityP4Fg lipgloss.Color // P4 (low) -- grey/muted family
+
+	// Calendar events
+	EventFg lipgloss.Color // calendar event text
 }
 
 // Dark returns the default dark theme matching the original hardcoded colors.
@@ -65,6 +68,7 @@ func Dark() Theme {
 		PriorityP2Fg:    lipgloss.Color("#FFAF5F"), // orange
 		PriorityP3Fg:    lipgloss.Color("#5F87FF"), // blue
 		PriorityP4Fg:    lipgloss.Color("#808080"), // grey
+		EventFg:         lipgloss.Color("#5FAFAF"), // teal
 	}
 }
 
@@ -91,6 +95,7 @@ func Light() Theme {
 		PriorityP2Fg:    lipgloss.Color("#AF5F00"), // dark orange
 		PriorityP3Fg:    lipgloss.Color("#005FAF"), // dark blue
 		PriorityP4Fg:    lipgloss.Color("#8A8A8A"), // medium grey
+		EventFg:         lipgloss.Color("#00878A"), // dark teal
 	}
 }
 
@@ -118,6 +123,7 @@ func Nord() Theme {
 		PriorityP2Fg:    lipgloss.Color("#D08770"), // nord12 aurora orange
 		PriorityP3Fg:    lipgloss.Color("#5E81AC"), // nord10 frost blue
 		PriorityP4Fg:    lipgloss.Color("#4C566A"), // nord3 polar night
+		EventFg:         lipgloss.Color("#8FBCBB"), // nord7 frost teal
 	}
 }
 
@@ -145,6 +151,7 @@ func Solarized() Theme {
 		PriorityP2Fg:    lipgloss.Color("#CB4B16"), // solarized orange
 		PriorityP3Fg:    lipgloss.Color("#268BD2"), // solarized blue
 		PriorityP4Fg:    lipgloss.Color("#586E75"), // solarized base01
+		EventFg:         lipgloss.Color("#2AA198"), // solarized cyan
 	}
 }
 
