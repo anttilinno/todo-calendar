@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 33 of 35 (OAuth & Offline Guard)
-Plan: 1 of 2 in current phase
-Status: Executing
-Last activity: 2026-02-14 — Completed 33-01 OAuth auth core
+Plan: 2 of 2 in current phase
+Status: Phase Complete
+Last activity: 2026-02-14 — Completed 33-02 Settings UI & OAuth wiring
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -29,6 +29,7 @@ Progress: [█████░░░░░] 50%
 | 32    | 01   | 6min     | 2     | 7     |
 | 32    | 02   | 3min     | 2     | 5     |
 | 33    | 01   | 2min     | 2     | 4     |
+| 33    | 02   | 4min     | 2     | 3     |
 
 ## Accumulated Context
 
@@ -41,6 +42,8 @@ Recent decisions affecting current work:
 - v2.2: Google REST API (not CalDAV) for Google-specific integration
 - v2.2: Events cached in-memory only (not persisted to SQLite)
 - [Phase 33]: PKCE with S256 for desktop OAuth; ephemeral port loopback redirect; persistingTokenSource for auto-refresh
+- [Phase 33]: Google Calendar settings row uses action-row pattern (Enter trigger, not cycling)
+- [Phase 33]: Auth state checked at startup via file existence only (no network)
 
 ### Pending Todos
 
@@ -53,5 +56,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 33-01-PLAN.md
+Stopped at: Completed 33-02-PLAN.md (Phase 33 complete)
 Resume file: None
