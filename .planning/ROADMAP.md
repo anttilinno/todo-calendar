@@ -38,7 +38,7 @@
 **Milestone Goal:** Display read-only Google Calendar events alongside todos in the TUI via Google REST API with OAuth 2.0 authentication
 
 - [x] **Phase 33: OAuth & Offline Guard** - OAuth 2.0 authentication with token persistence and graceful offline fallback — completed 2026-02-14
-- [ ] **Phase 34: Event Fetching & Async Integration** - Google Calendar API client with background polling and in-memory cache
+- [x] **Phase 34: Event Fetching & Async Integration** - Google Calendar API client with background polling and in-memory cache — completed 2026-02-14
 - [ ] **Phase 35: Event Display & Grid** - Events rendered in todo list and calendar grid with settings toggle
 
 ## Phase Details
@@ -70,8 +70,8 @@ Plans:
   5. All-day events show on the correct calendar day regardless of timezone
 **Plans:** 2 plans
 Plans:
-- [ ] 34-01-PLAN.md — CalendarEvent type, Google Calendar API client, syncToken delta sync, event conversion
-- [ ] 34-02-PLAN.md — Bubble Tea app model wiring (startup fetch, 5-min polling, error resilience, auth guard)
+- [x] 34-01-PLAN.md — CalendarEvent type, Google Calendar API client, syncToken delta sync, event conversion
+- [x] 34-02-PLAN.md — Bubble Tea app model wiring (startup fetch, 5-min polling, error resilience, auth guard)
 
 ### Phase 35: Event Display & Grid
 **Goal**: Users see their Google Calendar events alongside todos with clear visual distinction in both the todo list and calendar grid
@@ -98,5 +98,5 @@ Plans:
 | 31. Priority Data Layer | v2.1 | 1/1 | Complete | 2026-02-13 |
 | 32. Priority UI + Theme | v2.1 | 2/2 | Complete | 2026-02-13 |
 | 33. OAuth & Offline Guard | v2.2 | 2/2 | Complete | 2026-02-14 |
-| 34. Event Fetching & Async | v2.2 | 0/2 | Not started | - |
+| 34. Event Fetching & Async | v2.2 | 2/2 | Complete | 2026-02-14 |
 | 35. Event Display & Grid | v2.2 | 0/TBD | Not started | - |
