@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 35 of 35 (Event Display & Grid)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: Executing
-Last activity: 2026-02-14 — Completed 35-01-PLAN.md
+Last activity: 2026-02-14 — Completed 35-02-PLAN.md
 
-Progress: [██████░░░░] 67%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 59 (v1.0 through v2.1 + Phase 33 + 34 + 35-01)
+- Total plans completed: 60 (v1.0 through v2.1 + Phase 33 + 34 + 35-01 + 35-02)
 - Average duration: 2 min
 - Total execution time: ~1.5 hours
 
@@ -33,6 +33,7 @@ Progress: [██████░░░░] 67%
 | 34    | 01   | 2min     | 2     | 4     |
 | 34    | 02   | 2min     | 2     | 2     |
 | 35    | 01   | 1min     | 2     | 4     |
+| 35    | 02   | 2min     | 2     | 2     |
 
 ## Accumulated Context
 
@@ -53,6 +54,8 @@ Recent decisions affecting current work:
 - [Phase 34]: EventTickMsg keeps tick loop alive even when skipping fetch for auth-completion scenarios
 - [Phase 35]: Teal/cyan color family for EventFg across all themes (distinct from accent/muted)
 - [Phase 35]: ExpandMultiDay uses Google exclusive end-date convention
+- [Phase 35]: Events inserted before todos in dated section for visual priority
+- [Phase 35]: Events hidden during filter mode (non-interactive noise)
 
 ### Pending Todos
 
@@ -65,5 +68,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 35-01-PLAN.md
+Stopped at: Completed 35-02-PLAN.md
 Resume file: None
