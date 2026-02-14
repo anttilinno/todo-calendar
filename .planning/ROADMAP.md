@@ -37,7 +37,7 @@
 
 **Milestone Goal:** Display read-only Google Calendar events alongside todos in the TUI via Google REST API with OAuth 2.0 authentication
 
-- [ ] **Phase 33: OAuth & Offline Guard** - OAuth 2.0 authentication with token persistence and graceful offline fallback
+- [x] **Phase 33: OAuth & Offline Guard** - OAuth 2.0 authentication with token persistence and graceful offline fallback — completed 2026-02-14
 - [ ] **Phase 34: Event Fetching & Async Integration** - Google Calendar API client with background polling and in-memory cache
 - [ ] **Phase 35: Event Display & Grid** - Events rendered in todo list and calendar grid with settings toggle
 
@@ -55,8 +55,8 @@
   5. OAuth setup can be triggered from settings overlay or detected on first run
 **Plans:** 2 plans
 Plans:
-- [ ] 33-01-PLAN.md — OAuth core package (config, token persistence, auth flow, PKCE)
-- [ ] 33-02-PLAN.md — Settings integration and app wiring (Google Calendar row, auth trigger, offline guard)
+- [x] 33-01-PLAN.md — OAuth core package (config, token persistence, auth flow, PKCE)
+- [x] 33-02-PLAN.md — Settings integration and app wiring (Google Calendar row, auth trigger, offline guard)
 
 ### Phase 34: Event Fetching & Async Integration
 **Goal**: Events are fetched from Google Calendar without freezing the TUI, with efficient incremental updates
@@ -94,6 +94,6 @@ Plans:
 | 30. Save-on-Close Settings | v2.0 | 1/1 | Complete | 2026-02-12 |
 | 31. Priority Data Layer | v2.1 | 1/1 | Complete | 2026-02-13 |
 | 32. Priority UI + Theme | v2.1 | 2/2 | Complete | 2026-02-13 |
-| 33. OAuth & Offline Guard | v2.2 | 0/2 | Not started | - |
+| 33. OAuth & Offline Guard | v2.2 | 2/2 | Complete | 2026-02-14 |
 | 34. Event Fetching & Async | v2.2 | 0/TBD | Not started | - |
 | 35. Event Display & Grid | v2.2 | 0/TBD | Not started | - |
