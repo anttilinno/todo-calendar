@@ -39,7 +39,7 @@
 
 - [x] **Phase 33: OAuth & Offline Guard** - OAuth 2.0 authentication with token persistence and graceful offline fallback — completed 2026-02-14
 - [x] **Phase 34: Event Fetching & Async Integration** - Google Calendar API client with background polling and in-memory cache — completed 2026-02-14
-- [ ] **Phase 35: Event Display & Grid** - Events rendered in todo list and calendar grid with settings toggle
+- [x] **Phase 35: Event Display & Grid** - Events rendered in todo list and calendar grid with settings toggle — completed 2026-02-14
 
 ## Phase Details
 
@@ -85,9 +85,9 @@ Plans:
   5. Google Calendar can be toggled on/off in settings without removing credentials
 **Plans:** 3 plans
 Plans:
-- [ ] 35-01-PLAN.md — Data layer foundations (EndDate, ExpandMultiDay, EventFg theme color, event styles, config toggle)
-- [ ] 35-02-PLAN.md — Todo list event display (eventItem kind, rendering, view filtering, app wiring)
-- [ ] 35-03-PLAN.md — Calendar grid indicators and settings toggle (hasEvents, bracket logic, enable/disable)
+- [x] 35-01-PLAN.md — Data layer foundations (EndDate, ExpandMultiDay, EventFg theme color, event styles, config toggle)
+- [x] 35-02-PLAN.md — Todo list event display (eventItem kind, rendering, view filtering, app wiring)
+- [x] 35-03-PLAN.md — Calendar grid indicators and settings toggle (hasEvents, bracket logic, enable/disable)
 
 ## Progress
 
@@ -103,4 +103,4 @@ Plans:
 | 32. Priority UI + Theme | v2.1 | 2/2 | Complete | 2026-02-13 |
 | 33. OAuth & Offline Guard | v2.2 | 2/2 | Complete | 2026-02-14 |
 | 34. Event Fetching & Async | v2.2 | 2/2 | Complete | 2026-02-14 |
-| 35. Event Display & Grid | v2.2 | 0/3 | Not started | - |
+| 35. Event Display & Grid | v2.2 | 3/3 | Complete | 2026-02-14 |
