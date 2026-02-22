@@ -174,13 +174,19 @@ func (m Model) View() string {
 // todo counts. It is computed fresh from the store on every render to guarantee
 // live updates without cache invalidation.
 func (m Model) renderOverview() string {
+	months := m.store.TodoCountsByMonth()
+	fc := m.store.FloatingTodoCounts()
+
+	if len(months) == 0 && fc.Pending == 0 && fc.Completed == 0 {
+		return ""
+	}
+
 	var b strings.Builder
 
 	b.WriteString("\n")
 	b.WriteString(m.styles.OverviewHeader.Render("Overview"))
 	b.WriteString("\n")
 
-	months := m.store.TodoCountsByMonth()
 	for _, mc := range months {
 		label := mc.Month.String()
 		if mc.Year != m.year {
@@ -202,7 +208,6 @@ func (m Model) renderOverview() string {
 		b.WriteString("\n")
 	}
 
-	fc := m.store.FloatingTodoCounts()
 	if fc.Pending > 0 || fc.Completed > 0 {
 		paddedLabel := fmt.Sprintf(" %-16s", "Unknown")
 		b.WriteString(m.styles.OverviewCount.Render(paddedLabel))
