@@ -440,7 +440,7 @@ func (s *SQLiteStore) TodoCountsByMonth() []MonthCount {
 		       SUM(CASE WHEN done = 0 THEN 1 ELSE 0 END) AS pending,
 		       SUM(CASE WHEN done = 1 THEN 1 ELSE 0 END) AS completed
 		FROM todos
-		WHERE date IS NOT NULL
+		WHERE date IS NOT NULL AND date_precision = 'day'
 		GROUP BY ym
 		ORDER BY ym
 	`)
