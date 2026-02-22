@@ -203,12 +203,14 @@ func (m Model) renderOverview() string {
 	}
 
 	fc := m.store.FloatingTodoCounts()
-	paddedLabel := fmt.Sprintf(" %-16s", "Unknown")
-	b.WriteString(m.styles.OverviewCount.Render(paddedLabel))
-	b.WriteString(m.styles.OverviewPending.Render(fmt.Sprintf("%d", fc.Pending)))
-	b.WriteString("  ")
-	b.WriteString(m.styles.OverviewCompleted.Render(fmt.Sprintf("%d", fc.Completed)))
-	b.WriteString("\n")
+	if fc.Pending > 0 || fc.Completed > 0 {
+		paddedLabel := fmt.Sprintf(" %-16s", "Unknown")
+		b.WriteString(m.styles.OverviewCount.Render(paddedLabel))
+		b.WriteString(m.styles.OverviewPending.Render(fmt.Sprintf("%d", fc.Pending)))
+		b.WriteString("  ")
+		b.WriteString(m.styles.OverviewCompleted.Render(fmt.Sprintf("%d", fc.Completed)))
+		b.WriteString("\n")
+	}
 
 	return b.String()
 }
