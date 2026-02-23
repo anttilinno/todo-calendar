@@ -39,7 +39,7 @@ func NewStyles(t theme.Theme) Styles {
 	}
 }
 
-// priorityBadgeStyle returns the appropriate priority badge style for the given level (1-4).
+// priorityBadgeStyle returns the appropriate priority badge style for the given level (1-3).
 func (s Styles) priorityBadgeStyle(level int) lipgloss.Style {
 	switch level {
 	case 1:
@@ -48,9 +48,7 @@ func (s Styles) priorityBadgeStyle(level int) lipgloss.Style {
 		return s.PriorityP2
 	case 3:
 		return s.PriorityP3
-	case 4:
-		return s.PriorityP4
 	default:
-		return s.PriorityP4
+		return s.PriorityP3
 	}
 }

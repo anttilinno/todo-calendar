@@ -206,37 +206,40 @@ func (m Model) View() string {
 }
 
 // barChars are the ascending block characters for the signal-strength meter.
-var barChars = [4]rune{'▁', '▃', '▅', '▇'}
+var barChars = [3]rune{'▁', '▃', '▅'}
 
-// nerdIcons maps priority level (1-4) to Nerd Font MDI signal cellular icons.
-var nerdIcons = [5]string{
+// nerdIcons maps priority level (1-3) to Nerd Font MDI signal cellular icons.
+var nerdIcons = [4]string{
 	"",           // 0 = no priority
-	"\U000F08BF", // P1 = nf-md-signal_cellular_4
-	"\U000F08BE", // P2 = nf-md-signal_cellular_3
-	"\U000F08BD", // P3 = nf-md-signal_cellular_2
-	"\U000F08BC", // P4 = nf-md-signal_cellular_1
+	"\U000F08BE", // P1 = nf-md-signal_cellular_3
+	"\U000F08BD", // P2 = nf-md-signal_cellular_2
+	"\U000F08BC", // P3 = nf-md-signal_cellular_1
 }
 
 // renderPriorityBars returns the priority indicator string for a search result.
 func renderPriorityBars(priority int, style string, s Styles) string {
+	// Clamp legacy P4 values to P3
+	if priority > 3 {
+		priority = 3
+	}
 	if style == "nerd" {
-		if priority >= 1 && priority <= 4 {
+		if priority >= 1 && priority <= 3 {
 			return s.priorityBadgeStyle(priority).Render(nerdIcons[priority]) + " "
 		}
 		return "  " // 1 icon-width + 1 space
 	}
 	// Default "bars" mode
-	if priority < 1 || priority > 4 {
-		return "     " // 4 bar-width + 1 space
+	if priority < 1 || priority > 3 {
+		return "    " // 3 bar-width + 1 space
 	}
-	filled := 5 - priority
+	filled := 4 - priority // P1=3, P2=2, P3=1
 	colorStyle := s.priorityBadgeStyle(priority)
 	var result string
 	for i, ch := range barChars {
 		if i < filled {
 			result += colorStyle.Render(string(ch))
 		} else {
-			result += s.PriorityMuted.Render(string(ch))
+			result += " "
 		}
 	}
 	return result + " "

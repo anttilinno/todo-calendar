@@ -162,10 +162,8 @@ func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mo
 				cell = s.TodayIndicatorP1.Render(cell)
 			case 2:
 				cell = s.TodayIndicatorP2.Render(cell)
-			case 3:
+			case 3, 4:
 				cell = s.TodayIndicatorP3.Render(cell)
-			case 4:
-				cell = s.TodayIndicatorP4.Render(cell)
 			default:
 				cell = s.TodayIndicator.Render(cell)
 			}
@@ -183,10 +181,8 @@ func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mo
 				cell = s.IndicatorP1.Render(cell)
 			case 2:
 				cell = s.IndicatorP2.Render(cell)
-			case 3:
+			case 3, 4:
 				cell = s.IndicatorP3.Render(cell)
-			case 4:
-				cell = s.IndicatorP4.Render(cell)
 			default:
 				cell = s.Indicator.Render(cell)
 			}
@@ -349,10 +345,8 @@ func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider,
 				cell = s.TodayIndicatorP1.Render(cell)
 			case 2:
 				cell = s.TodayIndicatorP2.Render(cell)
-			case 3:
+			case 3, 4:
 				cell = s.TodayIndicatorP3.Render(cell)
-			case 4:
-				cell = s.TodayIndicatorP4.Render(cell)
 			default:
 				cell = s.TodayIndicator.Render(cell)
 			}
@@ -370,10 +364,8 @@ func RenderWeekGrid(weekStart time.Time, today time.Time, hp *holidays.Provider,
 				cell = s.IndicatorP1.Render(cell)
 			case 2:
 				cell = s.IndicatorP2.Render(cell)
-			case 3:
+			case 3, 4:
 				cell = s.IndicatorP3.Render(cell)
-			case 4:
-				cell = s.IndicatorP4.Render(cell)
 			default:
 				cell = s.Indicator.Render(cell)
 			}

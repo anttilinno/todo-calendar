@@ -730,7 +730,7 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 			return m, nil
 		}
 		if k == "right" {
-			m.editPriority = min(4, m.editPriority+1)
+			m.editPriority = min(3, m.editPriority+1)
 			return m, nil
 		}
 	}
@@ -874,7 +874,7 @@ func (m Model) updateEditMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 			return m, nil
 		}
 		if k == "right" {
-			m.editPriority = min(4, m.editPriority+1)
+			m.editPriority = min(3, m.editPriority+1)
 			return m, nil
 		}
 	}
@@ -1157,12 +1157,12 @@ func (m Model) saveAdd() (Model, tea.Cmd) {
 // renderPrioritySelector renders the inline priority selector for the edit form.
 func (m Model) renderPrioritySelector() string {
 	active := m.editField == fieldPriority
-	// Build preview labels: "none" then signal bars for P1-P4
+	// Build preview labels: muted symbol for "none" then signal bars for P1-P3
 	var parts []string
-	for i := 0; i <= 4; i++ {
+	for i := 0; i <= 3; i++ {
 		var label string
 		if i == 0 {
-			label = "none"
+			label = m.styles.PriorityMuted.Render("···")
 		} else {
 			label = renderPriorityBars(i, m.priorityStyle, m.styles)
 		}
@@ -1349,39 +1349,42 @@ func (m Model) normalView() string {
 }
 
 // barChars are the ascending block characters for the signal-strength meter.
-var barChars = [4]rune{'▁', '▃', '▅', '▇'}
+var barChars = [3]rune{'▁', '▃', '▅'}
 
-// nerdIcons maps priority level (1-4) to Nerd Font MDI signal cellular icons.
-var nerdIcons = [5]string{
+// nerdIcons maps priority level (1-3) to Nerd Font MDI signal cellular icons.
+var nerdIcons = [4]string{
 	"",           // 0 = no priority
-	"\U000F08BF", // P1 = nf-md-signal_cellular_4
-	"\U000F08BE", // P2 = nf-md-signal_cellular_3
-	"\U000F08BD", // P3 = nf-md-signal_cellular_2
-	"\U000F08BC", // P4 = nf-md-signal_cellular_1
+	"\U000F08BE", // P1 = nf-md-signal_cellular_3
+	"\U000F08BD", // P2 = nf-md-signal_cellular_2
+	"\U000F08BC", // P3 = nf-md-signal_cellular_1
 }
 
 // renderPriorityBars returns the priority indicator string for a todo.
-// In "bars" mode: 4-char ascending meter (filled=priority color, rest=muted). No priority = 4 spaces.
+// In "bars" mode: up to 3 ascending bar chars (filled only, no muted placeholders). No priority = 3 spaces.
 // In "nerd" mode: single Nerd Font icon in priority color. No priority = 1 space.
 func renderPriorityBars(priority int, style string, s Styles) string {
+	// Clamp legacy P4 values to P3
+	if priority > 3 {
+		priority = 3
+	}
 	if style == "nerd" {
-		if priority >= 1 && priority <= 4 {
+		if priority >= 1 && priority <= 3 {
 			return s.priorityBadgeStyle(priority).Render(nerdIcons[priority])
 		}
 		return " "
 	}
 	// Default "bars" mode
-	if priority < 1 || priority > 4 {
-		return "    " // 4 spaces
+	if priority < 1 || priority > 3 {
+		return "   " // 3 spaces
 	}
-	filled := 5 - priority // P1=4, P2=3, P3=2, P4=1
+	filled := 4 - priority // P1=3, P2=2, P3=1
 	colorStyle := s.priorityBadgeStyle(priority)
 	var result string
 	for i, ch := range barChars {
 		if i < filled {
 			result += colorStyle.Render(string(ch))
 		} else {
-			result += s.PriorityMuted.Render(string(ch))
+			result += " "
 		}
 	}
 	return result
@@ -1454,11 +1457,11 @@ func (m *Model) SetCalendarEvents(events []google.CalendarEvent) {
 
 // renderEvent writes a single calendar event line to the builder.
 func (m Model) renderEvent(b *strings.Builder, e *google.CalendarEvent) {
-	// Align with todo text: 2 (cursor) + priority width (4 bars or 1 nerd + space padding)
+	// Align with todo text: 2 (cursor) + priority width (3 bars or 1 nerd + space padding)
 	if m.priorityStyle == "nerd" {
 		b.WriteString("   ") // 2 (cursor) + 1 (nerd icon width)
 	} else {
-		b.WriteString("      ") // 2 (cursor) + 4 (bar chars)
+		b.WriteString("     ") // 2 (cursor) + 3 (bar chars)
 	}
 	// Prefix: [-] for ordinary, [*] for recurring
 	if e.Recurring {

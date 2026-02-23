@@ -666,7 +666,7 @@ func TestPriorityHelpers(t *testing.T) {
 		{1, true, "P1"},
 		{2, true, "P2"},
 		{3, true, "P3"},
-		{4, true, "P4"},
+		{4, false, ""},
 		{-1, false, ""},
 		{5, false, ""},
 	}
