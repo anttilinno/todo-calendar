@@ -95,5 +95,5 @@ Phases execute in numeric order: 36 -> 37
 | 33. OAuth & Offline Guard | v2.2 | 2/2 | Complete | 2026-02-14 |
 | 34. Event Fetching & Async | v2.2 | 2/2 | Complete | 2026-02-14 |
 | 35. Event Display & Grid | v2.2 | 3/3 | Complete | 2026-02-14 |
-| 36. Status Subcommand | v2.3 | 0/2 | Not started | - |
+| 36. Status Subcommand | 1/2 | In Progress|  | - |
 | 37. TUI State File Integration | v2.3 | 0/? | Not started | - |

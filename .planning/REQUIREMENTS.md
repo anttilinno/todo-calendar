@@ -9,12 +9,12 @@ Requirements for Polybar Status milestone. Each maps to roadmap phases.
 
 ### Status Subcommand
 
-- [ ] **BAR-01**: User can run `todo-calendar status` to write today's pending todo count to a state file and exit
-- [ ] **BAR-02**: Output format is `%{F#hex}ICON COUNT%{F-}` where hex color reflects highest priority among today's pending todos
+- [x] **BAR-01**: User can run `todo-calendar status` to write today's pending todo count to a state file and exit
+- [x] **BAR-02**: Output format is `%{F#hex}ICON COUNT%{F-}` where hex color reflects highest priority among today's pending todos
 
 ### Output Behavior
 
-- [ ] **BAR-03**: State file contains empty string when zero pending todos today (Polybar hides module)
+- [x] **BAR-03**: State file contains empty string when zero pending todos today (Polybar hides module)
 
 ### TUI Integration
 
@@ -41,9 +41,9 @@ Requirements for Polybar Status milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BAR-01 | Phase 36 | Pending |
-| BAR-02 | Phase 36 | Pending |
-| BAR-03 | Phase 36 | Pending |
+| BAR-01 | Phase 36 | Complete |
+| BAR-02 | Phase 36 | Complete |
+| BAR-03 | Phase 36 | Complete |
 | BAR-04 | Phase 37 | Pending |
 | BAR-05 | Phase 37 | Pending |
 
