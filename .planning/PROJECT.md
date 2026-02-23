@@ -90,7 +90,19 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 
 ### Active
 
-(No active requirements — define with next milestone)
+- [ ] `todo-calendar status` subcommand that queries SQLite, writes Polybar-formatted status to state file, exits
+- [ ] TUI updates state file on todo mutations (add, complete, delete, edit)
+- [ ] Polybar output format: `%{F#hex}ICON COUNT%{F-}` colored by highest priority, empty string when zero pending
+- [ ] State file at `/tmp/.todo_status` (or configurable), initialized by subcommand on i3 start
+
+## Current Milestone: v2.3 Polybar Status
+
+**Goal:** External status bar integration — Polybar module reads a state file updated by both a CLI subcommand and the TUI
+
+**Target features:**
+- `todo-calendar status` subcommand for state file initialization
+- TUI-driven state file updates on todo changes
+- Polybar-compatible output with priority-colored count
 
 ### v2 Candidates
 
@@ -107,7 +119,7 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - Tags / labels — keep it minimal (priorities are sufficient categorization)
 - CalDAV write operations — read-only pull is sufficient; 2-way sync is complexity explosion
 - Subtasks / nesting — flat list is sufficient
-- Notifications / reminders — out of scope for TUI
+- Notifications / reminders — desktop notifications out of scope; passive Polybar status is scoped exception
 - Time-blocked appointments — this is a todo app, not a scheduler
 - Auto-sort by priority — conflicts with manual J/K reordering; priority is visual only
 
@@ -214,4 +226,4 @@ None.
 Shipped v2.2 with 9,823 LOC Go. Google Calendar integration complete with OAuth 2.0, background polling, and event display in both todo panel and calendar grid.
 
 ---
-*Last updated: 2026-02-14 after v2.2 milestone*
+*Last updated: 2026-02-23 after v2.3 milestone start*
