@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A terminal-based (TUI) application that combines a monthly/weekly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, priority-colored date indicators for pending work, Google Calendar event indicators, color-coded overview counts, blended today+status highlighting, circle indicators for month/year todo status, and weekly view toggle. The right panel displays todos in 4 sections (dated, This Month, This Year, Floating) with inline filter support, configurable section visibility, color-coded P1-P4 priority badges, and read-only Google Calendar events mixed into dated sections. Includes full-screen cross-month search with priority badges, editing and reordering todos, configurable date format and first day of week, 4 color themes, and an in-app settings overlay with live preview. Todos support day, month, or year date precision via a segmented date input, and optional P1-P4 priority levels set via an inline selector. Google Calendar events are fetched via OAuth 2.0 with background polling and displayed with visual distinction (teal color, time prefix, non-selectable). Stored in SQLite with support for rich markdown bodies, reusable templates with placeholder prompting, and external editor integration ($EDITOR). Templates can be managed in a dedicated overlay and have recurring schedules (daily, weekdays, weekly, monthly) that auto-create todos on app launch. A unified add form (`a` key) with title, date, priority, body, and template picker fields replaces the previous multi-key entry points. Built with Go and Bubble Tea for personal use.
+A terminal-based (TUI) application that combines a monthly/weekly calendar view with a todo list. The left panel shows a navigable calendar with national holidays, priority-colored date indicators for pending work, Google Calendar event indicators, color-coded overview counts, blended today+status highlighting, circle indicators for month/year todo status, and weekly view toggle. The right panel displays todos in 4 sections (dated, This Month, This Year, Floating) with inline filter support, configurable section visibility, color-coded P1-P4 priority badges, and read-only Google Calendar events mixed into dated sections. Includes full-screen cross-month search with priority badges, editing and reordering todos, configurable date format and first day of week, 4 color themes, and an in-app settings overlay with live preview. Todos support day, month, or year date precision via a segmented date input, and optional P1-P4 priority levels set via an inline selector. Google Calendar events are fetched via OAuth 2.0 with background polling and displayed with visual distinction (teal color, time prefix, non-selectable). Stored in SQLite with support for rich markdown bodies, reusable templates with placeholder prompting, and external editor integration ($EDITOR). Templates can be managed in a dedicated overlay and have recurring schedules (daily, weekdays, weekly, monthly) that auto-create todos on app launch. A unified add form (`a` key) with title, date, priority, body, and template picker fields replaces the previous multi-key entry points. A `status` subcommand writes Polybar-formatted todo status to a state file, and the TUI keeps it updated on every mutation for real-time external status bar integration. Built with Go and Bubble Tea for personal use.
 
 ## Core Value
 
@@ -87,22 +87,14 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - ✓ Multi-day events expanded to show on each day they span — v2.2
 - ✓ Calendar grid bracket indicators for days with Google Calendar events — v2.2
 - ✓ Google Calendar enable/disable toggle in settings without removing credentials — v2.2
+- ✓ `todo-calendar status` subcommand writes Polybar-formatted status to state file and exits — v2.3
+- ✓ TUI updates state file on todo mutations (add, complete, delete, edit) — v2.3
+- ✓ Polybar output format `%{F#hex}ICON COUNT%{F-}` colored by highest priority, empty string when zero pending — v2.3
+- ✓ State file at `/tmp/.todo_status` initialized by subcommand and kept current by TUI — v2.3
 
 ### Active
 
-- [ ] `todo-calendar status` subcommand that queries SQLite, writes Polybar-formatted status to state file, exits
-- [ ] TUI updates state file on todo mutations (add, complete, delete, edit)
-- [ ] Polybar output format: `%{F#hex}ICON COUNT%{F-}` colored by highest priority, empty string when zero pending
-- [ ] State file at `/tmp/.todo_status` (or configurable), initialized by subcommand on i3 start
-
-## Current Milestone: v2.3 Polybar Status
-
-**Goal:** External status bar integration — Polybar module reads a state file updated by both a CLI subcommand and the TUI
-
-**Target features:**
-- `todo-calendar status` subcommand for state file initialization
-- TUI-driven state file updates on todo changes
-- Polybar-compatible output with priority-colored count
+(None — next milestone requirements TBD via `/gsd:new-milestone`)
 
 ### v2 Candidates
 
@@ -119,9 +111,10 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - Tags / labels — keep it minimal (priorities are sufficient categorization)
 - CalDAV write operations — read-only pull is sufficient; 2-way sync is complexity explosion
 - Subtasks / nesting — flat list is sufficient
-- Notifications / reminders — desktop notifications out of scope; passive Polybar status is scoped exception
+- Notifications / reminders — desktop notifications out of scope; passive Polybar status is the scoped exception (shipped v2.3)
 - Time-blocked appointments — this is a todo app, not a scheduler
 - Auto-sort by priority — conflicts with manual J/K reordering; priority is visual only
+- Click actions in Polybar — status is read-only
 
 ## Context
 
@@ -216,6 +209,9 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 | Events inserted before todos in dated section | Calendar-driven items get visual priority over user-driven todos | ✓ Good — natural reading order |
 | Non-selectable eventItem kind | Events are read-only; cursor skips automatically via selectableIndices | ✓ Good — no code changes to selection logic |
 | Settings toggle Enabled/Disabled when AuthReady | Clean UX: action row for auth, cycling toggle for display control | ✓ Good — context-appropriate UI |
+| PriorityColorHex casts lipgloss.Color to string | Avoids adding lipgloss dependency to status package | ✓ Good — clean package boundary |
+| Restructured main() for subcommand routing | Config+DB load before branch, shared setup for TUI and status | ✓ Good — no duplicate initialization |
+| Value receiver for refreshStatusFile | Matches Init/Update pattern; silent errors for best-effort writes | ✓ Good — consistent with Elm Architecture |
 
 ## Known Tech Debt
 
@@ -223,7 +219,7 @@ None.
 
 ## Current State
 
-Shipped v2.2 with 9,823 LOC Go. Google Calendar integration complete with OAuth 2.0, background polling, and event display in both todo panel and calendar grid.
+Shipped v2.3 with 10,506 LOC Go across 38 source files. Polybar status integration complete — `todo-calendar status` subcommand and TUI-driven state file updates provide real-time external status bar display.
 
 ---
-*Last updated: 2026-02-23 after v2.3 milestone start*
+*Last updated: 2026-02-23 after v2.3 milestone*

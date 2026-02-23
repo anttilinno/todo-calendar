@@ -326,3 +326,29 @@
 
 ---
 
+
+## v2.3 Polybar Status (Shipped: 2026-02-23)
+
+**Delivered:** External status bar integration — Polybar module reads a state file updated by both a CLI subcommand and the TUI for real-time todo status
+
+**Phases completed:** 36-37 (2 phases, 3 plans, 5 tasks)
+
+**Key accomplishments:**
+- FormatStatus engine producing Polybar `%{F#hex}ICON COUNT%{F-}` output colored by highest-priority pending todo
+- PriorityColorHex method on Theme for raw hex color extraction without lipgloss dependency in status package
+- `todo-calendar status` CLI subcommand with early exit before TUI — queries today's todos and writes state file
+- refreshStatusFile wired into app.Model Init and Update for real-time TUI-to-Polybar sync on every mutation
+- Atomic file writes to `/tmp/.todo_status` via temp-file-then-rename for crash-safe status updates
+
+**Stats:**
+- 5 files changed, 389 insertions(+), 6 deletions(-)
+- 10,506 lines of Go across 38 source files
+- 2 phases, 3 plans, 5 tasks
+- Same day (2026-02-23)
+
+**Git range:** `0c2a675` → `15fc7ab`
+
+**What's next:** New feature milestones
+
+---
+
