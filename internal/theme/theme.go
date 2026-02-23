@@ -161,6 +161,24 @@ func Names() []string {
 	return []string{"dark", "light", "nord", "solarized"}
 }
 
+// PriorityColorHex returns the raw hex color string for the given priority level.
+// Priority 1-4 maps to PriorityP1Fg through PriorityP4Fg.
+// Priority 0 or any other value returns AccentFg as fallback.
+func (t Theme) PriorityColorHex(priority int) string {
+	switch priority {
+	case 1:
+		return string(t.PriorityP1Fg)
+	case 2:
+		return string(t.PriorityP2Fg)
+	case 3:
+		return string(t.PriorityP3Fg)
+	case 4:
+		return string(t.PriorityP4Fg)
+	default:
+		return string(t.AccentFg)
+	}
+}
+
 // ForName returns the theme matching the given name.
 // Unknown or empty names default to Dark.
 func ForName(name string) Theme {
