@@ -96,4 +96,4 @@ Phases execute in numeric order: 36 -> 37
 | 34. Event Fetching & Async | v2.2 | 2/2 | Complete | 2026-02-14 |
 | 35. Event Display & Grid | v2.2 | 3/3 | Complete | 2026-02-14 |
 | 36. Status Subcommand | 2/2 | Complete    | 2026-02-23 | - |
-| 37. TUI State File Integration | 1/1 | Complete   | 2026-02-23 | - |
+| 37. TUI State File Integration | 1/1 | Complete    | 2026-02-23 | - |
