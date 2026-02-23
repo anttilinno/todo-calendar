@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/antti/todo-calendar/internal/calendar"
 	"github.com/antti/todo-calendar/internal/config"
@@ -14,6 +15,7 @@ import (
 	"github.com/antti/todo-calendar/internal/preview"
 	"github.com/antti/todo-calendar/internal/search"
 	"github.com/antti/todo-calendar/internal/settings"
+	"github.com/antti/todo-calendar/internal/status"
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
 	"github.com/antti/todo-calendar/internal/tmplmgr"
@@ -77,6 +79,7 @@ type Model struct {
 	editingTmplID   int
 	editorErr       string
 	store           store.TodoStore
+	theme           theme.Theme
 	cfg             config.Config
 	googleAuthState google.AuthState
 	calendarSvc     *gcal.Service
@@ -113,6 +116,7 @@ func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t the
 		help:            h,
 		styles:          NewStyles(t),
 		store:           s,
+		theme:           t,
 		cfg:             cfg,
 		googleAuthState: authState,
 		calendarSvc:     calSvc,
@@ -121,6 +125,7 @@ func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t the
 
 // Init returns the initial command for the root model.
 func (m Model) Init() tea.Cmd {
+	m.refreshStatusFile()
 	if m.googleAuthState == google.AuthNotConfigured {
 		return nil
 	}
@@ -161,6 +166,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.calendar.SetCalendarEvents(nil)
 		}
 		m.calendar.RefreshIndicators()
+		m.refreshStatusFile()
 		return m, nil
 
 	case settings.CloseMsg:
@@ -294,6 +300,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.store.UpdateBody(msg.TodoID, newBody)
 		}
 		m.calendar.RefreshIndicators()
+		m.refreshStatusFile()
 		return m, nil
 	}
 
@@ -400,6 +407,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Refresh calendar indicators after every update cycle so that
 	// todo mutations (add/toggle/delete) are reflected immediately.
 	m.calendar.RefreshIndicators()
+	m.refreshStatusFile()
 
 	return m, cmd
 }
@@ -589,6 +597,7 @@ func (m *Model) syncTodoSize() {
 
 // applyTheme updates all component styles with the given theme.
 func (m *Model) applyTheme(t theme.Theme) {
+	m.theme = t
 	m.styles = NewStyles(t)
 	m.calendar.SetTheme(t)
 	m.todoList.SetTheme(t)
@@ -602,6 +611,17 @@ func (m *Model) applyTheme(t theme.Theme) {
 	m.help.Styles.FullKey = lipgloss.NewStyle().Foreground(t.AccentFg)
 	m.help.Styles.FullDesc = lipgloss.NewStyle().Foreground(t.MutedFg)
 	m.help.Styles.FullSeparator = lipgloss.NewStyle().Foreground(t.MutedFg)
+}
+
+// refreshStatusFile writes the current Polybar status to the state file.
+// It queries today's todos, formats via status.FormatStatus, and writes via
+// status.WriteStatusFile. Errors are silently ignored — the status file is a
+// best-effort side effect.
+func (m Model) refreshStatusFile() {
+	today := time.Now().Format("2006-01-02")
+	todos := m.store.TodosForDateRange(today, today)
+	output := status.FormatStatus(todos, m.theme)
+	_ = status.WriteStatusFile(output)
 }
 
 // currentHelpKeys returns an aggregated help KeyMap based on the active pane.
