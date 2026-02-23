@@ -3,12 +3,14 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/antti/todo-calendar/internal/app"
 	"github.com/antti/todo-calendar/internal/config"
 	"github.com/antti/todo-calendar/internal/google"
 	"github.com/antti/todo-calendar/internal/holidays"
 	"github.com/antti/todo-calendar/internal/recurring"
+	"github.com/antti/todo-calendar/internal/status"
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
 	tea "github.com/charmbracelet/bubbletea"
@@ -19,12 +21,6 @@ func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Config error: %v\n", err)
-		os.Exit(1)
-	}
-
-	provider, err := holidays.NewProvider(cfg.Country)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Holiday provider error: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -41,6 +37,18 @@ func main() {
 	}
 	defer s.Close()
 
+	// Subcommand routing: branch before TUI setup.
+	if len(os.Args) >= 2 && os.Args[1] == "status" {
+		runStatus(cfg, s)
+		return
+	}
+
+	provider, err := holidays.NewProvider(cfg.Country)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Holiday provider error: %v\n", err)
+		os.Exit(1)
+	}
+
 	recurring.AutoCreate(s)
 
 	authState := google.CheckAuthState()
@@ -55,6 +63,20 @@ func main() {
 	p := tea.NewProgram(model, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// runStatus queries today's todos, formats Polybar output, and writes the state file.
+func runStatus(cfg config.Config, s *store.SQLiteStore) {
+	today := time.Now().Format("2006-01-02")
+	todos := s.TodosForDateRange(today, today)
+
+	t := theme.ForName(cfg.Theme)
+	output := status.FormatStatus(todos, t)
+
+	if err := status.WriteStatusFile(output); err != nil {
+		fmt.Fprintf(os.Stderr, "Status write error: %v\n", err)
 		os.Exit(1)
 	}
 }
