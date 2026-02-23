@@ -67,15 +67,9 @@ func main() {
 	}
 }
 
-// runStatus queries today's todos, formats the count, and writes the state file.
+// runStatus queries today's todos and prints the pending count to stdout.
 func runStatus(s *store.SQLiteStore) {
 	today := time.Now().Format("2006-01-02")
 	todos := s.TodosForDateRange(today, today)
-
-	output := status.FormatStatus(todos)
-
-	if err := status.WriteStatusFile(output); err != nil {
-		fmt.Fprintf(os.Stderr, "Status write error: %v\n", err)
-		os.Exit(1)
-	}
+	fmt.Print(status.FormatStatus(todos))
 }

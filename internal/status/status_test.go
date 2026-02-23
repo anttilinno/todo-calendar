@@ -1,8 +1,6 @@
 package status
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/antti/todo-calendar/internal/store"
@@ -88,103 +86,5 @@ func TestPriorityColorHex(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("PriorityColorHex(%d) = %q, want %q", tt.priority, got, tt.want)
 		}
-	}
-}
-
-func TestWriteStatusFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	path := filepath.Join(tmpDir, ".todo_status")
-
-	content := "3"
-	err := writeStatusFileTo(content, path)
-	if err != nil {
-		t.Fatalf("writeStatusFileTo() error = %v", err)
-	}
-
-	got, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("ReadFile() error = %v", err)
-	}
-	if string(got) != content {
-		t.Errorf("file content = %q, want %q", string(got), content)
-	}
-}
-
-func TestWriteStatusFile_Overwrite(t *testing.T) {
-	tmpDir := t.TempDir()
-	path := filepath.Join(tmpDir, ".todo_status")
-
-	if err := writeStatusFileTo("old", path); err != nil {
-		t.Fatalf("first write error = %v", err)
-	}
-
-	if err := writeStatusFileTo("new", path); err != nil {
-		t.Fatalf("second write error = %v", err)
-	}
-
-	got, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("ReadFile() error = %v", err)
-	}
-	if string(got) != "new" {
-		t.Errorf("file content = %q, want %q", string(got), "new")
-	}
-}
-
-func TestWriteStatusFile_EmptyContent(t *testing.T) {
-	tmpDir := t.TempDir()
-	path := filepath.Join(tmpDir, ".todo_status")
-
-	if err := writeStatusFileTo("", path); err != nil {
-		t.Fatalf("writeStatusFileTo() error = %v", err)
-	}
-
-	got, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("ReadFile() error = %v", err)
-	}
-	if string(got) != "" {
-		t.Errorf("file content = %q, want empty string", string(got))
-	}
-}
-
-func TestRefreshStatusFileEndToEnd(t *testing.T) {
-	todos := []store.Todo{
-		{Text: "Buy milk", Date: "2026-02-23", Done: false, Priority: 2},
-		{Text: "Call dentist", Date: "2026-02-23", Done: true, Priority: 1},
-	}
-	output := FormatStatus(todos)
-
-	tmpFile := filepath.Join(t.TempDir(), ".todo_status")
-	err := writeStatusFileTo(output, tmpFile)
-	if err != nil {
-		t.Fatalf("writeStatusFileTo failed: %v", err)
-	}
-
-	data, err := os.ReadFile(tmpFile)
-	if err != nil {
-		t.Fatalf("read file failed: %v", err)
-	}
-
-	if string(data) != "1" {
-		t.Errorf("file content = %q, want %q", string(data), "1")
-	}
-}
-
-func TestRefreshStatusFileAllDone(t *testing.T) {
-	todos := []store.Todo{
-		{Text: "Done task", Date: "2026-02-23", Done: true, Priority: 1},
-	}
-	output := FormatStatus(todos)
-
-	tmpFile := filepath.Join(t.TempDir(), ".todo_status")
-	err := writeStatusFileTo(output, tmpFile)
-	if err != nil {
-		t.Fatalf("writeStatusFileTo failed: %v", err)
-	}
-
-	data, _ := os.ReadFile(tmpFile)
-	if string(data) != "" {
-		t.Errorf("expected empty file for all-done todos, got %q", string(data))
 	}
 }
