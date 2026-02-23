@@ -145,19 +145,19 @@ func New(s store.TodoStore, t theme.Theme) Model {
 	segDay := textinput.New()
 	segDay.Placeholder = "dd"
 	segDay.CharLimit = 2
-	segDay.Width = 4
+	segDay.Width = 2
 	segDay.Prompt = ""
 
 	segMonth := textinput.New()
 	segMonth.Placeholder = "mm"
 	segMonth.CharLimit = 2
-	segMonth.Width = 4
+	segMonth.Width = 2
 	segMonth.Prompt = ""
 
 	segYear := textinput.New()
 	segYear.Placeholder = "yyyy"
 	segYear.CharLimit = 4
-	segYear.Width = 6
+	segYear.Width = 4
 	segYear.Prompt = ""
 
 	ba := textarea.New()
@@ -1162,7 +1162,12 @@ func (m Model) renderPrioritySelector() string {
 	for i := 0; i <= 3; i++ {
 		var label string
 		if i == 0 {
-			label = m.styles.PriorityMuted.Render("···")
+			// Muted bars: show all 3 bar chars in muted color
+			var muted string
+			for _, ch := range barChars {
+				muted += string(ch)
+			}
+			label = m.styles.PriorityMuted.Render(muted)
 		} else {
 			label = renderPriorityBars(i, m.priorityStyle, m.styles)
 		}
@@ -1216,7 +1221,7 @@ func (m Model) editView() string {
 		b.WriteString("\n")
 		b.WriteString(m.renderDateSegments())
 		b.WriteString("\n")
-		b.WriteString(m.styles.EditHint.Render("(leave day blank for month todo, leave day+month blank for year todo)"))
+		b.WriteString(m.styles.EditHint.Render("(t = today, leave day blank for month todo, leave day+month blank for year todo)"))
 		b.WriteString("\n\n")
 		b.WriteString(m.styles.FieldLabel.Render("Priority"))
 		b.WriteString("\n")
@@ -1271,7 +1276,7 @@ func (m Model) editView() string {
 			b.WriteString("\n")
 			b.WriteString(m.renderDateSegments())
 			b.WriteString("\n")
-			b.WriteString(m.styles.EditHint.Render("(leave day blank for month todo, leave day+month blank for year todo)"))
+			b.WriteString(m.styles.EditHint.Render("(t = today, leave day blank for month todo, leave day+month blank for year todo)"))
 			b.WriteString("\n\n")
 			b.WriteString(m.styles.FieldLabel.Render("Priority"))
 			b.WriteString("\n")
@@ -1746,6 +1751,15 @@ func (m Model) deriveDateFromSegments() (string, string, int) {
 // It intercepts separator chars, handles auto-advance on full segment, and backspace navigation.
 func (m Model) updateDateSegment(msg tea.KeyMsg) (Model, tea.Cmd) {
 	key := msg.String()
+
+	// "t" fills in today's date
+	if key == "t" {
+		now := time.Now()
+		m.dateSegDay.SetValue(fmt.Sprintf("%02d", now.Day()))
+		m.dateSegMonth.SetValue(fmt.Sprintf("%02d", int(now.Month())))
+		m.dateSegYear.SetValue(fmt.Sprintf("%d", now.Year()))
+		return m, nil
+	}
 
 	// Block separator characters (handled visually)
 	if key == "-" || key == "." || key == "/" {
