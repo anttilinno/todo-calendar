@@ -1162,12 +1162,8 @@ func (m Model) renderPrioritySelector() string {
 	for i := 0; i <= 3; i++ {
 		var label string
 		if i == 0 {
-			// Muted bars: show all 3 bar chars in muted color
-			var muted string
-			for _, ch := range barChars {
-				muted += string(ch)
-			}
-			label = m.styles.PriorityMuted.Render(muted)
+			// No priority: dash padded to same width as 3 bar chars
+			label = m.styles.PriorityMuted.Render(" − ")
 		} else {
 			label = renderPriorityBars(i, m.priorityStyle, m.styles)
 		}
@@ -1220,8 +1216,8 @@ func (m Model) editView() string {
 		b.WriteString(m.styles.FieldLabel.Render("Date"))
 		b.WriteString("\n")
 		b.WriteString(m.renderDateSegments())
-		b.WriteString("\n")
-		b.WriteString(m.styles.EditHint.Render("(t = today, leave day blank for month todo, leave day+month blank for year todo)"))
+		b.WriteString("  ")
+		b.WriteString(m.styles.EditHint.Render("(t = today)"))
 		b.WriteString("\n\n")
 		b.WriteString(m.styles.FieldLabel.Render("Priority"))
 		b.WriteString("\n")
