@@ -74,10 +74,10 @@ Plans:
   1. TUI writes state file on startup so Polybar reflects current state when the app opens
   2. Adding, completing, deleting, or editing a todo in the TUI immediately updates the state file
   3. State file output format is identical to what the `status` subcommand produces
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 37-01: TBD
+- [ ] 37-01-PLAN.md — Wire refreshStatusFile into app.Model (startup + all mutation paths)
 
 ## Progress
 
@@ -96,4 +96,4 @@ Phases execute in numeric order: 36 -> 37
 | 34. Event Fetching & Async | v2.2 | 2/2 | Complete | 2026-02-14 |
 | 35. Event Display & Grid | v2.2 | 3/3 | Complete | 2026-02-14 |
 | 36. Status Subcommand | 2/2 | Complete    | 2026-02-23 | - |
-| 37. TUI State File Integration | v2.3 | 0/? | Not started | - |
+| 37. TUI State File Integration | v2.3 | 0/1 | Not started | - |
