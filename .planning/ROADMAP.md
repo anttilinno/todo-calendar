@@ -60,10 +60,11 @@
   2. State file contains `%{F#hex}ICON COUNT%{F-}` where hex color matches highest-priority pending todo's theme color
   3. State file contains empty string when there are zero pending todos today
   4. Subcommand exits immediately after writing (no TUI, no blocking)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 36-01: TBD
+- [ ] 36-01-PLAN.md — Status formatting engine (TDD: PriorityColorHex + FormatStatus + WriteStatusFile)
+- [ ] 36-02-PLAN.md — Wire status subcommand in main.go
 
 ### Phase 37: TUI State File Integration
 **Goal**: Polybar status stays current while the TUI is running, without requiring periodic `status` subcommand invocations
@@ -94,5 +95,5 @@ Phases execute in numeric order: 36 -> 37
 | 33. OAuth & Offline Guard | v2.2 | 2/2 | Complete | 2026-02-14 |
 | 34. Event Fetching & Async | v2.2 | 2/2 | Complete | 2026-02-14 |
 | 35. Event Display & Grid | v2.2 | 3/3 | Complete | 2026-02-14 |
-| 36. Status Subcommand | v2.3 | 0/? | Not started | - |
+| 36. Status Subcommand | v2.3 | 0/2 | Not started | - |
 | 37. TUI State File Integration | v2.3 | 0/? | Not started | - |
