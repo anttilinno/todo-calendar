@@ -1419,6 +1419,8 @@ func (m Model) renderTodo(b *strings.Builder, t *store.Todo, selected bool) {
 	// Body indicator (after text, not affected by completed styling)
 	if t.HasBody() {
 		b.WriteString(" " + m.styles.BodyIndicator.Render("[+]"))
+	} else {
+		b.WriteString(" " + m.styles.BodyIndicator.Render("[ ]"))
 	}
 
 	// Recurring indicator (after body indicator, before date)
@@ -1600,7 +1602,7 @@ func (m Model) prefillFromTemplate(t *store.Template, renderedBody string) Model
 
 // renderDateSegments renders the three date segment inputs in format-aware order with separators.
 func (m Model) renderDateSegments() string {
-	sep := m.styles.DateSeparator.Render(" " + m.dateSegSeparator() + " ")
+	sep := m.styles.DateSeparator.Render(m.dateSegSeparator())
 	var parts []string
 	for i := 0; i < 3; i++ {
 		seg := m.dateSegmentByPos(i)

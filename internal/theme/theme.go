@@ -54,7 +54,7 @@ func Dark() Theme {
 		WeekdayFg:       lipgloss.Color(""),         // terminal default
 		TodayFg:         lipgloss.Color(""),         // terminal default
 		TodayBg:         lipgloss.Color(""),         // terminal default
-		HolidayFg:       lipgloss.Color("#AF0000"),  // ANSI 1 red
+		HolidayFg:       lipgloss.Color("#D75FAF"),  // magenta (distinct from P1 red)
 		IndicatorFg:     lipgloss.Color(""),         // terminal default
 		AccentFg:        lipgloss.Color("#5F5FD7"),  // ANSI 62
 		MutedFg:         lipgloss.Color("#585858"),  // ANSI 240
@@ -81,7 +81,7 @@ func Light() Theme {
 		WeekdayFg:       lipgloss.Color("#8A8A8A"), // medium grey
 		TodayFg:         lipgloss.Color("#FFFFFF"), // white
 		TodayBg:         lipgloss.Color("#5F5FD7"), // indigo
-		HolidayFg:       lipgloss.Color("#D70000"), // red
+		HolidayFg:       lipgloss.Color("#AF005F"), // dark magenta (distinct from P1 red)
 		IndicatorFg:     lipgloss.Color("#005FAF"), // blue
 		AccentFg:        lipgloss.Color("#5F5FD7"), // indigo
 		MutedFg:         lipgloss.Color("#8A8A8A"), // medium grey
@@ -109,7 +109,7 @@ func Nord() Theme {
 		WeekdayFg:       lipgloss.Color("#81A1C1"), // nord9 muted frost (better contrast)
 		TodayFg:         lipgloss.Color("#2E3440"), // nord0 polar night
 		TodayBg:         lipgloss.Color("#88C0D0"), // nord8 frost
-		HolidayFg:       lipgloss.Color("#BF616A"), // nord11 aurora red
+		HolidayFg:       lipgloss.Color("#B48EAD"), // nord15 aurora purple (distinct from P1 red)
 		IndicatorFg:     lipgloss.Color("#EBCB8B"), // nord13 aurora yellow
 		AccentFg:        lipgloss.Color("#88C0D0"), // nord8 frost
 		MutedFg:         lipgloss.Color("#81A1C1"), // nord9 muted frost (better contrast)
@@ -137,7 +137,7 @@ func Solarized() Theme {
 		WeekdayFg:       lipgloss.Color("#657B83"), // base00 (better contrast)
 		TodayFg:         lipgloss.Color("#FDF6E3"), // base3
 		TodayBg:         lipgloss.Color("#268BD2"), // blue
-		HolidayFg:       lipgloss.Color("#DC322F"), // red
+		HolidayFg:       lipgloss.Color("#D33682"), // solarized magenta (distinct from P1 red)
 		IndicatorFg:     lipgloss.Color("#B58900"), // yellow
 		AccentFg:        lipgloss.Color("#268BD2"), // blue
 		MutedFg:         lipgloss.Color("#657B83"), // base00 (better contrast)
