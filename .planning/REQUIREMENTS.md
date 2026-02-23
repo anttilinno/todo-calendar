@@ -41,17 +41,17 @@ Requirements for Polybar Status milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BAR-01 | — | Pending |
-| BAR-02 | — | Pending |
-| BAR-03 | — | Pending |
-| BAR-04 | — | Pending |
-| BAR-05 | — | Pending |
+| BAR-01 | Phase 36 | Pending |
+| BAR-02 | Phase 36 | Pending |
+| BAR-03 | Phase 36 | Pending |
+| BAR-04 | Phase 37 | Pending |
+| BAR-05 | Phase 37 | Pending |
 
 **Coverage:**
 - v2.3 requirements: 5 total
-- Mapped to phases: 0
-- Unmapped: 5 (pending roadmap)
+- Mapped to phases: 5
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-23*
-*Last updated: 2026-02-23 after initial definition*
+*Last updated: 2026-02-23 after roadmap creation*

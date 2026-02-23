@@ -5,14 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-23)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen
-**Current focus:** v2.3 Polybar Status
+**Current focus:** v2.3 Polybar Status -- Phase 36: Status Subcommand
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-23 — Milestone v2.3 started
+Phase: 36 of 37 (Status Subcommand)
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-02-23 -- Roadmap created for v2.3
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -38,5 +40,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-23
-Stopped at: Defining v2.3 requirements
+Stopped at: Roadmap created for v2.3 Polybar Status (2 phases: 36-37)
 Resume file: None

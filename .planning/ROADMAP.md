@@ -7,6 +7,7 @@
 - v2.0 Settings UX: Shipped 2026-02-12 (see MILESTONES.md)
 - v2.1 Priorities: Shipped 2026-02-13 (see MILESTONES.md)
 - v2.2 Google Calendar Events: Shipped 2026-02-14 (see MILESTONES.md)
+- v2.3 Polybar Status: In progress
 
 ## Phases
 
@@ -43,7 +44,44 @@
 
 </details>
 
+### v2.3 Polybar Status (In Progress)
+
+- [ ] **Phase 36: Status Subcommand** - CLI subcommand that queries SQLite and writes Polybar-formatted status to state file
+- [ ] **Phase 37: TUI State File Integration** - TUI writes state file on startup and on every todo mutation
+
+## Phase Details
+
+### Phase 36: Status Subcommand
+**Goal**: User can run `todo-calendar status` from a shell or Polybar script to get a current pending-todo indicator written to a state file
+**Depends on**: Nothing (first phase in v2.3)
+**Requirements**: BAR-01, BAR-02, BAR-03
+**Success Criteria** (what must be TRUE):
+  1. Running `todo-calendar status` queries SQLite for today's pending todos and writes output to `/tmp/.todo_status`
+  2. State file contains `%{F#hex}ICON COUNT%{F-}` where hex color matches highest-priority pending todo's theme color
+  3. State file contains empty string when there are zero pending todos today
+  4. Subcommand exits immediately after writing (no TUI, no blocking)
+**Plans**: TBD
+
+Plans:
+- [ ] 36-01: TBD
+
+### Phase 37: TUI State File Integration
+**Goal**: Polybar status stays current while the TUI is running, without requiring periodic `status` subcommand invocations
+**Depends on**: Phase 36
+**Requirements**: BAR-04, BAR-05
+**Success Criteria** (what must be TRUE):
+  1. TUI writes state file on startup so Polybar reflects current state when the app opens
+  2. Adding, completing, deleting, or editing a todo in the TUI immediately updates the state file
+  3. State file output format is identical to what the `status` subcommand produces
+**Plans**: TBD
+
+Plans:
+- [ ] 37-01: TBD
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 36 -> 37
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -56,3 +94,5 @@
 | 33. OAuth & Offline Guard | v2.2 | 2/2 | Complete | 2026-02-14 |
 | 34. Event Fetching & Async | v2.2 | 2/2 | Complete | 2026-02-14 |
 | 35. Event Display & Grid | v2.2 | 3/3 | Complete | 2026-02-14 |
+| 36. Status Subcommand | v2.3 | 0/? | Not started | - |
+| 37. TUI State File Integration | v2.3 | 0/? | Not started | - |
