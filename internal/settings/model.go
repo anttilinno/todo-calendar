@@ -40,7 +40,7 @@ type StartGoogleAuthMsg struct{}
 type GoogleAuthDoneMsg struct{ State google.AuthState }
 
 // googleCalendarRow is the index of the Google Calendar action row.
-const googleCalendarRow = 6
+const googleCalendarRow = 7
 
 // Model represents the settings overlay.
 type Model struct {
@@ -119,6 +119,7 @@ func New(cfg config.Config, t theme.Theme, authState google.AuthState) Model {
 			{label: "Date Format", values: formatValues, display: formatDisplay, index: indexOf(formatValues, cfg.DateFormat)},
 			{label: "Show Month Todos", values: boolValues, display: boolDisplay, index: boolIndex(cfg.ShowMonthTodos)},
 			{label: "Show Year Todos", values: boolValues, display: boolDisplay, index: boolIndex(cfg.ShowYearTodos)},
+			{label: "Priority Style", values: []string{"bars", "nerd"}, display: []string{"▁▃▅▇ Bars", "\U000F08BF Nerd Font"}, index: indexOf([]string{"bars", "nerd"}, cfg.PriorityStyle)},
 			gcalOption,
 		},
 		keys:            DefaultKeyMap(),
@@ -140,6 +141,7 @@ func (m Model) Config() config.Config {
 		DateFormat:             m.options[3].values[m.options[3].index],
 		ShowMonthTodos:         m.options[4].values[m.options[4].index] == "true",
 		ShowYearTodos:          m.options[5].values[m.options[5].index] == "true",
+		PriorityStyle:          m.options[6].values[m.options[6].index],
 		GoogleCalendarEnabled: gcalEnabled,
 	}
 }

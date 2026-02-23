@@ -16,8 +16,9 @@ type Config struct {
 	Theme          string `toml:"theme"`
 	DateFormat     string `toml:"date_format"`
 	ShowMonthTodos bool   `toml:"show_month_todos"`
-	ShowYearTodos          bool `toml:"show_year_todos"`
-	GoogleCalendarEnabled  bool `toml:"google_calendar_enabled"`
+	ShowYearTodos          bool   `toml:"show_year_todos"`
+	PriorityStyle          string `toml:"priority_style"`
+	GoogleCalendarEnabled  bool   `toml:"google_calendar_enabled"`
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -29,6 +30,7 @@ func DefaultConfig() Config {
 		DateFormat:     "iso",
 		ShowMonthTodos: true,
 		ShowYearTodos:         true,
+		PriorityStyle:        "bars",
 		GoogleCalendarEnabled: true,
 	}
 }

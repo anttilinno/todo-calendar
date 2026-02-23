@@ -116,6 +116,9 @@ type Model struct {
 	weekFilterStart string
 	weekFilterEnd   string
 
+	// Priority display style ("bars" or "nerd")
+	priorityStyle string
+
 	// Fuzzy-date section visibility
 	showMonthTodos bool
 	showYearTodos  bool
@@ -181,6 +184,7 @@ func New(s store.TodoStore, t theme.Theme) Model {
 		viewMonth:        now.Month(),
 		dateLayout:       "2006-01-02",
 		datePlaceholder:  "YYYY-MM-DD",
+		priorityStyle:    "bars",
 		showMonthTodos:   true,
 		showYearTodos:    true,
 		keys:             DefaultKeyMap(),
@@ -1153,13 +1157,19 @@ func (m Model) saveAdd() (Model, tea.Cmd) {
 // renderPrioritySelector renders the inline priority selector for the edit form.
 func (m Model) renderPrioritySelector() string {
 	active := m.editField == fieldPriority
-	options := []string{"none", "P1", "P2", "P3", "P4"}
+	// Build preview labels: "none" then signal bars for P1-P4
 	var parts []string
-	for i, opt := range options {
-		if i == m.editPriority {
-			parts = append(parts, m.styles.Cursor.Render("["+opt+"]"))
+	for i := 0; i <= 4; i++ {
+		var label string
+		if i == 0 {
+			label = "none"
 		} else {
-			parts = append(parts, " "+opt+" ")
+			label = renderPriorityBars(i, m.priorityStyle, m.styles)
+		}
+		if i == m.editPriority {
+			parts = append(parts, m.styles.Cursor.Render("[")+label+m.styles.Cursor.Render("]"))
+		} else {
+			parts = append(parts, " "+label+" ")
 		}
 	}
 	prefix := "  "
@@ -1338,6 +1348,45 @@ func (m Model) normalView() string {
 	return b.String()
 }
 
+// barChars are the ascending block characters for the signal-strength meter.
+var barChars = [4]rune{'▁', '▃', '▅', '▇'}
+
+// nerdIcons maps priority level (1-4) to Nerd Font MDI signal cellular icons.
+var nerdIcons = [5]string{
+	"",           // 0 = no priority
+	"\U000F08BF", // P1 = nf-md-signal_cellular_4
+	"\U000F08BE", // P2 = nf-md-signal_cellular_3
+	"\U000F08BD", // P3 = nf-md-signal_cellular_2
+	"\U000F08BC", // P4 = nf-md-signal_cellular_1
+}
+
+// renderPriorityBars returns the priority indicator string for a todo.
+// In "bars" mode: 4-char ascending meter (filled=priority color, rest=muted). No priority = 4 spaces.
+// In "nerd" mode: single Nerd Font icon in priority color. No priority = 1 space.
+func renderPriorityBars(priority int, style string, s Styles) string {
+	if style == "nerd" {
+		if priority >= 1 && priority <= 4 {
+			return s.priorityBadgeStyle(priority).Render(nerdIcons[priority])
+		}
+		return " "
+	}
+	// Default "bars" mode
+	if priority < 1 || priority > 4 {
+		return "    " // 4 spaces
+	}
+	filled := 5 - priority // P1=4, P2=3, P3=2, P4=1
+	colorStyle := s.priorityBadgeStyle(priority)
+	var result string
+	for i, ch := range barChars {
+		if i < filled {
+			result += colorStyle.Render(string(ch))
+		} else {
+			result += s.PriorityMuted.Render(string(ch))
+		}
+	}
+	return result
+}
+
 // renderTodo writes a single todo line to the builder.
 func (m Model) renderTodo(b *strings.Builder, t *store.Todo, selected bool) {
 	// Cursor indicator
@@ -1347,13 +1396,8 @@ func (m Model) renderTodo(b *strings.Builder, t *store.Todo, selected bool) {
 		b.WriteString("  ")
 	}
 
-	// Priority dot + checkbox
-	if t.HasPriority() {
-		style := m.styles.priorityBadgeStyle(t.Priority)
-		b.WriteString(style.Render("●"))
-	} else {
-		b.WriteString(" ")
-	}
+	// Priority indicator + checkbox
+	b.WriteString(renderPriorityBars(t.Priority, m.priorityStyle, m.styles))
 	if t.Done {
 		b.WriteString(m.styles.CheckboxDone.Render("[x]"))
 	} else {
@@ -1398,6 +1442,11 @@ func (m *Model) SetShowFuzzySections(showMonth, showYear bool) {
 	m.showYearTodos = showYear
 }
 
+// SetPriorityStyle sets the priority display style ("bars" or "nerd").
+func (m *Model) SetPriorityStyle(style string) {
+	m.priorityStyle = style
+}
+
 // SetCalendarEvents sets the Google Calendar events to display alongside todos.
 func (m *Model) SetCalendarEvents(events []google.CalendarEvent) {
 	m.calendarEvents = events
@@ -1405,7 +1454,12 @@ func (m *Model) SetCalendarEvents(events []google.CalendarEvent) {
 
 // renderEvent writes a single calendar event line to the builder.
 func (m Model) renderEvent(b *strings.Builder, e *google.CalendarEvent) {
-	b.WriteString("   ") // 2 spaces (no cursor) + 1 space (no priority dot)
+	// Align with todo text: 2 (cursor) + priority width (4 bars or 1 nerd + space padding)
+	if m.priorityStyle == "nerd" {
+		b.WriteString("   ") // 2 (cursor) + 1 (nerd icon width)
+	} else {
+		b.WriteString("      ") // 2 (cursor) + 4 (bar chars)
+	}
 	// Prefix: [-] for ordinary, [*] for recurring
 	if e.Recurring {
 		b.WriteString(m.styles.EventTime.Render("[*]"))

@@ -25,6 +25,7 @@ type Styles struct {
 	PriorityP2    lipgloss.Style
 	PriorityP3    lipgloss.Style
 	PriorityP4    lipgloss.Style
+	PriorityMuted lipgloss.Style
 	EventTime     lipgloss.Style
 	EventText     lipgloss.Style
 }
@@ -50,6 +51,7 @@ func NewStyles(t theme.Theme) Styles {
 		PriorityP2:    lipgloss.NewStyle().Bold(true).Foreground(t.PriorityP2Fg),
 		PriorityP3:    lipgloss.NewStyle().Bold(true).Foreground(t.PriorityP3Fg),
 		PriorityP4:    lipgloss.NewStyle().Bold(true).Foreground(t.PriorityP4Fg),
+		PriorityMuted: lipgloss.NewStyle().Foreground(t.MutedFg),
 		EventTime:     lipgloss.NewStyle().Foreground(t.EventFg).Bold(true),
 		EventText:     lipgloss.NewStyle().Foreground(t.EventFg),
 	}

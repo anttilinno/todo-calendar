@@ -1,7 +1,6 @@
 package search
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -33,8 +32,9 @@ type Model struct {
 	cursor     int
 	store      store.TodoStore
 	allTodos   []store.Todo
-	dateLayout string
-	width      int
+	dateLayout    string
+	priorityStyle string
+	width         int
 	height     int
 	keys       KeyMap
 	styles     Styles
@@ -48,12 +48,13 @@ func New(s store.TodoStore, t theme.Theme, cfg config.Config) Model {
 	ti.Focus()
 
 	return Model{
-		input:      ti,
-		store:      s,
-		allTodos:   s.Todos(),
-		dateLayout: cfg.DateLayout(),
-		keys:       DefaultKeyMap(),
-		styles:     NewStyles(t),
+		input:         ti,
+		store:         s,
+		allTodos:      s.Todos(),
+		dateLayout:    cfg.DateLayout(),
+		priorityStyle: cfg.PriorityStyle,
+		keys:          DefaultKeyMap(),
+		styles:        NewStyles(t),
 	}
 }
 
@@ -164,14 +165,8 @@ func (m Model) View() string {
 				check = "[x]"
 			}
 
-			// Priority badge (PRIO-07) -- fixed-width 5-char slot
-			var badge string
-			if r.HasPriority() {
-				label := fmt.Sprintf("[%s]", r.PriorityLabel())
-				badge = m.styles.priorityBadgeStyle(r.Priority).Render(label) + " "
-			} else {
-				badge = "     " // 5 spaces for alignment
-			}
+			// Priority indicator -- signal bars or nerd icon
+			badge := renderPriorityBars(r.Priority, m.priorityStyle, m.styles)
 
 			// Date display
 			dateStr := "No date"
@@ -208,6 +203,43 @@ func (m Model) View() string {
 	}
 
 	return content
+}
+
+// barChars are the ascending block characters for the signal-strength meter.
+var barChars = [4]rune{'▁', '▃', '▅', '▇'}
+
+// nerdIcons maps priority level (1-4) to Nerd Font MDI signal cellular icons.
+var nerdIcons = [5]string{
+	"",           // 0 = no priority
+	"\U000F08BF", // P1 = nf-md-signal_cellular_4
+	"\U000F08BE", // P2 = nf-md-signal_cellular_3
+	"\U000F08BD", // P3 = nf-md-signal_cellular_2
+	"\U000F08BC", // P4 = nf-md-signal_cellular_1
+}
+
+// renderPriorityBars returns the priority indicator string for a search result.
+func renderPriorityBars(priority int, style string, s Styles) string {
+	if style == "nerd" {
+		if priority >= 1 && priority <= 4 {
+			return s.priorityBadgeStyle(priority).Render(nerdIcons[priority]) + " "
+		}
+		return "  " // 1 icon-width + 1 space
+	}
+	// Default "bars" mode
+	if priority < 1 || priority > 4 {
+		return "     " // 4 bar-width + 1 space
+	}
+	filled := 5 - priority
+	colorStyle := s.priorityBadgeStyle(priority)
+	var result string
+	for i, ch := range barChars {
+		if i < filled {
+			result += colorStyle.Render(string(ch))
+		} else {
+			result += s.PriorityMuted.Render(string(ch))
+		}
+	}
+	return result + " "
 }
 
 // fuzzySearch filters allTodos by fuzzy match and sorts by score (best first).
