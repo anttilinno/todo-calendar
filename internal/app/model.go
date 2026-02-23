@@ -79,7 +79,6 @@ type Model struct {
 	editingTmplID   int
 	editorErr       string
 	store           store.TodoStore
-	theme           theme.Theme
 	cfg             config.Config
 	googleAuthState google.AuthState
 	calendarSvc     *gcal.Service
@@ -116,7 +115,6 @@ func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t the
 		help:            h,
 		styles:          NewStyles(t),
 		store:           s,
-		theme:           t,
 		cfg:             cfg,
 		googleAuthState: authState,
 		calendarSvc:     calSvc,
@@ -597,7 +595,6 @@ func (m *Model) syncTodoSize() {
 
 // applyTheme updates all component styles with the given theme.
 func (m *Model) applyTheme(t theme.Theme) {
-	m.theme = t
 	m.styles = NewStyles(t)
 	m.calendar.SetTheme(t)
 	m.todoList.SetTheme(t)
@@ -620,7 +617,7 @@ func (m *Model) applyTheme(t theme.Theme) {
 func (m Model) refreshStatusFile() {
 	today := time.Now().Format("2006-01-02")
 	todos := m.store.TodosForDateRange(today, today)
-	output := status.FormatStatus(todos, m.theme)
+	output := status.FormatStatus(todos)
 	_ = status.WriteStatusFile(output)
 }
 

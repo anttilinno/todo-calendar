@@ -6,40 +6,26 @@ import (
 	"path/filepath"
 
 	"github.com/antti/todo-calendar/internal/store"
-	"github.com/antti/todo-calendar/internal/theme"
 )
 
 const (
 	// statusPath is the default file path for Polybar status output.
 	statusPath = "/tmp/.todo_status"
-
-	// statusIcon is the Nerd Font "task" icon (U+F46D).
-	statusIcon = "\uf46d"
 )
 
-// FormatStatus returns a Polybar-formatted string showing the count of pending
-// todos colored by the highest priority among them. Returns an empty string
-// when no pending todos exist.
-func FormatStatus(todos []store.Todo, t theme.Theme) string {
+// FormatStatus returns the count of pending todos as a string.
+// Returns an empty string when no pending todos exist.
+func FormatStatus(todos []store.Todo) string {
 	var count int
-	highestPriority := 0 // 0 means no priority found yet
-
 	for _, td := range todos {
-		if td.Done {
-			continue
-		}
-		count++
-		if td.Priority > 0 && (highestPriority == 0 || td.Priority < highestPriority) {
-			highestPriority = td.Priority
+		if !td.Done {
+			count++
 		}
 	}
-
 	if count == 0 {
 		return ""
 	}
-
-	hexColor := t.PriorityColorHex(highestPriority)
-	return fmt.Sprintf("%%{F%s}%s %d%%{F-}", hexColor, statusIcon, count)
+	return fmt.Sprintf("%d", count)
 }
 
 // WriteStatusFile writes content to the default status file path (/tmp/.todo_status).

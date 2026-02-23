@@ -3,7 +3,6 @@ package status
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/antti/todo-calendar/internal/store"
@@ -11,7 +10,7 @@ import (
 )
 
 func TestFormatStatus_EmptySlice(t *testing.T) {
-	got := FormatStatus(nil, theme.Dark())
+	got := FormatStatus(nil)
 	if got != "" {
 		t.Errorf("FormatStatus(nil) = %q, want empty string", got)
 	}
@@ -21,74 +20,41 @@ func TestFormatStatus_AllCompleted(t *testing.T) {
 	todos := []store.Todo{
 		{Text: "done task", Done: true, Priority: 1},
 	}
-	got := FormatStatus(todos, theme.Dark())
+	got := FormatStatus(todos)
 	if got != "" {
 		t.Errorf("FormatStatus(all done) = %q, want empty string", got)
 	}
 }
 
-func TestFormatStatus_SinglePendingNoPriority(t *testing.T) {
+func TestFormatStatus_SinglePending(t *testing.T) {
 	todos := []store.Todo{
 		{Text: "buy milk", Done: false, Priority: 0},
 	}
-	th := theme.Dark()
-	got := FormatStatus(todos, th)
-	// No priority -> AccentFg (#5F5FD7 for dark theme)
-	want := "%{F#5F5FD7}\uf46d 1%{F-}"
-	if got != want {
-		t.Errorf("FormatStatus(no priority) = %q, want %q", got, want)
+	got := FormatStatus(todos)
+	if got != "1" {
+		t.Errorf("FormatStatus(1 pending) = %q, want %q", got, "1")
 	}
 }
 
-func TestFormatStatus_MultiplePendingHighestPriority(t *testing.T) {
+func TestFormatStatus_MultiplePending(t *testing.T) {
 	todos := []store.Todo{
 		{Text: "urgent", Done: false, Priority: 1},
 		{Text: "low", Done: false, Priority: 3},
 	}
-	th := theme.Dark()
-	got := FormatStatus(todos, th)
-	// P1 is highest (lowest number) -> PriorityP1Fg (#FF5F5F for dark theme)
-	want := "%{F#FF5F5F}\uf46d 2%{F-}"
-	if got != want {
-		t.Errorf("FormatStatus(P1+P3) = %q, want %q", got, want)
+	got := FormatStatus(todos)
+	if got != "2" {
+		t.Errorf("FormatStatus(2 pending) = %q, want %q", got, "2")
 	}
 }
 
 func TestFormatStatus_CompletedTodoIgnored(t *testing.T) {
 	todos := []store.Todo{
-		{Text: "active P2", Done: false, Priority: 2},
-		{Text: "done P1", Done: true, Priority: 1},
+		{Text: "active", Done: false, Priority: 2},
+		{Text: "done", Done: true, Priority: 1},
 	}
-	th := theme.Dark()
-	got := FormatStatus(todos, th)
-	// Only pending count=1, highest pending priority=2 -> PriorityP2Fg (#FFAF5F)
-	want := "%{F#FFAF5F}\uf46d 1%{F-}"
-	if got != want {
-		t.Errorf("FormatStatus(P2 pending, P1 done) = %q, want %q", got, want)
-	}
-}
-
-func TestFormatStatus_P3Color(t *testing.T) {
-	todos := []store.Todo{
-		{Text: "medium", Done: false, Priority: 3},
-	}
-	th := theme.Dark()
-	got := FormatStatus(todos, th)
-	want := "%{F#5F87FF}\uf46d 1%{F-}"
-	if got != want {
-		t.Errorf("FormatStatus(P3) = %q, want %q", got, want)
-	}
-}
-
-func TestFormatStatus_P4Color(t *testing.T) {
-	todos := []store.Todo{
-		{Text: "low", Done: false, Priority: 4},
-	}
-	th := theme.Dark()
-	got := FormatStatus(todos, th)
-	want := "%{F#808080}\uf46d 1%{F-}"
-	if got != want {
-		t.Errorf("FormatStatus(P4) = %q, want %q", got, want)
+	got := FormatStatus(todos)
+	if got != "1" {
+		t.Errorf("FormatStatus(1 pending, 1 done) = %q, want %q", got, "1")
 	}
 }
 
@@ -98,12 +64,9 @@ func TestFormatStatus_MixedPriorityAndNoPriority(t *testing.T) {
 		{Text: "P3", Done: false, Priority: 3},
 		{Text: "also no prio", Done: false, Priority: 0},
 	}
-	th := theme.Dark()
-	got := FormatStatus(todos, th)
-	// Highest priority among pending is P3 (priority=3), count=3
-	want := "%{F#5F87FF}\uf46d 3%{F-}"
-	if got != want {
-		t.Errorf("FormatStatus(mixed) = %q, want %q", got, want)
+	got := FormatStatus(todos)
+	if got != "3" {
+		t.Errorf("FormatStatus(3 pending) = %q, want %q", got, "3")
 	}
 }
 
@@ -129,11 +92,10 @@ func TestPriorityColorHex(t *testing.T) {
 }
 
 func TestWriteStatusFile(t *testing.T) {
-	// Use a temp directory to avoid writing to /tmp/.todo_status during tests
 	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, ".todo_status")
 
-	content := "%{F#FF5F5F}\uf46d 3%{F-}"
+	content := "3"
 	err := writeStatusFileTo(content, path)
 	if err != nil {
 		t.Fatalf("writeStatusFileTo() error = %v", err)
@@ -152,12 +114,10 @@ func TestWriteStatusFile_Overwrite(t *testing.T) {
 	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, ".todo_status")
 
-	// Write initial content
 	if err := writeStatusFileTo("old", path); err != nil {
 		t.Fatalf("first write error = %v", err)
 	}
 
-	// Overwrite
 	if err := writeStatusFileTo("new", path); err != nil {
 		t.Fatalf("second write error = %v", err)
 	}
@@ -189,14 +149,11 @@ func TestWriteStatusFile_EmptyContent(t *testing.T) {
 }
 
 func TestRefreshStatusFileEndToEnd(t *testing.T) {
-	th := theme.ForName("catppuccin")
-
-	// Simulate what refreshStatusFile does: query todos, format, write
 	todos := []store.Todo{
 		{Text: "Buy milk", Date: "2026-02-23", Done: false, Priority: 2},
 		{Text: "Call dentist", Date: "2026-02-23", Done: true, Priority: 1},
 	}
-	output := FormatStatus(todos, th)
+	output := FormatStatus(todos)
 
 	tmpFile := filepath.Join(t.TempDir(), ".todo_status")
 	err := writeStatusFileTo(output, tmpFile)
@@ -209,27 +166,16 @@ func TestRefreshStatusFileEndToEnd(t *testing.T) {
 		t.Fatalf("read file failed: %v", err)
 	}
 
-	got := string(data)
-	if got != output {
-		t.Errorf("file content = %q, want %q", got, output)
-	}
-
-	// Verify the output matches expected format (one pending todo with P2)
-	if output == "" {
-		t.Error("expected non-empty output for pending todo")
-	}
-	if !strings.Contains(output, "%{F") {
-		t.Error("expected Polybar color formatting")
+	if string(data) != "1" {
+		t.Errorf("file content = %q, want %q", string(data), "1")
 	}
 }
 
 func TestRefreshStatusFileAllDone(t *testing.T) {
-	th := theme.ForName("catppuccin")
-
 	todos := []store.Todo{
 		{Text: "Done task", Date: "2026-02-23", Done: true, Priority: 1},
 	}
-	output := FormatStatus(todos, th)
+	output := FormatStatus(todos)
 
 	tmpFile := filepath.Join(t.TempDir(), ".todo_status")
 	err := writeStatusFileTo(output, tmpFile)

@@ -39,7 +39,7 @@ func main() {
 
 	// Subcommand routing: branch before TUI setup.
 	if len(os.Args) >= 2 && os.Args[1] == "status" {
-		runStatus(cfg, s)
+		runStatus(s)
 		return
 	}
 
@@ -67,13 +67,12 @@ func main() {
 	}
 }
 
-// runStatus queries today's todos, formats Polybar output, and writes the state file.
-func runStatus(cfg config.Config, s *store.SQLiteStore) {
+// runStatus queries today's todos, formats the count, and writes the state file.
+func runStatus(s *store.SQLiteStore) {
 	today := time.Now().Format("2006-01-02")
 	todos := s.TodosForDateRange(today, today)
 
-	t := theme.ForName(cfg.Theme)
-	output := status.FormatStatus(todos, t)
+	output := status.FormatStatus(todos)
 
 	if err := status.WriteStatusFile(output); err != nil {
 		fmt.Fprintf(os.Stderr, "Status write error: %v\n", err)
