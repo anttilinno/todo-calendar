@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 ## Current Position
 
 Phase: 36 of 37 (Status Subcommand)
-Plan: 1 of 2 in current phase
-Status: Executing
-Last activity: 2026-02-23 -- Completed 36-01 status formatting engine
+Plan: 2 of 2 in current phase
+Status: Phase Complete
+Last activity: 2026-02-23 -- Completed 36-02 status subcommand routing
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -29,6 +29,7 @@ Progress: [█████░░░░░] 50%
 
 See PROJECT.md Key Decisions table for complete log.
 - [Phase 36]: PriorityColorHex casts lipgloss.Color to string for raw hex -- avoids adding lipgloss dependency to status package
+- [Phase 36]: Restructured main() so config+db load before subcommand branch, runStatus takes pre-opened config and store
 
 ### Pending Todos
 
@@ -41,5 +42,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-23
-Stopped at: Completed 36-01-PLAN.md (status formatting engine)
+Stopped at: Completed 36-02-PLAN.md (status subcommand routing) -- Phase 36 complete
 Resume file: None

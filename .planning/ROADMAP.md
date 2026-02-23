@@ -46,7 +46,7 @@
 
 ### v2.3 Polybar Status (In Progress)
 
-- [ ] **Phase 36: Status Subcommand** - CLI subcommand that queries SQLite and writes Polybar-formatted status to state file
+- [x] **Phase 36: Status Subcommand** - CLI subcommand that queries SQLite and writes Polybar-formatted status to state file (completed 2026-02-23)
 - [ ] **Phase 37: TUI State File Integration** - TUI writes state file on startup and on every todo mutation
 
 ## Phase Details
@@ -95,5 +95,5 @@ Phases execute in numeric order: 36 -> 37
 | 33. OAuth & Offline Guard | v2.2 | 2/2 | Complete | 2026-02-14 |
 | 34. Event Fetching & Async | v2.2 | 2/2 | Complete | 2026-02-14 |
 | 35. Event Display & Grid | v2.2 | 3/3 | Complete | 2026-02-14 |
-| 36. Status Subcommand | 1/2 | In Progress|  | - |
+| 36. Status Subcommand | 2/2 | Complete   | 2026-02-23 | - |
 | 37. TUI State File Integration | v2.3 | 0/? | Not started | - |
