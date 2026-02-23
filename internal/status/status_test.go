@@ -3,6 +3,7 @@ package status
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/antti/todo-calendar/internal/store"
@@ -184,5 +185,60 @@ func TestWriteStatusFile_EmptyContent(t *testing.T) {
 	}
 	if string(got) != "" {
 		t.Errorf("file content = %q, want empty string", string(got))
+	}
+}
+
+func TestRefreshStatusFileEndToEnd(t *testing.T) {
+	th := theme.ForName("catppuccin")
+
+	// Simulate what refreshStatusFile does: query todos, format, write
+	todos := []store.Todo{
+		{Text: "Buy milk", Date: "2026-02-23", Done: false, Priority: 2},
+		{Text: "Call dentist", Date: "2026-02-23", Done: true, Priority: 1},
+	}
+	output := FormatStatus(todos, th)
+
+	tmpFile := filepath.Join(t.TempDir(), ".todo_status")
+	err := writeStatusFileTo(output, tmpFile)
+	if err != nil {
+		t.Fatalf("writeStatusFileTo failed: %v", err)
+	}
+
+	data, err := os.ReadFile(tmpFile)
+	if err != nil {
+		t.Fatalf("read file failed: %v", err)
+	}
+
+	got := string(data)
+	if got != output {
+		t.Errorf("file content = %q, want %q", got, output)
+	}
+
+	// Verify the output matches expected format (one pending todo with P2)
+	if output == "" {
+		t.Error("expected non-empty output for pending todo")
+	}
+	if !strings.Contains(output, "%{F") {
+		t.Error("expected Polybar color formatting")
+	}
+}
+
+func TestRefreshStatusFileAllDone(t *testing.T) {
+	th := theme.ForName("catppuccin")
+
+	todos := []store.Todo{
+		{Text: "Done task", Date: "2026-02-23", Done: true, Priority: 1},
+	}
+	output := FormatStatus(todos, th)
+
+	tmpFile := filepath.Join(t.TempDir(), ".todo_status")
+	err := writeStatusFileTo(output, tmpFile)
+	if err != nil {
+		t.Fatalf("writeStatusFileTo failed: %v", err)
+	}
+
+	data, _ := os.ReadFile(tmpFile)
+	if string(data) != "" {
+		t.Errorf("expected empty file for all-done todos, got %q", string(data))
 	}
 }
