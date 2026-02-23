@@ -18,8 +18,8 @@ Requirements for Polybar Status milestone. Each maps to roadmap phases.
 
 ### TUI Integration
 
-- [ ] **BAR-04**: TUI updates state file on todo add, complete, delete, and edit operations
-- [ ] **BAR-05**: TUI writes initial state file on startup
+- [x] **BAR-04**: TUI updates state file on todo add, complete, delete, and edit operations
+- [x] **BAR-05**: TUI writes initial state file on startup
 
 ## Future Requirements
 
@@ -44,8 +44,8 @@ Requirements for Polybar Status milestone. Each maps to roadmap phases.
 | BAR-01 | Phase 36 | Complete |
 | BAR-02 | Phase 36 | Complete |
 | BAR-03 | Phase 36 | Complete |
-| BAR-04 | Phase 37 | Pending |
-| BAR-05 | Phase 37 | Pending |
+| BAR-04 | Phase 37 | Complete |
+| BAR-05 | Phase 37 | Complete |
 
 **Coverage:**
 - v2.3 requirements: 5 total
