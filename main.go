@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"time"
@@ -17,7 +18,26 @@ import (
 	gcal "google.golang.org/api/calendar/v3"
 )
 
+var version = "dev"
+
 func main() {
+	showVersion := flag.Bool("version", false, "Show version")
+	showStatus := flag.Bool("status", false, "Show today's pending todo count")
+	flag.BoolVar(showVersion, "v", false, "Show version")
+	flag.BoolVar(showStatus, "s", false, "Show today's pending todo count")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: todo-calendar [flags]\n\nA terminal calendar with todo management.\n\nFlags:\n")
+		fmt.Fprintf(os.Stderr, "  -s, --status   Show today's pending todo count\n")
+		fmt.Fprintf(os.Stderr, "  -v, --version  Show version\n")
+		fmt.Fprintf(os.Stderr, "  -h, --help     Show this help\n")
+	}
+	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(version)
+		return
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Config error: %v\n", err)
@@ -37,9 +57,10 @@ func main() {
 	}
 	defer s.Close()
 
-	// Subcommand routing: branch before TUI setup.
-	if len(os.Args) >= 2 && os.Args[1] == "status" {
-		runStatus(s)
+	if *showStatus {
+		today := time.Now().Format("2006-01-02")
+		todos := s.TodosForDateRange(today, today)
+		fmt.Print(status.FormatStatus(todos))
 		return
 	}
 
@@ -65,11 +86,4 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-}
-
-// runStatus queries today's todos and prints the pending count to stdout.
-func runStatus(s *store.SQLiteStore) {
-	today := time.Now().Format("2006-01-02")
-	todos := s.TodosForDateRange(today, today)
-	fmt.Print(status.FormatStatus(todos))
 }

@@ -31,7 +31,7 @@ jobs:
 
       - name: Build amd64 Linux binary
         run: |
-          GOOS=linux GOARCH=amd64 go build -o todo-calendar-linux-amd64 -ldflags="-s -w" .
+          GOOS=linux GOARCH=amd64 go build -o todo-calendar-linux-amd64 -ldflags="-s -w -X main.version=${{ steps.tag.outputs.TAG }}" .
           chmod +x todo-calendar-linux-amd64
 
       - name: Create checksum
