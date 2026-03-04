@@ -2,6 +2,8 @@ package todolist
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -99,6 +101,7 @@ type Model struct {
 	bodyTextarea  textarea.Model  // textarea for body editing in edit mode
 	editField     int             // 0=title, 1=date, 2=priority, 3=body, 4=template
 	editPriority  int             // 0=none, 1-4=priority level during editing
+	editError     string          // validation error message shown in edit/add view
 	templateInput textinput.Model // placeholder input for template field (Phase 25 adds picker)
 
 	// Segmented date input (replaces dateInput)
@@ -133,6 +136,17 @@ type Model struct {
 	pickerPlaceholderValues map[string]string
 	pickerSelectedTemplate  *store.Template
 
+}
+
+var dbg *log.Logger
+
+func init() {
+	f, err := os.OpenFile("/tmp/todo-debug.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		dbg = log.New(os.Stderr, "[DBG] ", 0)
+	} else {
+		dbg = log.New(f, "", log.Ltime|log.Lmicroseconds)
+	}
 }
 
 // New creates a new todo list model backed by the given store.
@@ -516,6 +530,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		dbg.Printf("KeyMsg=%q mode=%d focused=%v editField=%d", msg.String(), m.mode, m.focused, m.editField)
 		if !m.focused {
 			return m, nil
 		}
@@ -714,6 +729,7 @@ func (m Model) updateFilterMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 // updateInputMode handles key events in the 5-field add form (title, date, priority, body, template).
 func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
+	m.editError = ""
 	// Template picker sub-states intercept all keys
 	if m.pickingTemplate {
 		return m.updateTemplatePicker(msg)
@@ -758,14 +774,21 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.Save):
 		// Ctrl+D saves from any field
+		dbg.Printf("Save matched in inputMode, calling saveAdd()")
 		return m.saveAdd()
 
 	case key.Matches(msg, m.keys.Confirm):
+		dbg.Printf("Confirm matched in inputMode, editField=%d", m.editField)
 		// Body field uses Enter for newlines
 		if m.editField == fieldBody {
 			var cmd tea.Cmd
 			m.bodyTextarea, cmd = m.bodyTextarea.Update(msg)
 			return m, cmd
+		}
+		// Priority field: Enter confirms selection and moves to body
+		if m.editField == fieldPriority {
+			m.editField = fieldBody
+			return m, m.bodyTextarea.Focus()
 		}
 		// Template field: Enter opens template picker
 		if m.editField == fieldTemplate {
@@ -793,6 +816,10 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 				// Advance to next date segment
 				return m, m.focusDateSegment(m.dateSegFocus + 1)
 			}
+			// Stay on last segment if it's empty (e.g. after auto-advance from previous segment)
+			if seg := m.dateSegmentByPos(m.dateSegFocus); seg.Value() == "" {
+				return m, seg.Focus()
+			}
 			// Past last segment -> priority
 			m.editField = fieldPriority
 			m.blurAllDateSegments()
@@ -812,6 +839,7 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 
 	case key.Matches(msg, m.keys.Cancel):
+		dbg.Printf("Cancel matched in inputMode, editField=%d", m.editField)
 		if m.editField == fieldBody || m.editField == fieldTemplate {
 			// Esc in body/template goes back to title field instead of cancelling
 			m.editField = fieldTitle
@@ -848,6 +876,7 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 
 	// Forward key events to the focused field
+	dbg.Printf("inputMode fallthrough: forwarding %q to editField=%d", msg.String(), m.editField)
 	var cmd tea.Cmd
 	switch m.editField {
 	case fieldTitle:
@@ -866,6 +895,7 @@ func (m Model) updateInputMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 // updateEditMode handles key events while editing an existing todo (title + date + priority + body).
 func (m Model) updateEditMode(msg tea.KeyMsg) (Model, tea.Cmd) {
+	m.editError = ""
 	// Handle priority field left/right BEFORE other key matching
 	if m.editField == fieldPriority {
 		k := msg.String()
@@ -925,6 +955,10 @@ func (m Model) updateEditMode(msg tea.KeyMsg) (Model, tea.Cmd) {
 		case fieldDate:
 			if m.dateSegFocus < 2 {
 				return m, m.focusDateSegment(m.dateSegFocus + 1)
+			}
+			// Stay on last segment if it's empty (e.g. after auto-advance from previous segment)
+			if seg := m.dateSegmentByPos(m.dateSegFocus); seg.Value() == "" {
+				return m, seg.Focus()
 			}
 			m.editField = fieldPriority
 			m.blurAllDateSegments()
@@ -1074,12 +1108,17 @@ func (m Model) inputPrevField() (Model, tea.Cmd) {
 func (m Model) saveEdit() (Model, tea.Cmd) {
 	text := strings.TrimSpace(m.input.Value())
 	if text == "" {
-		return m, nil
+		m.editError = "Title is required"
+		m.editField = fieldTitle
+		m.bodyTextarea.Blur()
+		m.blurAllDateSegments()
+		return m, m.input.Focus()
 	}
 
-	isoDate, precision, errPos := m.deriveDateFromSegments()
+	isoDate, precision, errPos, errMsg := m.deriveDateFromSegments()
 	if errPos >= 0 {
 		// Invalid/incomplete date -- focus the problematic segment
+		m.editError = errMsg
 		m.editField = fieldDate
 		m.input.Blur()
 		m.bodyTextarea.Blur()
@@ -1112,13 +1151,24 @@ func (m Model) saveEdit() (Model, tea.Cmd) {
 // saveAdd persists a new todo from the 4-field add form and returns to normal mode.
 func (m Model) saveAdd() (Model, tea.Cmd) {
 	text := strings.TrimSpace(m.input.Value())
+	dbg.Printf("saveAdd: title=%q day=%q month=%q year=%q priority=%d",
+		text, m.dateSegDay.Value(), m.dateSegMonth.Value(), m.dateSegYear.Value(), m.editPriority)
 	if text == "" {
-		return m, nil
+		dbg.Printf("saveAdd: title empty, returning error")
+		m.editError = "Title is required"
+		m.editField = fieldTitle
+		m.bodyTextarea.Blur()
+		m.templateInput.Blur()
+		m.blurAllDateSegments()
+		return m, m.input.Focus()
 	}
 
-	isoDate, precision, errPos := m.deriveDateFromSegments()
+	isoDate, precision, errPos, errMsg := m.deriveDateFromSegments()
+	dbg.Printf("saveAdd: deriveDateFromSegments → date=%q prec=%q errPos=%d errMsg=%q", isoDate, precision, errPos, errMsg)
 	if errPos >= 0 {
 		// Invalid/incomplete date -- focus the problematic segment
+		dbg.Printf("saveAdd: date error at pos %d: %s", errPos, errMsg)
+		m.editError = errMsg
 		m.editField = fieldDate
 		m.input.Blur()
 		m.bodyTextarea.Blur()
@@ -1126,6 +1176,7 @@ func (m Model) saveAdd() (Model, tea.Cmd) {
 		return m, m.focusDateSegment(errPos)
 	}
 
+	dbg.Printf("saveAdd: creating todo text=%q date=%q prec=%q prio=%d", text, isoDate, precision, m.editPriority)
 	todo := m.store.Add(text, isoDate, precision, m.editPriority)
 
 	body := m.bodyTextarea.Value()
@@ -1217,7 +1268,7 @@ func (m Model) editView() string {
 		b.WriteString("\n")
 		b.WriteString(m.renderDateSegments())
 		b.WriteString("  ")
-		b.WriteString(m.styles.EditHint.Render("(t = today)"))
+		b.WriteString(m.styles.EditHint.Render("(t = today, m = month, y = year)"))
 		b.WriteString("\n\n")
 		b.WriteString(m.styles.FieldLabel.Render("Priority"))
 		b.WriteString("\n")
@@ -1271,8 +1322,10 @@ func (m Model) editView() string {
 			b.WriteString(m.styles.FieldLabel.Render("Date"))
 			b.WriteString("\n")
 			b.WriteString(m.renderDateSegments())
+			b.WriteString("  ")
+			b.WriteString(m.styles.EditHint.Render("(t = today, m = month, y = year)"))
 			b.WriteString("\n")
-			b.WriteString(m.styles.EditHint.Render("(t = today, leave day blank for month todo, leave day+month blank for year todo)"))
+			b.WriteString(m.styles.EditHint.Render("leave day blank for month todo, leave day+month blank for year todo"))
 			b.WriteString("\n\n")
 			b.WriteString(m.styles.FieldLabel.Render("Priority"))
 			b.WriteString("\n")
@@ -1285,6 +1338,11 @@ func (m Model) editView() string {
 			b.WriteString(m.styles.FieldLabel.Render("Template"))
 			b.WriteString("\n")
 			b.WriteString(m.templateInput.View())
+			b.WriteString("\n")
+		}
+		if m.editError != "" {
+			b.WriteString("\n")
+			b.WriteString(m.styles.EditError.Render(m.editError))
 			b.WriteString("\n")
 		}
 	}
@@ -1606,7 +1664,7 @@ func (m Model) renderDateSegments() string {
 	var parts []string
 	for i := 0; i < 3; i++ {
 		seg := m.dateSegmentByPos(i)
-		parts = append(parts, seg.View())
+		parts = append(parts, strings.TrimRight(seg.View(), " "))
 	}
 	return parts[0] + sep + parts[1] + sep + parts[2]
 }
@@ -1636,96 +1694,70 @@ func renderFuzzyDate(t *store.Todo, dateLayout string) string {
 }
 
 // deriveDateFromSegments reads the three date segment values and derives the ISO date
-// string and date precision. Returns (isoDate, precision, errSegPos) where errSegPos >= 0
+// string and date precision. Returns (isoDate, precision, errSegPos, errMsg) where errSegPos >= 0
 // indicates which visual segment needs attention (-1 means success).
-func (m Model) deriveDateFromSegments() (string, string, int) {
+func (m Model) deriveDateFromSegments() (string, string, int, string) {
 	day := strings.TrimSpace(m.dateSegDay.Value())
 	month := strings.TrimSpace(m.dateSegMonth.Value())
 	year := strings.TrimSpace(m.dateSegYear.Value())
 
+	yearPos := m.dateSegPosOf(2)
+	monthPos := m.dateSegPosOf(1)
+	dayPos := m.dateSegPosOf(0)
+
 	// All empty: floating todo
 	if year == "" && month == "" && day == "" {
-		return "", "", -1
+		return "", "", -1, ""
 	}
 
 	// Year is required for any dated todo
 	if year == "" {
-		// Find the visual position of the year segment
-		for i := 0; i < 3; i++ {
-			if m.dateSegOrder[i] == 2 {
-				return "", "", i
-			}
-		}
-		return "", "", 0
+		return "", "", yearPos, "Year is required"
 	}
 
 	// Validate year is 4 digits
 	if len(year) != 4 {
-		for i := 0; i < 3; i++ {
-			if m.dateSegOrder[i] == 2 {
-				return "", "", i
-			}
-		}
+		return "", "", yearPos, "Year must be 4 digits"
 	}
 	for _, c := range year {
 		if c < '0' || c > '9' {
-			for i := 0; i < 3; i++ {
-				if m.dateSegOrder[i] == 2 {
-					return "", "", i
-				}
-			}
+			return "", "", yearPos, "Year must be numeric"
 		}
 	}
 
 	// Year only: year precision
 	if month == "" && day == "" {
-		return year + "-01-01", "year", -1
+		return year + "-01-01", "year", -1, ""
 	}
 
 	// Day filled but no month: invalid
 	if month == "" && day != "" {
-		for i := 0; i < 3; i++ {
-			if m.dateSegOrder[i] == 1 {
-				return "", "", i
-			}
-		}
+		return "", "", monthPos, "Month is required when day is set"
 	}
 
 	// Validate month
 	monthNum := 0
 	for _, c := range month {
 		if c < '0' || c > '9' {
-			for i := 0; i < 3; i++ {
-				if m.dateSegOrder[i] == 1 {
-					return "", "", i
-				}
-			}
+			return "", "", monthPos, "Month must be numeric"
 		}
 		monthNum = monthNum*10 + int(c-'0')
 	}
 	if monthNum < 1 || monthNum > 12 {
-		for i := 0; i < 3; i++ {
-			if m.dateSegOrder[i] == 1 {
-				return "", "", i
-			}
-		}
+		return "", "", monthPos, "Month must be 1-12"
 	}
 	paddedMonth := fmt.Sprintf("%02d", monthNum)
 
 	// Year + month only: month precision
 	if day == "" {
-		return year + "-" + paddedMonth + "-01", "month", -1
+		return year + "-" + paddedMonth + "-01", "month", -1, ""
 	}
 
 	// All three filled: day precision - validate as real date
 	dayNum := 0
 	for _, c := range day {
 		if c < '0' || c > '9' {
-			for i := 0; i < 3; i++ {
-				if m.dateSegOrder[i] == 0 {
-					return "", "", i
-				}
-			}
+			return "", "", dayPos, "Day must be numeric"
 		}
 		dayNum = dayNum*10 + int(c-'0')
 	}
@@ -1735,14 +1767,20 @@ func (m Model) deriveDateFromSegments() (string, string, int) {
 	// Validate the full date
 	_, err := time.Parse("2006-01-02", isoDate)
 	if err != nil {
-		for i := 0; i < 3; i++ {
-			if m.dateSegOrder[i] == 0 {
-				return "", "", i
-			}
-		}
+		return "", "", dayPos, "Invalid date"
 	}
 
-	return isoDate, "day", -1
+	return isoDate, "day", -1, ""
+}
+
+// dateSegPosOf returns the visual position (0-2) of a semantic segment (0=day, 1=month, 2=year).
+func (m Model) dateSegPosOf(semantic int) int {
+	for i := 0; i < 3; i++ {
+		if m.dateSegOrder[i] == semantic {
+			return i
+		}
+	}
+	return 0
 }
 
 // updateDateSegment handles key events forwarded to the focused date segment.
@@ -1755,6 +1793,24 @@ func (m Model) updateDateSegment(msg tea.KeyMsg) (Model, tea.Cmd) {
 		now := time.Now()
 		m.dateSegDay.SetValue(fmt.Sprintf("%02d", now.Day()))
 		m.dateSegMonth.SetValue(fmt.Sprintf("%02d", int(now.Month())))
+		m.dateSegYear.SetValue(fmt.Sprintf("%d", now.Year()))
+		return m, nil
+	}
+
+	// "m" fills in current month + year (day left empty for month precision)
+	if key == "m" {
+		now := time.Now()
+		m.dateSegDay.SetValue("")
+		m.dateSegMonth.SetValue(fmt.Sprintf("%02d", int(now.Month())))
+		m.dateSegYear.SetValue(fmt.Sprintf("%d", now.Year()))
+		return m, nil
+	}
+
+	// "y" fills in current year (day+month left empty for year precision)
+	if key == "y" {
+		now := time.Now()
+		m.dateSegDay.SetValue("")
+		m.dateSegMonth.SetValue("")
 		m.dateSegYear.SetValue(fmt.Sprintf("%d", now.Year()))
 		return m, nil
 	}

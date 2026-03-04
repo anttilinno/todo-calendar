@@ -28,6 +28,7 @@ type Styles struct {
 	PriorityMuted lipgloss.Style
 	EventTime     lipgloss.Style
 	EventText     lipgloss.Style
+	EditError     lipgloss.Style
 }
 
 // NewStyles builds todo list styles from the given theme.
@@ -54,6 +55,7 @@ func NewStyles(t theme.Theme) Styles {
 		PriorityMuted: lipgloss.NewStyle().Foreground(t.MutedFg),
 		EventTime:     lipgloss.NewStyle().Foreground(t.EventFg).Bold(true),
 		EventText:     lipgloss.NewStyle().Foreground(t.EventFg),
+		EditError:     lipgloss.NewStyle().Foreground(t.PriorityP1Fg),
 	}
 }
 
