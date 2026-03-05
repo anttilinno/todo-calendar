@@ -1,22 +1,41 @@
 package status
 
 import (
-	"fmt"
+	"encoding/json"
+	"time"
 
 	"github.com/antti/todo-calendar/internal/store"
 )
 
-// FormatStatus returns the count of pending todos as a string.
-// Returns an empty string when no pending todos exist.
-func FormatStatus(todos []store.Todo) string {
-	var count int
+// StatusResult holds pending todo counts by date granularity.
+type StatusResult struct {
+	Daily   int `json:"daily"`
+	Monthly int `json:"monthly"`
+	Yearly  int `json:"yearly"`
+}
+
+// countPending returns the number of incomplete todos in the slice.
+func countPending(todos []store.Todo) int {
+	var n int
 	for _, td := range todos {
 		if !td.Done {
-			count++
+			n++
 		}
 	}
-	if count == 0 {
-		return ""
+	return n
+}
+
+// FormatStatus returns pending todo counts as a JSON object.
+func FormatStatus(s store.TodoStore) string {
+	now := time.Now()
+	today := now.Format("2006-01-02")
+
+	result := StatusResult{
+		Daily:   countPending(s.TodosForDateRange(today, today)),
+		Monthly: countPending(s.MonthTodos(now.Year(), now.Month())),
+		Yearly:  countPending(s.YearTodos(now.Year())),
 	}
-	return fmt.Sprintf("%d", count)
+
+	b, _ := json.Marshal(result)
+	return string(b)
 }

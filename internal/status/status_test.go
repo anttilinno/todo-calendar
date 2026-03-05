@@ -2,69 +2,66 @@ package status
 
 import (
 	"testing"
+	"time"
 
 	"github.com/antti/todo-calendar/internal/store"
 	"github.com/antti/todo-calendar/internal/theme"
 )
 
-func TestFormatStatus_EmptySlice(t *testing.T) {
-	got := FormatStatus(nil)
-	if got != "" {
-		t.Errorf("FormatStatus(nil) = %q, want empty string", got)
+// mockStore implements the subset of store.TodoStore needed by FormatStatus.
+type mockStore struct {
+	store.TodoStore
+	daily   []store.Todo
+	monthly []store.Todo
+	yearly  []store.Todo
+}
+
+func (m *mockStore) TodosForDateRange(_, _ string) []store.Todo { return m.daily }
+func (m *mockStore) MonthTodos(_ int, _ time.Month) []store.Todo { return m.monthly }
+func (m *mockStore) YearTodos(_ int) []store.Todo { return m.yearly }
+
+func TestFormatStatus_Empty(t *testing.T) {
+	got := FormatStatus(&mockStore{})
+	want := `{"daily":0,"monthly":0,"yearly":0}`
+	if got != want {
+		t.Errorf("FormatStatus(empty) = %q, want %q", got, want)
 	}
 }
 
-func TestFormatStatus_AllCompleted(t *testing.T) {
-	todos := []store.Todo{
-		{Text: "done task", Done: true, Priority: 1},
+func TestFormatStatus_DailyOnly(t *testing.T) {
+	s := &mockStore{
+		daily: []store.Todo{{Text: "task", Done: false}},
 	}
-	got := FormatStatus(todos)
-	if got != "" {
-		t.Errorf("FormatStatus(all done) = %q, want empty string", got)
-	}
-}
-
-func TestFormatStatus_SinglePending(t *testing.T) {
-	todos := []store.Todo{
-		{Text: "buy milk", Done: false, Priority: 0},
-	}
-	got := FormatStatus(todos)
-	if got != "1" {
-		t.Errorf("FormatStatus(1 pending) = %q, want %q", got, "1")
+	got := FormatStatus(s)
+	want := `{"daily":1,"monthly":0,"yearly":0}`
+	if got != want {
+		t.Errorf("FormatStatus = %q, want %q", got, want)
 	}
 }
 
-func TestFormatStatus_MultiplePending(t *testing.T) {
-	todos := []store.Todo{
-		{Text: "urgent", Done: false, Priority: 1},
-		{Text: "low", Done: false, Priority: 3},
+func TestFormatStatus_AllCategories(t *testing.T) {
+	s := &mockStore{
+		daily:   []store.Todo{{Done: false}, {Done: true}},
+		monthly: []store.Todo{{Done: false}, {Done: false}},
+		yearly:  []store.Todo{{Done: false}, {Done: false}, {Done: false}},
 	}
-	got := FormatStatus(todos)
-	if got != "2" {
-		t.Errorf("FormatStatus(2 pending) = %q, want %q", got, "2")
-	}
-}
-
-func TestFormatStatus_CompletedTodoIgnored(t *testing.T) {
-	todos := []store.Todo{
-		{Text: "active", Done: false, Priority: 2},
-		{Text: "done", Done: true, Priority: 1},
-	}
-	got := FormatStatus(todos)
-	if got != "1" {
-		t.Errorf("FormatStatus(1 pending, 1 done) = %q, want %q", got, "1")
+	got := FormatStatus(s)
+	want := `{"daily":1,"monthly":2,"yearly":3}`
+	if got != want {
+		t.Errorf("FormatStatus = %q, want %q", got, want)
 	}
 }
 
-func TestFormatStatus_MixedPriorityAndNoPriority(t *testing.T) {
-	todos := []store.Todo{
-		{Text: "no prio", Done: false, Priority: 0},
-		{Text: "P3", Done: false, Priority: 3},
-		{Text: "also no prio", Done: false, Priority: 0},
+func TestFormatStatus_AllDone(t *testing.T) {
+	s := &mockStore{
+		daily:   []store.Todo{{Done: true}},
+		monthly: []store.Todo{{Done: true}},
+		yearly:  []store.Todo{{Done: true}},
 	}
-	got := FormatStatus(todos)
-	if got != "3" {
-		t.Errorf("FormatStatus(3 pending) = %q, want %q", got, "3")
+	got := FormatStatus(s)
+	want := `{"daily":0,"monthly":0,"yearly":0}`
+	if got != want {
+		t.Errorf("FormatStatus(all done) = %q, want %q", got, want)
 	}
 }
 

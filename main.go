@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/antti/todo-calendar/internal/app"
 	"github.com/antti/todo-calendar/internal/config"
@@ -58,9 +57,7 @@ func main() {
 	defer s.Close()
 
 	if *showStatus {
-		today := time.Now().Format("2006-01-02")
-		todos := s.TodosForDateRange(today, today)
-		fmt.Print(status.FormatStatus(todos))
+		fmt.Println(status.FormatStatus(s))
 		return
 	}
 
