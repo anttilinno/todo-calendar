@@ -89,8 +89,6 @@ type Model struct {
 func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t theme.Theme, cfg config.Config, authState google.AuthState, calSvc *gcal.Service) Model {
 	cal := calendar.New(provider, mondayStart, s, t)
 	cal.SetFocused(true)
-	cal.SetShowFuzzySections(cfg.ShowMonthTodos, cfg.ShowYearTodos)
-
 	tl := todolist.New(s, t)
 	tl.SetDateFormat(cfg.DateFormat, cfg.DateLayout(), cfg.DatePlaceholder())
 	tl.SetShowFuzzySections(cfg.ShowMonthTodos, cfg.ShowYearTodos)
@@ -152,7 +150,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.todoList.SetDateFormat(m.cfg.DateFormat, m.cfg.DateLayout(), m.cfg.DatePlaceholder())
 		m.todoList.SetShowFuzzySections(msg.Cfg.ShowMonthTodos, msg.Cfg.ShowYearTodos)
 		m.todoList.SetPriorityStyle(msg.Cfg.PriorityStyle)
-		m.calendar.SetShowFuzzySections(msg.Cfg.ShowMonthTodos, msg.Cfg.ShowYearTodos)
 		if m.cfg.GoogleCalendarEnabled {
 			m.todoList.SetCalendarEvents(m.calendarEvents)
 			m.calendar.SetCalendarEvents(m.calendarEvents)
@@ -581,10 +578,6 @@ func (m *Model) syncTodoSize() {
 
 	m.todoList.SetSize(todoInnerWidth, contentHeight)
 
-	// Calendar content width = pane width minus horizontal padding (not border).
-	paneStyle := m.styles.Pane(true)
-	hPad := paneStyle.GetPaddingLeft() + paneStyle.GetPaddingRight()
-	m.calendar.SetContentWidth(calendarInnerWidth - hPad)
 }
 
 // applyTheme updates all component styles with the given theme.

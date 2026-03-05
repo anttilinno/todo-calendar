@@ -37,77 +37,49 @@ func fuzzyStatus(todos []store.Todo) string {
 //   - mondayStart: if true, weeks start on Monday; otherwise Sunday
 //   - indicators: map of day numbers to count of incomplete todos (nil safe)
 //   - st: store for querying month/year fuzzy todos (nil safe)
-func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mondayStart bool, indicators map[int]int, totals map[int]int, priorities map[int]int, st store.TodoStore, showMonthTodos bool, showYearTodos bool, contentWidth int, hasEvents map[int]bool, s Styles) string {
+func RenderGrid(year int, month time.Month, today int, holidays map[int]bool, mondayStart bool, indicators map[int]int, totals map[int]int, priorities map[int]int, st store.TodoStore, hasEvents map[int]bool, s Styles) string {
 	var b strings.Builder
 
-	// Title line: month and year, centered in grid width.
-	title := fmt.Sprintf("%s %d", month.String(), year)
-
-	// Determine circle indicators for fuzzy-date todos.
+	// Determine circle indicators for fuzzy-date todos (always visible).
 	var monthCircle, yearCircle string
+	var monthCircleWidth, yearCircleWidth int
 	if st != nil {
-		if showMonthTodos {
-			ms := fuzzyStatus(st.MonthTodos(year, month))
-			switch ms {
-			case "pending":
-				monthCircle = s.FuzzyPending.Render("\u25cf")
-			case "done":
-				monthCircle = s.FuzzyDone.Render("\u25cf")
-			}
+		ms := fuzzyStatus(st.MonthTodos(year, month))
+		switch ms {
+		case "pending":
+			monthCircle = s.FuzzyPending.Render("\u25cf")
+			monthCircleWidth = 1
+		case "done":
+			monthCircle = s.FuzzyDone.Render("\u25cf")
+			monthCircleWidth = 1
 		}
 
-		if showYearTodos {
-			ys := fuzzyStatus(st.YearTodos(year))
-			switch ys {
-			case "pending":
-				yearCircle = s.FuzzyPending.Render("\u25cf")
-			case "done":
-				yearCircle = s.FuzzyDone.Render("\u25cf")
-			}
+		ys := fuzzyStatus(st.YearTodos(year))
+		switch ys {
+		case "pending":
+			yearCircle = s.FuzzyPending.Render("\u25cf")
+			yearCircleWidth = 1
+		case "done":
+			yearCircle = s.FuzzyDone.Render("\u25cf")
+			yearCircleWidth = 1
 		}
 	}
 
-	// Build title line with circles at outer edges and title centered.
-	// Layout: [monthCircle + space] ... [centered title] ... [space + yearCircle]
-	titleRendered := s.Header.Render(title)
-	titlePad := (gridWidth - len(title)) / 2
+	// Build title line: "Month● Year●" with circles inline after their labels.
+	monthName := month.String()
+	yearStr := fmt.Sprintf("%d", year)
+	visibleWidth := len(monthName) + monthCircleWidth + 1 + len(yearStr) + yearCircleWidth
+	titlePad := (gridWidth - visibleWidth) / 2
 	if titlePad < 0 {
 		titlePad = 0
 	}
 
-	if monthCircle != "" || yearCircle != "" {
-		// Place circles at outer edges of the pane, title centered between them.
-		leftStr := " "
-		if monthCircle != "" {
-			leftStr = monthCircle
-		}
-		rightStr := " "
-		if yearCircle != "" {
-			rightStr = yearCircle
-		}
-		// Position circles at the edges of the pane content area.
-		dotWidth := contentWidth
-		if dotWidth < gridWidth {
-			dotWidth = gridWidth
-		}
-		innerWidth := dotWidth - 2 // 1 char each side for circles
-		innerPad := (innerWidth - len(title)) / 2
-		if innerPad < 0 {
-			innerPad = 0
-		}
-		rightPad := innerWidth - innerPad - len(title)
-		if rightPad < 0 {
-			rightPad = 0
-		}
-		b.WriteString(leftStr)
-		b.WriteString(strings.Repeat(" ", innerPad))
-		b.WriteString(titleRendered)
-		b.WriteString(strings.Repeat(" ", rightPad))
-		b.WriteString(rightStr)
-	} else {
-		b.WriteString(strings.Repeat(" ", titlePad))
-		b.WriteString(titleRendered)
-	}
+	b.WriteString(strings.Repeat(" ", titlePad))
+	b.WriteString(s.Header.Render(monthName))
+	b.WriteString(monthCircle)
+	b.WriteString(" ")
+	b.WriteString(s.Header.Render(yearStr))
+	b.WriteString(yearCircle)
 	b.WriteString("\n")
 
 	// Weekday header (4 chars per day label, 1 char separator = 34 chars total).

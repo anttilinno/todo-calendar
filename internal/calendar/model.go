@@ -53,9 +53,6 @@ type Model struct {
 	styles         Styles
 	viewMode       ViewMode
 	weekStart      time.Time
-	showMonthTodos bool
-	showYearTodos  bool
-	contentWidth   int // pane text content width (pane width minus padding)
 	calendarEvents []google.CalendarEvent
 }
 
@@ -78,8 +75,6 @@ func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t the
 		keys:           DefaultKeyMap(),
 		mondayStart:    mondayStart,
 		styles:         NewStyles(t),
-		showMonthTodos: true,
-		showYearTodos:  true,
 	}
 }
 
@@ -162,7 +157,7 @@ func (m Model) View() string {
 			todayDay = now.Day()
 		}
 
-		grid := RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.totals, m.priorities, m.store, m.showMonthTodos, m.showYearTodos, m.contentWidth, hasEvents, m.styles)
+		grid := RenderGrid(m.year, m.month, todayDay, m.holidays, m.mondayStart, m.indicators, m.totals, m.priorities, m.store, hasEvents, m.styles)
 		content = grid + m.renderOverview()
 	}
 
@@ -233,10 +228,6 @@ func (m *Model) SetFocused(f bool) {
 	m.focused = f
 }
 
-// SetContentWidth sets the pane text content width (pane width minus padding).
-func (m *Model) SetContentWidth(w int) {
-	m.contentWidth = w
-}
 
 // Year returns the currently viewed year.
 func (m Model) Year() int { return m.year }
@@ -261,11 +252,6 @@ func (m *Model) SetMondayStart(v bool) {
 	m.mondayStart = v
 }
 
-// SetShowFuzzySections controls visibility of fuzzy-date circle indicators.
-func (m *Model) SetShowFuzzySections(showMonth, showYear bool) {
-	m.showMonthTodos = showMonth
-	m.showYearTodos = showYear
-}
 
 // SetCalendarEvents stores the Google Calendar events for grid indicator display.
 func (m *Model) SetCalendarEvents(events []google.CalendarEvent) {
