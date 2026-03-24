@@ -18,6 +18,7 @@ type Config struct {
 	ShowMonthTodos bool   `toml:"show_month_todos"`
 	ShowYearTodos          bool   `toml:"show_year_todos"`
 	PriorityStyle          string `toml:"priority_style"`
+	AutoUpdate             bool   `toml:"auto_update"`
 	GoogleCalendarEnabled  bool   `toml:"google_calendar_enabled"`
 }
 
@@ -31,6 +32,7 @@ func DefaultConfig() Config {
 		ShowMonthTodos: true,
 		ShowYearTodos:         true,
 		PriorityStyle:        "bars",
+		AutoUpdate:           true,
 		GoogleCalendarEnabled: true,
 	}
 }

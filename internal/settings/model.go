@@ -40,12 +40,12 @@ type StartGoogleAuthMsg struct{}
 type GoogleAuthDoneMsg struct{ State google.AuthState }
 
 // googleCalendarRow is the index of the Google Calendar action row.
-const googleCalendarRow = 7
+const googleCalendarRow = 8
 
 // Model represents the settings overlay.
 type Model struct {
 	options         []option
-	cursor          int // which option row is selected (0-6)
+	cursor          int // which option row is selected (0-8)
 	width           int
 	height          int
 	keys            KeyMap
@@ -120,6 +120,7 @@ func New(cfg config.Config, t theme.Theme, authState google.AuthState) Model {
 			{label: "Show Month Todos", values: boolValues, display: boolDisplay, index: boolIndex(cfg.ShowMonthTodos)},
 			{label: "Show Year Todos", values: boolValues, display: boolDisplay, index: boolIndex(cfg.ShowYearTodos)},
 			{label: "Priority Style", values: []string{"bars", "nerd"}, display: []string{"▁▃▅▇ Bars", "\U000F08BF Nerd Font"}, index: indexOf([]string{"bars", "nerd"}, cfg.PriorityStyle)},
+			{label: "Auto Update", values: boolValues, display: []string{"Enabled", "Disabled"}, index: boolIndex(cfg.AutoUpdate)},
 			gcalOption,
 		},
 		keys:            DefaultKeyMap(),
@@ -142,6 +143,7 @@ func (m Model) Config() config.Config {
 		ShowMonthTodos:         m.options[4].values[m.options[4].index] == "true",
 		ShowYearTodos:          m.options[5].values[m.options[5].index] == "true",
 		PriorityStyle:          m.options[6].values[m.options[6].index],
+		AutoUpdate:             m.options[7].values[m.options[7].index] == "true",
 		GoogleCalendarEnabled: gcalEnabled,
 	}
 }
