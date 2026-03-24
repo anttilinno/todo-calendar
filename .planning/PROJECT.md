@@ -94,7 +94,11 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 
 ### Active
 
-(None — next milestone requirements TBD via `/gsd:new-milestone`)
+- Auto-update check on launch when `auto_update` setting is enabled — v2.4
+- Download + SHA256 verify binary from GitHub Releases API — v2.4
+- Atomic binary replacement at configured `binary_path` (default: `os.Executable()`) — v2.4
+- `auto_update` toggle in settings overlay (default: off) — v2.4
+- `binary_path` setting with resolved display in settings overlay — v2.4
 
 ### v2 Candidates
 
@@ -131,6 +135,7 @@ See your month at a glance — calendar with holidays and todos in one terminal 
 - **Stack**: Go + Bubble Tea — chosen for ergonomic component model and ecosystem
 - **Storage**: Local SQLite for todos — no cloud sync for user data; Google Calendar events cached in-memory only
 - **Network**: Google Calendar pull is optional; app must work fully offline when unconfigured
+- **Network**: Auto-update is best-effort with 5s timeout; must not delay app launch
 - **Holidays**: Must work offline using bundled Go library, not an external API
 
 ## Key Decisions
@@ -219,7 +224,7 @@ None.
 
 ## Current State
 
-Shipped v2.3 with 10,506 LOC Go across 38 source files. Polybar status integration complete — `todo-calendar status` subcommand and TUI-driven state file updates provide real-time external status bar display.
+Shipped v2.3 with 10,506 LOC Go across 38 source files. Starting v2.4 Auto-Update — automatic binary updates from GitHub Releases on app launch.
 
 ---
-*Last updated: 2026-02-23 after v2.3 milestone*
+*Last updated: 2026-03-24 after v2.4 milestone start*
