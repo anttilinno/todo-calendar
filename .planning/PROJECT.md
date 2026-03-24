@@ -224,7 +224,7 @@ None.
 
 ## Current State
 
-Shipped v2.3 with 10,506 LOC Go across 38 source files. Starting v2.4 Auto-Update — automatic binary updates from GitHub Releases on app launch.
+Phase 38 complete — core update engine built (`internal/update/`): GitHub Releases API check, binary download, SHA256 verification, atomic binary replacement. 18 tests, stdlib-only. Next: wire into settings and main().
 
 ---
-*Last updated: 2026-03-24 after v2.4 milestone start*
+*Last updated: 2026-03-24 after phase 38 (update engine) completion*
