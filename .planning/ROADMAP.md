@@ -60,7 +60,7 @@
 **Requirements:** R1, R2, R3, NR1, NR2, NR3
 **Plans:** 2 plans
 Plans:
-- [ ] 38-01-PLAN.md — GitHub API client, downloader, and SHA256 checksum verifier
+- [x] 38-01-PLAN.md — GitHub API client, downloader, and SHA256 checksum verifier
 - [ ] 38-02-PLAN.md — Atomic binary replacement with permission preservation
 **Success criteria:**
 1. CheckForUpdate returns latest version tag from GitHub Releases API
@@ -101,6 +101,6 @@ Plans:
 | 35. Event Display & Grid | v2.2 | 3/3 | Complete | 2026-02-14 |
 | 36. Status Subcommand | v2.3 | 2/2 | Complete | 2026-02-23 |
 | 37. TUI State File Integration | v2.3 | 1/1 | Complete | 2026-02-23 |
-| 38. Update Engine | v2.4 | 0/2 | Pending | — |
+| 38. Update Engine | v2.4 | 1/2 | In Progress | — |
 | 39. Settings Integration | v2.4 | 0/? | Pending | — |
 | 40. Launch Wiring | v2.4 | 0/? | Pending | — |
