@@ -18,8 +18,9 @@ type Config struct {
 	ShowMonthTodos bool   `toml:"show_month_todos"`
 	ShowYearTodos          bool   `toml:"show_year_todos"`
 	PriorityStyle          string `toml:"priority_style"`
-	AutoUpdate             bool   `toml:"auto_update"`
-	GoogleCalendarEnabled  bool   `toml:"google_calendar_enabled"`
+	AutoUpdate             bool      `toml:"auto_update"`
+	LastUpdateCheck        time.Time `toml:"last_update_check,omitempty"`
+	GoogleCalendarEnabled  bool      `toml:"google_calendar_enabled"`
 }
 
 // DefaultConfig returns a Config with sensible defaults.

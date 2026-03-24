@@ -83,10 +83,11 @@ type Model struct {
 	calendarEvents  []google.CalendarEvent
 	eventsSyncToken string
 	eventsFetchErr  error
+	version         string
 }
 
 // New creates a new root application model with the given dependencies.
-func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t theme.Theme, cfg config.Config, authState google.AuthState, calSvc *gcal.Service) Model {
+func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t theme.Theme, cfg config.Config, authState google.AuthState, calSvc *gcal.Service, version string) Model {
 	cal := calendar.New(provider, mondayStart, s, t)
 	cal.SetFocused(true)
 	tl := todolist.New(s, t)
@@ -114,6 +115,7 @@ func New(provider *holidays.Provider, mondayStart bool, s store.TodoStore, t the
 		cfg:             cfg,
 		googleAuthState: authState,
 		calendarSvc:     calSvc,
+		version:         version,
 	}
 }
 
@@ -345,7 +347,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.help.ShowAll = false
 			return m, nil
 		case key.Matches(msg, m.keys.Settings) && !isInputting:
-			m.settings = settings.New(m.cfg, theme.ForName(m.cfg.Theme), m.googleAuthState)
+			m.settings = settings.New(m.cfg, theme.ForName(m.cfg.Theme), m.googleAuthState, m.version)
 			m.settings.SetSize(m.width, m.height)
 			m.showSettings = true
 			return m, nil

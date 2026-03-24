@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -52,6 +54,8 @@ type Model struct {
 	styles          Styles
 	googleAuthState google.AuthState
 	authFlowActive  bool
+	version         string
+	lastUpdateCheck time.Time
 }
 
 // googleStatusDisplay returns the display text for a Google auth state.
@@ -69,7 +73,7 @@ func googleStatusDisplay(state google.AuthState) string {
 }
 
 // New creates a new settings model from the current configuration.
-func New(cfg config.Config, t theme.Theme, authState google.AuthState) Model {
+func New(cfg config.Config, t theme.Theme, authState google.AuthState, version string) Model {
 	themeNames := theme.Names()
 	themeDisplay := make([]string, len(themeNames))
 	for i, name := range themeNames {
@@ -126,6 +130,8 @@ func New(cfg config.Config, t theme.Theme, authState google.AuthState) Model {
 		keys:            DefaultKeyMap(),
 		styles:          NewStyles(t),
 		googleAuthState: authState,
+		version:         version,
+		lastUpdateCheck: cfg.LastUpdateCheck,
 	}
 }
 
@@ -292,6 +298,29 @@ func (m Model) View() string {
 			b.WriteString(label + value + "\n")
 		}
 	}
+
+	// Info section: version and last update check
+	b.WriteString("\n")
+	infoStyle := lipgloss.NewStyle().Foreground(m.styles.Label.GetForeground())
+	valueStyle := lipgloss.NewStyle().Foreground(m.styles.Hint.GetForeground())
+
+	ver := m.version
+	if ver == "" {
+		ver = "dev"
+	}
+	b.WriteString(infoStyle.Render(fmt.Sprintf("  %-20s", "Version")))
+	b.WriteString(valueStyle.Render("   " + ver))
+	b.WriteString("\n")
+
+	var lastCheck string
+	if m.lastUpdateCheck.IsZero() {
+		lastCheck = "Never"
+	} else {
+		lastCheck = m.lastUpdateCheck.Format("2006-01-02 15:04")
+	}
+	b.WriteString(infoStyle.Render(fmt.Sprintf("  %-20s", "Last Update Check")))
+	b.WriteString(valueStyle.Render("   " + lastCheck))
+	b.WriteString("\n")
 
 	content := b.String()
 
