@@ -1,3 +1,17 @@
+---
+gsd_state_version: 1.0
+milestone: v2.4
+milestone_name: Auto-Update
+status: Phase complete — ready for verification
+stopped_at: Completed 38-02-PLAN.md
+last_updated: "2026-03-24T15:09:26.930Z"
+progress:
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 2
+  completed_plans: 1
+---
+
 # Project State
 
 ## Project Reference
@@ -5,21 +19,18 @@
 See: .planning/PROJECT.md (updated 2026-03-24)
 
 **Core value:** See your month at a glance -- calendar with holidays and todos in one terminal screen
-**Current focus:** v2.4 Auto-Update
+**Current focus:** Phase 38 — update-engine
 
 ## Current Position
 
-Phase: 38 of 40
-Plan: 01 of 02 complete
-Status: Executing Phase 38 (Update Engine)
-Last activity: 2026-03-24 -- Completed 38-01 GitHub API client, downloader, checksum verifier
-
-Progress: [██░░░░░░░░] 17%
+Phase: 38 (update-engine) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 64 (v1.0 through v2.3, plus 38-01)
+
+- Total plans completed: 63 (v1.0 through v2.3)
 - Average duration: 2 min
 - Total execution time: ~1.5 hours
 
@@ -29,8 +40,7 @@ Progress: [██░░░░░░░░] 17%
 
 See PROJECT.md Key Decisions table for complete log.
 
-- [38-01] CheckForUpdate returns *Release struct with asset URLs for downstream consumption
-- [38-01] apiURL parameter override for testability instead of package-level var
+- [Phase 38]: ReplaceBinary follows same atomic write pattern as config.go Save: CreateTemp+Write+Sync+Close+Chmod+Rename
 
 ### Pending Todos
 
@@ -42,6 +52,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-24
-Stopped at: Completed 38-01-PLAN.md
+Last session: 2026-03-24T15:09:26.927Z
+Stopped at: Completed 38-02-PLAN.md
 Resume file: None
