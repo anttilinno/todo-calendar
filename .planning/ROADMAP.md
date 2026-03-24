@@ -8,6 +8,7 @@
 - v2.1 Priorities: Shipped 2026-02-13 (see MILESTONES.md)
 - v2.2 Google Calendar Events: Shipped 2026-02-14 (see MILESTONES.md)
 - v2.3 Polybar Status: Shipped 2026-02-23 (see MILESTONES.md)
+- v2.4 Auto-Update: In Progress
 
 ## Phases
 
@@ -52,6 +53,15 @@
 
 </details>
 
+<details>
+<summary>v2.4 Auto-Update (Phases 38-40) — IN PROGRESS</summary>
+
+- [ ] Phase 38: Update Engine — version check, download, SHA256 verify, atomic replace
+- [ ] Phase 39: Settings Integration — auto_update toggle, binary_path display, Config fields
+- [ ] Phase 40: Launch Wiring — call update engine from main() before TUI start
+
+</details>
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -67,3 +77,6 @@
 | 35. Event Display & Grid | v2.2 | 3/3 | Complete | 2026-02-14 |
 | 36. Status Subcommand | v2.3 | 2/2 | Complete | 2026-02-23 |
 | 37. TUI State File Integration | v2.3 | 1/1 | Complete | 2026-02-23 |
+| 38. Update Engine | v2.4 | 0/? | Pending | — |
+| 39. Settings Integration | v2.4 | 0/? | Pending | — |
+| 40. Launch Wiring | v2.4 | 0/? | Pending | — |
