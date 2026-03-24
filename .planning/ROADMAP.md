@@ -58,7 +58,7 @@
 #### Phase 38: Update Engine
 **Goal:** Build the core update engine — check GitHub Releases API for latest version, download binary + SHA256 checksum, verify integrity, and atomically replace the binary at configured path
 **Requirements:** R1, R2, R3, NR1, NR2, NR3
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 38-01-PLAN.md — GitHub API client, downloader, and SHA256 checksum verifier
 - [ ] 38-02-PLAN.md — Atomic binary replacement with permission preservation
@@ -101,6 +101,6 @@ Plans:
 | 35. Event Display & Grid | v2.2 | 3/3 | Complete | 2026-02-14 |
 | 36. Status Subcommand | v2.3 | 2/2 | Complete | 2026-02-23 |
 | 37. TUI State File Integration | v2.3 | 1/1 | Complete | 2026-02-23 |
-| 38. Update Engine | v2.4 | 1/2 | In Progress | — |
+| 38. Update Engine | v2.4 | 1/2 | Complete    | 2026-03-24 |
 | 39. Settings Integration | v2.4 | 0/? | Pending | — |
 | 40. Launch Wiring | v2.4 | 0/? | Pending | — |
