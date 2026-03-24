@@ -53,14 +53,38 @@
 
 </details>
 
-<details>
-<summary>v2.4 Auto-Update (Phases 38-40) — IN PROGRESS</summary>
+### v2.4 Auto-Update (Phases 38-40)
 
-- [ ] Phase 38: Update Engine — version check, download, SHA256 verify, atomic replace
-- [ ] Phase 39: Settings Integration — auto_update toggle, binary_path display, Config fields
-- [ ] Phase 40: Launch Wiring — call update engine from main() before TUI start
+#### Phase 38: Update Engine
+**Goal:** Build the core update engine — check GitHub Releases API for latest version, download binary + SHA256 checksum, verify integrity, and atomically replace the binary at configured path
+**Requirements:** R1, R2, R3, NR1, NR2, NR3
+**Plans:** 2 plans
+Plans:
+- [ ] 38-01-PLAN.md — GitHub API client, downloader, and SHA256 checksum verifier
+- [ ] 38-02-PLAN.md — Atomic binary replacement with permission preservation
+**Success criteria:**
+1. CheckForUpdate returns latest version tag from GitHub Releases API
+2. DownloadRelease fetches binary and checksum files with 5s timeout
+3. SHA256 verification rejects tampered binaries
+4. Atomic binary replacement preserves original file permissions
+5. Network errors and API failures are logged to stderr without blocking app launch
 
-</details>
+#### Phase 39: Settings Integration
+**Goal:** Add auto_update toggle and binary_path display to Config and settings overlay
+**Requirements:** R4, R5
+**Success criteria:**
+1. Config struct has AutoUpdate bool and BinaryPath string fields with TOML tags
+2. DefaultConfig sets AutoUpdate=false and BinaryPath=""
+3. Settings overlay shows Auto Update cycling toggle (Enabled/Disabled)
+4. Settings overlay shows Binary Path as read-only display with resolved effective path
+
+#### Phase 40: Launch Wiring
+**Goal:** Wire update engine into main() to run on app launch before TUI start
+**Success criteria:**
+1. main() calls update check after config load when AutoUpdate is true
+2. Update is skipped when version == "dev"
+3. BinaryPath resolves from os.Executable() when config value is empty
+4. App launches normally regardless of update outcome
 
 ## Progress
 
@@ -77,6 +101,6 @@
 | 35. Event Display & Grid | v2.2 | 3/3 | Complete | 2026-02-14 |
 | 36. Status Subcommand | v2.3 | 2/2 | Complete | 2026-02-23 |
 | 37. TUI State File Integration | v2.3 | 1/1 | Complete | 2026-02-23 |
-| 38. Update Engine | v2.4 | 0/? | Pending | — |
+| 38. Update Engine | v2.4 | 0/2 | Pending | — |
 | 39. Settings Integration | v2.4 | 0/? | Pending | — |
 | 40. Launch Wiring | v2.4 | 0/? | Pending | — |
