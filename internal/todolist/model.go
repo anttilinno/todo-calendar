@@ -1664,18 +1664,18 @@ func (m Model) renderDateSegments() string {
 	var parts []string
 	for i := 0; i < 3; i++ {
 		seg := m.dateSegmentByPos(i)
+		// Always render value directly to avoid ANSI cursor artifacts from View().
+		v := seg.Value()
 		if i == m.dateSegFocus && m.editField == fieldDate {
-			// Focused segment: use View() for cursor display, trim trailing spaces.
-			parts = append(parts, strings.TrimRight(seg.View(), " "))
-		} else {
-			// Unfocused segment: render value directly to avoid ANSI cursor artifacts.
-			v := seg.Value()
-			if v == "" {
-				v = seg.Placeholder
-				v = m.styles.DateSeparator.Render(v) // dim placeholder like separator
+			// Focused segment: append block cursor.
+			if len(v) < m.dateSegCharLimit(i) {
+				v += "█"
 			}
-			parts = append(parts, v)
+		} else if v == "" {
+			v = seg.Placeholder
+			v = m.styles.DateSeparator.Render(v) // dim placeholder like separator
 		}
+		parts = append(parts, v)
 	}
 	return parts[0] + sep + parts[1] + sep + parts[2]
 }
